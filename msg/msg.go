@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -18,6 +19,7 @@ import (
 )
 
 type Message interface {
+	Type() TxType
 }
 
 type TxType int
@@ -27,19 +29,45 @@ const (
 	POLY TxType = 2
 )
 
+type PolyComposer func(*Tx) error
+
 type Tx struct {
-	Type                    TxType
-	ChainId                 uint64
-	TxID                    string
-	Hash                    string
+	TxType                  TxType
+	SrcChainId              uint64
+	DstChainId              uint64
+	TxId                    string
+	SrcHash                 string
 	PolyHash                string
+	DstHash                 string
+	SrcHeight               uint64
 	PolyHeight              uint32
+	DstHeight               uint64
 	DstPolyEpochStartHeight uint32
-	DstPolyKeepers          []byte
-	DstData                 []byte
-	MerkleValue             *common.ToMerkleValue
-	PolyHeader              *types.Header
-	AnchorHeader            *types.Header
+	DstPolyKeepers          []byte                `json:"-"`
+	DstData                 []byte                `json:"-"`
+	MerkleValue             *common.ToMerkleValue `json:"-"`
+	PolyHeader              *types.Header         `json:"-"`
+	AnchorHeader            *types.Header         `json:"-"`
+	AnchorProof             string                `json:"omitempty"`
+	AuditPath               []byte                `json:"-"`
+	DstSigs                 []byte                `json:"-"`
+	DstGasLimit             uint64
+	DstGasPrice             string
+	DstGasPriceX            string
+}
+
+func (tx *Tx) Type() TxType {
+	return tx.TxType
+}
+
+func (tx *Tx) GetTxId() (id [32]byte, err error) {
+	bytes, err := hex.DecodeString(tx.TxId)
+	if err != nil {
+		err = fmt.Errorf("GetTxId Invalid tx id hex %v", err)
+		return
+	}
+	copy(id[:], bytes[:32])
+	return
 }
 
 func EncodeEthPubKey(key keypair.PublicKey) ([]byte, error) {
