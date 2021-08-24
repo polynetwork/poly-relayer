@@ -79,7 +79,7 @@ func (s *Submitter) Stop() error {
 func (s *Submitter) MakeTx(tx *msg.Tx, header, anchor *types.Header, proof string, rawAuditPath []byte) (err error) {
 	var (
 		sigs []byte
-		data []byte
+		// data []byte
 	)
 	sigHeader := header
 
@@ -93,7 +93,7 @@ func (s *Submitter) MakeTx(tx *msg.Tx, header, anchor *types.Header, proof strin
 		if err != nil {
 			return fmt.Errorf("MakeTx signature.ConvertToEthCompatible %v", err)
 		}
-		sigs = append(sigs, s)
+		sigs = append(sigs, s...)
 	}
 	return
 }
@@ -113,21 +113,16 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 		}
 	}
 
-	hdr, err := s.sdk.Node().GetHeaderByHeight(tx.PolyHeight + 1)
+	tx.PolyHeader, err = s.sdk.Node().GetHeaderByHeight(tx.PolyHeight + 1)
 	if err != nil {
 		return err
 	}
 
-	var (
-		anchorHeight uint32
-		anchor       *types.Header
-		hp           string
-	)
-
+	var anchorHeight uint32
 	if tx.PolyHeight < tx.DstPolyEpochStartHeight {
 		anchorHeight = tx.DstPolyEpochStartHeight + 1
 	} else {
-		isEpoch, _, err := s.CheckEpoch(tx, hdr)
+		isEpoch, _, err := s.CheckEpoch(tx, tx.PolyHeader)
 		if err != nil {
 			return err
 		}
@@ -137,7 +132,7 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 	}
 
 	if anchorHeight > 0 {
-		anchor, err = s.sdk.Node().GetHeaderByHeight(anchorHeight)
+		tx.AnchorHeader, err = s.sdk.Node().GetHeaderByHeight(anchorHeight)
 		if err != nil {
 			return err
 		}
@@ -145,15 +140,14 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 		if err != nil {
 			return err
 		}
-		hp = proof.AuditPath
+		tx.AnchorProof = proof.AuditPath
 	}
 
-	merkleValue, auditPath, evt, err := s.GetPolyParams(tx)
+	tx.MerkleValue, tx.AuditPath, _, err = s.GetPolyParams(tx)
 	if err != nil {
 		return err
 	}
 
-	tx.MerkleValue = merkleValue
 	return
 }
 
@@ -169,7 +163,7 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path [
 			return
 		}
 	}
-	evt, err = s.sdk.Node().GetSmartContractEvent(hash)
+	evt, err = s.sdk.Node().GetSmartContractEvent(tx.PolyHash)
 	if err != nil {
 		return
 	}
@@ -191,7 +185,7 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path [
 					}
 					value, _, _, _ := msg.ParseAuditPath(path)
 					param = new(ccom.ToMerkleValue)
-					err = param.Deserialization(pcom.NewZeroCopySource(value))
+					err = param.Deserialization(common.NewZeroCopySource(value))
 					if err != nil {
 						logs.Error("GetPolyParams: param.Deserialization error %v", err)
 					} else {
