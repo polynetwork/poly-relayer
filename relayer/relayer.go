@@ -41,6 +41,6 @@ type IChainSubmitter interface {
 	Init(*config.SubmitterConfig) error
 	Submit(msg.Message) error
 	Hook(context.Context, *sync.WaitGroup, <-chan msg.Message) error
-	Process(msg.Message) error
+	Process(msg.Message, msg.PolyComposer) error
 	Stop() error
 }
