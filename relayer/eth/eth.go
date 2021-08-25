@@ -162,7 +162,7 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 	for {
 		select {
 		case <-s.Done():
-			logs.Info("%s submitter is existing now", s.name)
+			logs.Info("%s submitter is exiting now", s.name)
 			return nil
 		}
 		tx, err := bus.Pop(context.Background())

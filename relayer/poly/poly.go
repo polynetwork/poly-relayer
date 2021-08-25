@@ -27,16 +27,20 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/maticnetwork/bor/accounts"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/signature"
 	vconf "github.com/ontio/ontology/consensus/vbft/config"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	sdk "github.com/polynetwork/poly-go-sdk"
 	scom "github.com/polynetwork/poly-go-sdk/common"
 	"github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/core/types"
 	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 
+	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
@@ -46,6 +50,7 @@ type Submitter struct {
 	wg     *sync.WaitGroup
 	config *config.SubmitterConfig
 	sdk    *poly.SDK
+	signer *sdk.Account
 }
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
@@ -65,6 +70,44 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	s.Context = ctx
 	s.wg = wg
 	return nil
+}
+
+func (s *Submitter) submit(tx *msg.Tx) error {
+	if tx.SrcHeight == 0 || tx.SrcProof == "" || tx.SrcEvent == "" || tx.SrcChainId == 0 || tx.SrcHash == "" {
+		return fmt.Errorf("Invalid src tx, missing some fields %v", *tx)
+	}
+
+	value, err := hex.DecodeString(tx.SrcEvent)
+	if err != nil {
+		return fmt.Errorf("%s submitter decode src value error %v value %s", s.name, err, tx.SrcEvent)
+	}
+
+	proof, err := hex.DecodeString(tx.SrcProof)
+	if err != nil {
+		return fmt.Errorf("%s submitter decode src proof error %v proof %s", s.name, err, tx.SrcProof)
+	}
+
+	t, err := s.sdk.Node().Native.Ccm.ImportOuterTransfer(
+		tx.SrcChainId,
+		value,
+		uint32(height),
+		proof,
+		common.Hex2Bytes(s.signer.Address.ToHexString()),
+		[]byte{},
+		s.signer,
+	)
+	if err != nil {
+		return fmt.Errorf("Failed to import tx to poly, %v", err)
+	}
+	return nil
+}
+
+func (s *Submitter) ProcessTx(m *msg.Tx, _ msg.PolyComposer) (err error) {
+	if m.Type() != msg.SRC {
+		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
+	}
+
+	return s.submit(m)
 }
 
 func (s *Submitter) Process(msg msg.Message) error {
@@ -238,4 +281,41 @@ func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKe
 	}
 	epoch = !bytes.Equal(tx.DstPolyKeepers, sink.Bytes())
 	return
+}
+
+func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.PolyComposer) error {
+	s.wg.Add(1)
+	defer s.wg.Done()
+	for {
+		select {
+		case <-s.Done():
+			logs.Info("%s submitter is exiting now", s.name)
+			return nil
+		}
+		tx, err := bus.Pop(context.Background())
+		if err != nil {
+			logs.Error("Bus pop error %v", err)
+			continue
+		}
+		if tx == nil {
+			time.Sleep(time.Second)
+			continue
+		}
+		tx.DstSender = &account
+		err = s.submit(tx)
+		if err != nil {
+			logs.Error("%s Process poly tx error %v", err)
+			tx.Attempts++
+			bus.Push(context.Background(), tx)
+		}
+	}
+}
+
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, compose msg.PolyComposer) error {
+	s.Context = ctx
+	s.wg = wg
+	for _, a := range s.wallet.Accounts() {
+		go s.run(a, bus, compose)
+	}
+	return nil
 }

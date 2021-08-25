@@ -60,6 +60,8 @@ type Tx struct {
 	DstGasPrice             string
 	DstGasPriceX            string
 	DstSender               *accounts.Account `json:"-"`
+	SrcProof                string
+	SrcEvent                string
 }
 
 func (tx *Tx) Type() TxType {
