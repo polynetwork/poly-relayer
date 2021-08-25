@@ -17,6 +17,11 @@
 
 package config
 
+import (
+	"github.com/go-redis/redis/v8"
+	"github.com/polynetwork/bridge-common/wallet"
+)
+
 const (
 	POLY_ENTRANCE_ADDRESS = "0300000000000000000000000000000000000000"
 )
@@ -34,10 +39,15 @@ type SubmitterConfig struct {
 	Nodes       []string
 	CCMContract string
 	CCDContract string
+	Wallet      *wallet.Config
 }
 
 type WalletConfig struct {
 	Nodes    []string
 	KeyStore string
 	KeyPwd   map[string]string
+}
+
+type BusConfig struct {
+	Redis *redis.Options
 }

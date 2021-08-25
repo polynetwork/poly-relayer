@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/polynetwork/bridge-common/abi/eccd_abi"
@@ -17,6 +18,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/wallet"
+	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
@@ -39,6 +41,14 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.sdk, err = eth.NewSDK(config.ChainId, config.Nodes, time.Minute, 1)
 	if err != nil {
 		return
+	}
+	if config.Wallet != nil {
+		config.Wallet.ChainId = config.ChainId
+		s.wallet = wallet.New(config.Wallet, s.sdk)
+		err = s.wallet.Init()
+		if err != nil {
+			return
+		}
 	}
 	s.name = base.GetChainName(config.ChainId)
 	s.ccd = common.HexToAddress(config.CCDContract)
@@ -70,7 +80,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			return fmt.Errorf("%s submit invalid gas priceX %s", tx.DstGasPriceX)
 		}
 	}
-	return s.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+	if tx.DstSender != nil {
+		return s.wallet.SendWithAccount(*tx.DstSender, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+	} else {
+		return s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+	}
 }
 
 func (s *Submitter) Send(addr common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, gasPriceX *big.Float, data []byte) (err error) {
@@ -119,22 +133,64 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	return s.submit(tx)
 }
 
-func (s *Submitter) Process(m msg.Message, compose msg.PolyComposer) (err error) {
+func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	if m.Type() != msg.POLY {
+		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
+	}
+
+	if m.DstChainId != s.config.ChainId {
+		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
+	}
+	err = compose(m)
+	if err != nil {
 		return
 	}
+	return s.processPolyTx(m)
+}
+
+func (s *Submitter) Process(m msg.Message, compose msg.PolyComposer) (err error) {
 	tx, ok := m.(*msg.Tx)
 	if !ok {
 		return fmt.Errorf("%s Proccess: Invalid poly tx cast %v", s.name, m)
 	}
-	if !ok || tx.DstChainId != s.config.ChainId {
-		return nil
+	return s.ProcessTx(tx, compose)
+}
+
+func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.PolyComposer) error {
+	s.wg.Add(1)
+	defer s.wg.Done()
+	for {
+		select {
+		case <-s.Done():
+			logs.Info("%s submitter is existing now", s.name)
+			return nil
+		}
+		tx, err := bus.Pop(context.Background())
+		if err != nil {
+			logs.Error("Bus pop error %v", err)
+			continue
+		}
+		if tx == nil {
+			time.Sleep(time.Second)
+			continue
+		}
+		tx.DstSender = &account
+		err = s.ProcessTx(tx, compose)
+		if err != nil {
+			logs.Error("%s Process poly tx error %v", err)
+			tx.Attempts++
+			bus.Push(context.Background(), tx)
+		}
 	}
-	err = compose(tx)
-	if err != nil {
-		return
+}
+
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, compose msg.PolyComposer) error {
+	s.Context = ctx
+	s.wg = wg
+	for _, a := range s.wallet.Accounts() {
+		go s.run(a, bus, compose)
 	}
-	return s.processPolyTx(tx)
+	return nil
 }
 
 func (s *Submitter) Stop() error {

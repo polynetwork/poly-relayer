@@ -21,6 +21,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
@@ -41,6 +42,7 @@ type IChainSubmitter interface {
 	Init(*config.SubmitterConfig) error
 	Submit(msg.Message) error
 	Hook(context.Context, *sync.WaitGroup, <-chan msg.Message) error
+	Start(context.Context, *sync.WaitGroup, bus.TxBus) error
 	Process(msg.Message, msg.PolyComposer) error
 	Stop() error
 }

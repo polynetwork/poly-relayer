@@ -5,10 +5,12 @@ import (
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
@@ -20,6 +22,8 @@ import (
 
 type Message interface {
 	Type() TxType
+	Encode() string
+	Decode(string) error
 }
 
 type TxType int
@@ -33,6 +37,7 @@ type PolyComposer func(*Tx) error
 
 type Tx struct {
 	TxType                  TxType
+	Attempts                int
 	SrcChainId              uint64
 	DstChainId              uint64
 	TxId                    string
@@ -54,10 +59,20 @@ type Tx struct {
 	DstGasLimit             uint64
 	DstGasPrice             string
 	DstGasPriceX            string
+	DstSender               *accounts.Account `json:"-"`
 }
 
 func (tx *Tx) Type() TxType {
 	return tx.TxType
+}
+
+func (tx *Tx) Encode() string {
+	bytes, _ := json.Marshal(*tx)
+	return string(bytes)
+}
+
+func (tx *Tx) Decode(data string) error {
+	return json.Unmarshal([]byte(data), tx)
 }
 
 func (tx *Tx) GetTxId() (id [32]byte, err error) {
