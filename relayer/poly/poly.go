@@ -29,14 +29,15 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/maticnetwork/bor/accounts"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/signature"
 	vconf "github.com/ontio/ontology/consensus/vbft/config"
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/wallet"
 	sdk "github.com/polynetwork/poly-go-sdk"
 	scom "github.com/polynetwork/poly-go-sdk/common"
-	"github.com/polynetwork/poly/common"
+	pcom "github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/core/types"
 	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 
@@ -48,18 +49,21 @@ import (
 type Submitter struct {
 	context.Context
 	wg     *sync.WaitGroup
-	config *config.SubmitterConfig
+	config *config.PolySubmitterConfig
 	sdk    *poly.SDK
 	signer *sdk.Account
+	name   string
 }
 
-func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
+func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	s.config = config
 	s.sdk, err = poly.NewSDK(config.ChainId, config.Nodes, time.Minute, 1)
 	if err != nil {
 		return
 	}
-	return nil
+	s.signer, err = wallet.NewPolySigner(config.Wallet)
+	s.name = base.GetChainName(config.ChainId)
+	return
 }
 
 func (s *Submitter) Submit(msg msg.Message) error {
@@ -74,7 +78,7 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 
 func (s *Submitter) submit(tx *msg.Tx) error {
 	// TODO: Check storage to see if already imported
-	if tx.SrcHeight == 0 || tx.SrcProof == "" || tx.SrcEvent == "" || tx.SrcChainId == 0 || tx.SrcHash == "" {
+	if tx.SrcHeight == 0 || tx.SrcProof == "" || tx.SrcEvent == "" || tx.SrcChainId == 0 || tx.SrcHash == "" || tx.SrcProofHeight == 0 {
 		return fmt.Errorf("Invalid src tx, missing some fields %v", *tx)
 	}
 
@@ -91,7 +95,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	t, err := s.sdk.Node().Native.Ccm.ImportOuterTransfer(
 		tx.SrcChainId,
 		value,
-		uint32(height),
+		uint32(tx.SrcProofHeight),
 		proof,
 		common.Hex2Bytes(s.signer.Address.ToHexString()),
 		[]byte{},
@@ -100,6 +104,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	if err != nil {
 		return fmt.Errorf("Failed to import tx to poly, %v", err)
 	}
+	tx.PolyHash = t.ToHexString()
 	return nil
 }
 
@@ -120,15 +125,13 @@ func (s *Submitter) Stop() error {
 	return nil
 }
 
-func (s *Submitter) MakeTx(tx *msg.Tx, header, anchor *types.Header, proof string, rawAuditPath []byte) (err error) {
+func (s *Submitter) CollectSigs(tx *msg.Tx) (err error) {
 	var (
 		sigs []byte
-		// data []byte
 	)
-	sigHeader := header
-
-	if anchor != nil && proof != "" {
-		sigHeader = anchor
+	sigHeader := tx.PolyHeader
+	if tx.AnchorHeader != nil && tx.AnchorProof != "" {
+		sigHeader = tx.AnchorHeader
 	}
 	for _, sig := range sigHeader.SigData {
 		temp := make([]byte, len(sig))
@@ -139,6 +142,7 @@ func (s *Submitter) MakeTx(tx *msg.Tx, header, anchor *types.Header, proof strin
 		}
 		sigs = append(sigs, s...)
 	}
+	tx.DstSigs = sigs
 	return
 }
 
@@ -192,6 +196,25 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 		return err
 	}
 
+	return s.CollectSigs(tx)
+}
+
+func (s *Submitter) GetProof(height uint32, key string) (param *ccom.ToMerkleValue, path []byte, evt *scom.SmartContactEvent, err error) {
+	proof, err := s.sdk.Node().GetCrossStatesProof(height, key)
+	if err != nil {
+		err = fmt.Errorf("GetProof: GetCrossStatesProof error %v", err)
+		return
+	}
+	path, err = hex.DecodeString(proof.AuditPath)
+	if err != nil {
+		return
+	}
+	value, _, _, _ := msg.ParseAuditPath(path)
+	param = new(ccom.ToMerkleValue)
+	err = param.Deserialization(pcom.NewZeroCopySource(value))
+	if err != nil {
+		err = fmt.Errorf("GetPolyParams: param.Deserialization error %v", err)
+	}
 	return
 }
 
@@ -207,29 +230,23 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path [
 			return
 		}
 	}
+
+	if tx.PolyKey != "" {
+		return s.GetProof(tx.PolyHeight, tx.PolyKey)
+	}
+
 	evt, err = s.sdk.Node().GetSmartContractEvent(tx.PolyHash)
 	if err != nil {
 		return
 	}
 
 	for _, notify := range evt.Notify {
-		if notify.ContractAddress == config.POLY_ENTRANCE_ADDRESS {
+		if notify.ContractAddress == poly.CCM_ADDRESS {
 			states := notify.States.([]interface{})
 			if len(states) > 5 {
 				method, _ := states[0].(string)
 				if method == "makeProof" {
-					proof, e := s.sdk.Node().GetCrossStatesProof(tx.PolyHeight, states[5].(string))
-					if e != nil {
-						err = fmt.Errorf("GetPolyParams: GetCrossStatesProof error %v", e)
-						return
-					}
-					path, err = hex.DecodeString(proof.AuditPath)
-					if err != nil {
-						return
-					}
-					value, _, _, _ := msg.ParseAuditPath(path)
-					param = new(ccom.ToMerkleValue)
-					err = param.Deserialization(common.NewZeroCopySource(value))
+					param, path, evt, err = s.GetProof(tx.PolyHeight, states[5].(string))
 					if err != nil {
 						logs.Error("GetPolyParams: param.Deserialization error %v", err)
 					} else {
@@ -248,7 +265,7 @@ func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKe
 		err = fmt.Errorf("Dst chain poly keeper not provided")
 		return
 	}
-	if hdr.NextBookkeeper == common.ADDRESS_EMPTY {
+	if hdr.NextBookkeeper == pcom.ADDRESS_EMPTY {
 		return
 	}
 	info := &vconf.VbftBlockInfo{}
@@ -265,7 +282,7 @@ func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKe
 	}
 	bks = keypair.SortPublicKeys(bks)
 	pubKeys = []byte{}
-	sink := common.NewZeroCopySink(nil)
+	sink := pcom.NewZeroCopySink(nil)
 	sink.WriteUint64(uint64(len(bks)))
 	for _, key := range bks {
 		var bytes []byte
@@ -284,7 +301,7 @@ func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKe
 	return
 }
 
-func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.PolyComposer) error {
+func (s *Submitter) run(bus bus.TxBus, compose msg.PolyComposer) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
@@ -302,7 +319,6 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 			time.Sleep(time.Second)
 			continue
 		}
-		tx.DstSender = &account
 		err = s.submit(tx)
 		if err != nil {
 			logs.Error("%s Process poly tx error %v", err)
@@ -315,8 +331,8 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, compose msg.PolyComposer) error {
 	s.Context = ctx
 	s.wg = wg
-	for _, a := range s.wallet.Accounts() {
-		go s.run(a, bus, compose)
+	for i := 0; i < s.config.Procs; i++ {
+		go s.run(bus, compose)
 	}
 	return nil
 }

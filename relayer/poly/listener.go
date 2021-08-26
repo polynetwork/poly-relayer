@@ -23,6 +23,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 type Listener struct {
@@ -44,6 +45,23 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	events, err := l.sdk.Node().GetSmartContractEventByBlock(uint32(height))
 	if err != nil {
 		return nil, err
+	}
+
+	for _, event := range events {
+		for _, notify := range event.Notify {
+			if notify.ContractAddress == poly.CCM_ADDRESS {
+				states := notify.States.([]interface{})
+				method, _ := states[0].(string)
+				if method != "makeProof" {
+					continue
+				}
+				tx := new(msg.Tx)
+				tx.PolyKey = states[5].(string)
+				tx.PolyHeight = uint32(height)
+				tx.PolyHash = event.TxHash
+				txs = append(txs, tx)
+			}
+		}
 	}
 
 	return

@@ -37,33 +37,39 @@ const (
 type PolyComposer func(*Tx) error
 
 type Tx struct {
-	TxType                  TxType
-	Attempts                int
-	SrcChainId              uint64
-	DstChainId              uint64
-	TxId                    string
-	SrcHash                 string
-	PolyHash                string
+	TxType   TxType
+	Attempts int
+
+	TxId        string
+	MerkleValue *common.ToMerkleValue `json:"-"`
+	Param       *common.MakeTxParam   `json:"-"`
+
+	SrcHash        string
+	SrcHeight      uint64
+	SrcChainId     uint64
+	SrcProof       string
+	SrcEvent       string
+	SrcProofHeight uint64
+
+	PolyHash     string
+	PolyHeight   uint32
+	PolyKey      string
+	PolyHeader   *types.Header `json:"-"`
+	AnchorHeader *types.Header `json:"-"`
+	AnchorProof  string        `json:"omitempty"`
+	AuditPath    []byte        `json:"-"`
+
 	DstHash                 string
-	SrcHeight               uint64
-	PolyHeight              uint32
 	DstHeight               uint64
-	DstPolyEpochStartHeight uint32
-	DstPolyKeepers          []byte                `json:"-"`
-	DstData                 []byte                `json:"-"`
-	MerkleValue             *common.ToMerkleValue `json:"-"`
-	Param                   *common.MakeTxParam   `json:"-"`
-	PolyHeader              *types.Header         `json:"-"`
-	AnchorHeader            *types.Header         `json:"-"`
-	AnchorProof             string                `json:"omitempty"`
-	AuditPath               []byte                `json:"-"`
-	DstSigs                 []byte                `json:"-"`
+	DstChainId              uint64
+	DstSigs                 []byte `json:"-"`
 	DstGasLimit             uint64
 	DstGasPrice             string
 	DstGasPriceX            string
 	DstSender               *accounts.Account `json:"-"`
-	SrcProof                string
-	SrcEvent                string
+	DstPolyEpochStartHeight uint32
+	DstPolyKeepers          []byte `json:"-"`
+	DstData                 []byte `json:"-"`
 }
 
 func (tx *Tx) Type() TxType {

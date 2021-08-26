@@ -85,7 +85,7 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 	return
 }
 
-func (l *Listener) getProof(txId []byte) (proof []byte, err error) {
+func (l *Listener) getProof(txId []byte) (height uint64, proof []byte, err error) {
 	id := msg.EncodeTxId(txId)
 	bytes, err := ceth.MappingKeyAt(id, "01")
 	if err != nil {
@@ -93,7 +93,7 @@ func (l *Listener) getProof(txId []byte) (proof []byte, err error) {
 		return
 	}
 	proofKey := hexutil.Encode(bytes)
-	height, err := l.GetProofHeight()
+	height, err = l.GetProofHeight()
 	if err != nil {
 		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
 		return
@@ -145,7 +145,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		if err != nil {
 			return nil, err
 		}
-		tx.SrcProof = hex.EncodeToString(proof)
+		tx.SrcProofHeight, tx.SrcProof = hex.EncodeToString(proof)
 		txs = append(txs, tx)
 	}
 

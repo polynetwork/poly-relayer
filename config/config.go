@@ -22,10 +22,6 @@ import (
 	"github.com/polynetwork/bridge-common/wallet"
 )
 
-const (
-	POLY_ENTRANCE_ADDRESS = "0300000000000000000000000000000000000000"
-)
-
 type ListenerConfig struct {
 	ChainId     uint64
 	Nodes       []string
@@ -33,6 +29,13 @@ type ListenerConfig struct {
 	CCMContract string
 	CCDContract string
 	Defer       int
+}
+
+type PolySubmitterConfig struct {
+	ChainId uint64
+	Nodes   []string
+	Procs   int
+	Wallet  *wallet.PolySignerConfig
 }
 
 type SubmitterConfig struct {
