@@ -15,40 +15,40 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package config
+package poly
 
 import (
-	"github.com/go-redis/redis/v8"
-	"github.com/polynetwork/bridge-common/wallet"
+	"time"
+
+	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/poly-relayer/config"
 )
 
-const (
-	POLY_ENTRANCE_ADDRESS = "0300000000000000000000000000000000000000"
-)
-
-type ListenerConfig struct {
-	ChainId     uint64
-	Nodes       []string
-	LockProxy   []string
-	CCMContract string
-	CCDContract string
-	Defer       int
+type Listener struct {
+	sdk    *poly.SDK
+	config *config.ListenerConfig
 }
 
-type SubmitterConfig struct {
-	ChainId     uint64
-	Nodes       []string
-	CCMContract string
-	CCDContract string
-	Wallet      *wallet.Config
+func (l *Listener) Init(config *config.ListenerConfig) (err error) {
+	l.config = config
+	sdk, err := poly.NewSDK(base.POLY, config.Nodes, time.Minute, 1)
+	if err != nil {
+		return err
+	}
+	l.sdk = sdk
+	return
 }
 
-type WalletConfig struct {
-	Nodes    []string
-	KeyStore string
-	KeyPwd   map[string]string
+func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
+	events, err := l.sdk.Node().GetSmartContractEventByBlock(uint32(height))
+	if err != nil {
+		return nil, err
+	}
+
+	return
 }
 
-type BusConfig struct {
-	Redis *redis.Options
+func (l *Listener) ScanTx(hash string) (err error) {
+	return
 }

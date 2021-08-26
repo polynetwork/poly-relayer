@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -51,6 +52,7 @@ type Tx struct {
 	DstPolyKeepers          []byte                `json:"-"`
 	DstData                 []byte                `json:"-"`
 	MerkleValue             *common.ToMerkleValue `json:"-"`
+	Param                   *common.MakeTxParam   `json:"-"`
 	PolyHeader              *types.Header         `json:"-"`
 	AnchorHeader            *types.Header         `json:"-"`
 	AnchorProof             string                `json:"omitempty"`
@@ -170,4 +172,13 @@ func ParseAuditPath(path []byte) (value []byte, pos []byte, hashes [][32]byte, e
 		hashes = append(hashes, hash)
 	}
 	return
+}
+
+func EncodeTxId(id []byte) string {
+	index := big.NewInt(0)
+	index.SetBytes(id)
+	if index.Uint64() == 0 {
+		return "00"
+	}
+	return hex.EncodeToString(index.Bytes())
 }

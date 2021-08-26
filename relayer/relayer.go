@@ -28,7 +28,7 @@ import (
 
 type ChainListener interface {
 	Init(*config.ListenerConfig) error
-	Scan(uint64) error
+	Scan(uint64) ([]*msg.Tx, error)
 	ScanTx(string) error
 }
 

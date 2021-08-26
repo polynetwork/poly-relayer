@@ -73,6 +73,7 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 }
 
 func (s *Submitter) submit(tx *msg.Tx) error {
+	// TODO: Check storage to see if already imported
 	if tx.SrcHeight == 0 || tx.SrcProof == "" || tx.SrcEvent == "" || tx.SrcChainId == 0 || tx.SrcHash == "" {
 		return fmt.Errorf("Invalid src tx, missing some fields %v", *tx)
 	}
