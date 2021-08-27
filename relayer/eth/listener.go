@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	// "github.com/beego/beego/v2/core/logs"
@@ -47,7 +48,7 @@ type Listener struct {
 	ccd            common.Address
 	config         *config.ListenerConfig
 	GetProofHeight func() (uint64, error)
-	GetProof       func([]byte) ([]byte, error)
+	GetProof       func([]byte) (uint64, []byte, error)
 	name           string
 }
 
@@ -100,10 +101,19 @@ func (l *Listener) getProof(txId []byte) (height uint64, proof []byte, err error
 	}
 	ethProof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	proof, err = json.Marshal(ethProof)
 	return
+}
+
+func (l *Listener) Header(height uint64) (header []byte, err error) {
+	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
+	if err != nil {
+		err = fmt.Errorf("Fetch block header error %v", err)
+		return nil, err
+	}
+	return hdr.MarshalJSON()
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
@@ -141,11 +151,11 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			SrcHeight:  height,
 		}
 		//TODO: Add filters here?
-		proof, err := l.GetProof(ev.TxId)
+		proofHeight, proof, err := l.GetProof(ev.TxId)
 		if err != nil {
 			return nil, err
 		}
-		tx.SrcProofHeight, tx.SrcProof = hex.EncodeToString(proof)
+		tx.SrcProofHeight, tx.SrcProof = proofHeight, hex.EncodeToString(proof)
 		txs = append(txs, tx)
 	}
 

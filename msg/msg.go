@@ -30,8 +30,9 @@ type Message interface {
 type TxType int
 
 const (
-	SRC  TxType = 1
-	POLY TxType = 2
+	SRC    TxType = 1
+	POLY   TxType = 2
+	HEADER TxType = 2
 )
 
 type PolyComposer func(*Tx) error

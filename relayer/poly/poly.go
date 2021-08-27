@@ -53,6 +53,7 @@ type Submitter struct {
 	sdk    *poly.SDK
 	signer *sdk.Account
 	name   string
+	sync   *config.HeaderSyncConfig
 }
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
@@ -74,6 +75,16 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	s.Context = ctx
 	s.wg = wg
 	return nil
+}
+
+func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string, err error) {
+	tx, err := s.sdk.Node().Native.Hs.SyncBlockHeader(
+		chainId, s.signer.Address, headers, s.signer,
+	)
+	if err != nil {
+		return "", err
+	}
+	return tx.ToHexString(), nil
 }
 
 func (s *Submitter) submit(tx *msg.Tx) error {
@@ -335,4 +346,55 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 		go s.run(bus, compose)
 	}
 	return nil
+}
+
+func (s *Submitter) StartSync(ctx context.Context, wg *sync.WaitGroup, config *config.HeaderSyncConfig) (ch chan []byte, err error) {
+	s.Context = ctx
+	s.wg = wg
+	s.sync = config
+
+	if s.sync.Batch == 0 {
+		s.sync.Batch = 1
+	}
+	if s.sync.Buffer == 0 {
+		s.sync.Buffer = 2 * s.sync.Batch
+	}
+	if s.sync.Timeout == 0 {
+		s.sync.Timeout = 1
+	}
+
+	if s.sync.ChainId == 0 {
+		return nil, fmt.Errorf("Invalid header sync side chain id")
+	}
+
+	ch = make(chan []byte, s.sync.Buffer)
+	go s.startSync(ch)
+	return
+}
+
+func (s *Submitter) startSync(ch chan []byte) {
+	if s.sync.Batch == 1 {
+		for header := range ch {
+			s.SubmitHeaders(s.sync.ChainId, [][]byte{header})
+		}
+	} else {
+		headers := [][]byte{}
+		commit := false
+		duration := time.Duration(s.sync.Timeout) * time.Second
+		for {
+			select {
+			case header := <-ch:
+				headers = append(headers, header)
+				commit = len(headers) >= s.sync.Batch
+			case <-time.After(duration):
+				commit = len(headers) > 0
+			}
+			if commit {
+				commit = false
+				//TODO: Reliable submit
+				s.SubmitHeaders(s.sync.ChainId, headers)
+				headers = [][]byte{}
+			}
+		}
+	}
 }

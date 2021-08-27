@@ -55,3 +55,10 @@ type WalletConfig struct {
 type BusConfig struct {
 	Redis *redis.Options
 }
+
+type HeaderSyncConfig struct {
+	ChainId uint64
+	Batch   int
+	Timeout int
+	Buffer  int
+}
