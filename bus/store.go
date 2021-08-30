@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/polynetwork/bridge-common/base"
 )
 
 type ChainStore interface {
@@ -18,7 +19,7 @@ type ChainStore interface {
 type ChainHeightKey uint64
 
 func (k ChainHeightKey) Key() string {
-	return fmt.Sprintf("RELAYER_CHAIN_%v", k)
+	return fmt.Sprintf("%s_RELAYER_CHAIN_%v", base.ENV, k)
 }
 
 type RedisChainStore struct {

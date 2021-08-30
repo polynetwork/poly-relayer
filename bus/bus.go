@@ -23,6 +23,7 @@ import (
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/go-redis/redis/v8"
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
@@ -36,7 +37,7 @@ type TxQueueKey struct {
 }
 
 func (k *TxQueueKey) Key() string {
-	return fmt.Sprintf("RELAYER_BUS_%v_%v", k.ChainId, k.TxType)
+	return fmt.Sprintf("%s_RELAYER_BUS_%v_%v", base.ENV, k.ChainId, k.TxType)
 }
 
 type Bus interface {
