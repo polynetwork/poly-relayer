@@ -165,3 +165,15 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 func (l *Listener) ScanTx(hash string) (err error) {
 	return
 }
+
+func (l *Listener) ListenCheck() time.Duration {
+	duration := time.Second
+	if l.config.ListenCheck > 0 {
+		duration = time.Duration(l.config.ListenCheck) * time.Second
+	}
+	return duration
+}
+
+func (l *Listener) Nodes() chains.Nodes {
+	return l.sdk
+}

@@ -20,16 +20,22 @@ package relayer
 import (
 	"context"
 	"sync"
+	"time"
 
+	"github.com/polynetwork/bridge-common/chains"
+	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
-type ChainListener interface {
-	Init(*config.ListenerConfig) error
+type IChainListener interface {
+	Init(*config.ListenerConfig, *poly.SDK) error
 	Defer() int
+	ListenCheck() time.Duration
 	ChainId() uint64
+	Nodes() chains.Nodes
+	Header(height uint64) (header []byte, err error)
 	Scan(uint64) ([]*msg.Tx, error)
 	ScanTx(string) error
 }

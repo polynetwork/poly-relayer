@@ -18,17 +18,73 @@
 package config
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+
 	"github.com/go-redis/redis/v8"
+	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 )
 
+var CONFIG *Config
+
+type Config struct {
+	Env        string
+	Bus        *BusConfig
+	MetricHost string
+	MetricPort int
+	Poly       *PolyChainConfig
+	Roles      map[uint64]*ChainConfig
+}
+
+func New(path string) (config *Config, err error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("Read config file error %v", err)
+	}
+	config = &Config{}
+	err = json.Unmarshal(data, config)
+	if err != nil {
+		return nil, fmt.Errorf("Parse config file error %v", err)
+	}
+	if config.Env != base.ENV {
+		util.Fatal("Config env(%s) and build env(%s) does not match!", config.Env, base.ENV)
+	}
+	return
+}
+
+type PolyChainConfig struct {
+	PolySubmitterConfig `json:",inline"`
+	PolyTxSync          *PolyTxSyncConfig
+}
+
+type ChainConfig struct {
+	Nodes             []string
+	LockProxyContract []string
+	CCMContract       string
+	CCDContract       string
+	Defer             int
+
+	HeaderSync   *HeaderSyncConfig   // chain -> ch -> poly
+	SrcTxSync    *SrcTxSyncConfig    // chain -> mq
+	SrcTxCommit  *SrcTxCommitConfig  // mq -> poly
+	PolyTxCommit *PolyTxCommitConfig // mq -> chain
+}
+
+func (c *ChainConfig) Init() (err error) {
+	return
+}
+
 type ListenerConfig struct {
-	ChainId     uint64
-	Nodes       []string
-	LockProxy   []string
-	CCMContract string
-	CCDContract string
-	Defer       int
+	ChainId           uint64
+	Nodes             []string
+	LockProxyContract []string
+	CCMContract       string
+	CCDContract       string
+	ListenCheck       int
+	Defer             int
 }
 
 type PolySubmitterConfig struct {
@@ -61,4 +117,30 @@ type HeaderSyncConfig struct {
 	Batch   int
 	Timeout int
 	Buffer  int
+	Enabled bool
+}
+
+type SrcTxSyncConfig struct {
+	ListenerConfig `json:",inline"`
+	Enabled        bool
+}
+
+type SrcTxCommitConfig struct {
+	Procs   int
+	Enabled bool
+}
+
+type PolyTxSyncConfig struct {
+	SubmitterConfig `json:",inline"`
+	Enabled         bool
+}
+
+type PolyTxCommitConfig struct {
+	Procs   int
+	Enabled bool
+}
+
+func (c *Config) Init() (err error) {
+	CONFIG = c
+	return
 }

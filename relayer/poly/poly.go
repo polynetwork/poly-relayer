@@ -312,7 +312,7 @@ func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKe
 	return
 }
 
-func (s *Submitter) run(bus bus.TxBus, compose msg.PolyComposer) error {
+func (s *Submitter) run(bus bus.TxBus) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
@@ -339,11 +339,11 @@ func (s *Submitter) run(bus bus.TxBus, compose msg.PolyComposer) error {
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, compose msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus) error {
 	s.Context = ctx
 	s.wg = wg
 	for i := 0; i < s.config.Procs; i++ {
-		go s.run(bus, compose)
+		go s.run(bus)
 	}
 	return nil
 }
@@ -368,20 +368,14 @@ func (s *Submitter) StartSync(ctx context.Context, wg *sync.WaitGroup, config *c
 	}
 
 	ch = make(chan []byte, s.sync.Buffer)
-	go func() {
-		<-ctx.Done()
-		close(ch)
-	}()
 	go s.startSync(ch)
 	return
 }
 
 func (s *Submitter) startSync(ch chan []byte) {
 	if s.sync.Batch == 1 {
-		for header, ok := range ch {
-			if ok {
-				s.SubmitHeaders(s.sync.ChainId, [][]byte{header})
-			}
+		for header := range ch {
+			s.SubmitHeaders(s.sync.ChainId, [][]byte{header})
 		}
 	} else {
 		headers := [][]byte{}
