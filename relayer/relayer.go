@@ -28,13 +28,15 @@ import (
 
 type ChainListener interface {
 	Init(*config.ListenerConfig) error
+	Defer() int
+	ChainId() uint64
 	Scan(uint64) ([]*msg.Tx, error)
 	ScanTx(string) error
 }
 
-type IListener interface {
-	Init(*config.ListenerConfig, chan msg.Message) error
-	Start(context.Context, *sync.WaitGroup) error
+type Handler interface {
+	Init(context.Context, *sync.WaitGroup) error
+	Start() error
 	Stop() error
 }
 

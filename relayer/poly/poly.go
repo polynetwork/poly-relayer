@@ -368,14 +368,20 @@ func (s *Submitter) StartSync(ctx context.Context, wg *sync.WaitGroup, config *c
 	}
 
 	ch = make(chan []byte, s.sync.Buffer)
+	go func() {
+		<-ctx.Done()
+		close(ch)
+	}()
 	go s.startSync(ch)
 	return
 }
 
 func (s *Submitter) startSync(ch chan []byte) {
 	if s.sync.Batch == 1 {
-		for header := range ch {
-			s.SubmitHeaders(s.sync.ChainId, [][]byte{header})
+		for header, ok := range ch {
+			if ok {
+				s.SubmitHeaders(s.sync.ChainId, [][]byte{header})
+			}
 		}
 	} else {
 		headers := [][]byte{}
@@ -383,9 +389,14 @@ func (s *Submitter) startSync(ch chan []byte) {
 		duration := time.Duration(s.sync.Timeout) * time.Second
 		for {
 			select {
-			case header := <-ch:
-				headers = append(headers, header)
-				commit = len(headers) >= s.sync.Batch
+			case header, ok := <-ch:
+				if ok {
+					headers = append(headers, header)
+					commit = len(headers) >= s.sync.Batch
+				} else {
+					commit = len(headers) > 0
+					break
+				}
 			case <-time.After(duration):
 				commit = len(headers) > 0
 			}
@@ -396,5 +407,9 @@ func (s *Submitter) startSync(ch chan []byte) {
 				headers = [][]byte{}
 			}
 		}
+		if len(headers) > 0 {
+			s.SubmitHeaders(s.sync.ChainId, headers)
+		}
 	}
+	logs.Info("Header sync exiting loop now")
 }
