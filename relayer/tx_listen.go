@@ -37,6 +37,13 @@ type SrcTxSyncHandler struct {
 	config   *config.SrcTxSyncConfig
 }
 
+func NewSrcTxSyncHandler(config *config.SrcTxSyncConfig, listener IChainListener) *SrcTxSyncHandler {
+	return &SrcTxSyncHandler{
+		config:   config,
+		listener: listener,
+	}
+}
+
 func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
@@ -89,6 +96,13 @@ type PolyTxSyncHandler struct {
 	state    bus.ChainStore
 	height   uint64
 	config   *config.PolyTxSyncConfig
+}
+
+func NewPolyTxSyncHandler(config *config.PolyTxSyncConfig, listener IChainListener) *PolyTxSyncHandler {
+	return &PolyTxSyncHandler{
+		config:   config,
+		listener: listener,
+	}
 }
 
 func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {

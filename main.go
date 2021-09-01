@@ -40,11 +40,13 @@ func main() {
 func start(c *cli.Context) error {
 	config, err := config.New(c.String("config"))
 	if err != nil {
-		panic(err)
+		logs.Error("Failed to parse config file %v", err)
+		os.Exit(2)
 	}
 	err = config.Init()
 	if err != nil {
-		panic(err)
+		logs.Error("Failed to initialize configuration %v", err)
+		os.Exit(2)
 	}
 
 	metrics.Init("relayer")
@@ -65,7 +67,7 @@ func start(c *cli.Context) error {
 		sc := make(chan os.Signal, 1)
 		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 		sig := <-sc
-		logs.Info("Validator is exiting with received signal:(%s).", sig.String())
+		logs.Info("Poly relayer is exiting with received signal:(%s).", sig.String())
 	} else {
 		logs.Error("Failed to start relayer service %v", err)
 		status = 2

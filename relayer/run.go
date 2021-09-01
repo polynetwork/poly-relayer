@@ -19,7 +19,8 @@ package relayer
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
+	"reflect"
 	"sync"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -30,86 +31,67 @@ type Server struct {
 	ctx    context.Context
 	wg     *sync.WaitGroup
 	config *config.Config
+	roles  []Handler
 }
 
 func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Config) error {
-	server := &Server{ctx, wg, config}
+	server := &Server{ctx, wg, config, nil}
 	return server.Start()
 }
 
 func (s *Server) Start() (err error) {
+	// Create poly tx sync handler
 	if s.config.Poly != nil {
-		err = s.StartPolyTxSync(s.config.Poly.PolyTxSync)
-		if err != nil {
-			return
-		}
+		s.parseHandlers(s.config.Poly.PolyTxSync)
 	}
+
+	// Create handlers
 	for _, chain := range s.config.Chains {
-		err = s.StartHeaderSync(chain.HeaderSync)
-		if err != nil {
-			return
-		}
-		err = s.StartSrcTxSync(chain.SrcTxSync)
-		if err != nil {
-			return
-		}
-		err = s.StartSrcTxCommit(chain.SrcTxCommit)
-		if err != nil {
-			return
-		}
-		err = s.StartPolyTxCommit(chain.PolyTxCommit)
+		s.parseHandlers(chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit)
+	}
+
+	// Initialize
+	for i, handler := range s.roles {
+		logs.Info("Initializing role(%d/%d) %v", i, len(s.roles), reflect.TypeOf(handler))
+		err = handler.Init(s.ctx, s.wg)
 		if err != nil {
 			return
 		}
 	}
+
 	return
 }
 
-func (s *Server) StartHeaderSync(config *config.HeaderSyncConfig) (err error) {
-	if config == nil || !config.Enabled {
-		return
+func (s *Server) parseHandlers(confs ...interface{}) {
+	for _, conf := range confs {
+		handler := s.parseHandler(conf)
+		if handler != nil {
+			s.roles = append(s.roles, handler)
+		}
 	}
-	logs.Info("Starting header sync role... with config:\n%+v\n", *config)
-	h := NewHeaderSyncHandler(config, nil, nil)
-	err = h.Init(s.ctx, s.wg)
-	if err != nil {
-		return fmt.Errorf("Failed to init header sync handler for chain %d error %v", config.ChainId, err)
-	}
-	err = h.Start()
-	if err != nil {
-		return fmt.Errorf("Failed to start header sync handler for chain %d error %v", config.ChainId, err)
-	}
-	return
 }
 
-func (s *Server) StartPolyTxSync(config *config.PolyTxSyncConfig) (err error) {
-	if config == nil || !config.Enabled {
+func (s *Server) parseHandler(conf interface{}) (handler Handler) {
+	if conf == nil || !reflect.ValueOf(conf).Elem().FieldByName("Enabled").Interface().(bool) {
 		return
 	}
-	logs.Info("Starting poly tx sync role...with config:\n%+v\n", *config)
-	return
-}
-
-func (s *Server) StartSrcTxSync(config *config.SrcTxSyncConfig) (err error) {
-	if config == nil || !config.Enabled {
-		return
+	switch c := conf.(type) {
+	case *config.HeaderSyncConfig:
+		handler = NewHeaderSyncHandler(c, nil, nil)
+	case *config.SrcTxSyncConfig:
+		handler = NewSrcTxSyncHandler(c, nil)
+	case *config.SrcTxCommitConfig:
+		handler = NewSrcTxCommitHandler(c, nil)
+	case *config.PolyTxSyncConfig:
+		handler = NewPolyTxSyncHandler(c, nil)
+	case *config.PolyTxCommitConfig:
+		handler = NewPolyTxCommitHandler(c, nil, nil)
+	default:
+		logs.Error("Unknown config type %+v", conf)
 	}
-	logs.Info("Starting src tx sync role... with config:\n%+v\n", *config)
-	return
-}
-
-func (s *Server) StartSrcTxCommit(config *config.SrcTxCommitConfig) (err error) {
-	if config == nil || !config.Enabled {
-		return
+	if handler != nil {
+		c, _ := json.MarshalIndent(conf, "", "\t")
+		logs.Info("Creating handler: %s with config:\n%s", reflect.TypeOf(handler), string(c))
 	}
-	logs.Info("Starting src tx commit role... with config:\n%+v\n", *config)
-	return
-}
-
-func (s *Server) StartPolyTxCommit(config *config.PolyTxCommitConfig) (err error) {
-	if config == nil || !config.Enabled {
-		return
-	}
-	logs.Info("Starting poly tx commit role... with config:\n%+v\n", *config)
 	return
 }

@@ -36,6 +36,14 @@ type PolyTxCommitHandler struct {
 	config    *config.PolyTxCommitConfig
 }
 
+func NewPolyTxCommitHandler(config *config.PolyTxCommitConfig, submitter IChainSubmitter, composer *poly.Submitter) *PolyTxCommitHandler {
+	return &PolyTxCommitHandler{
+		config:    config,
+		submitter: submitter,
+		composer:  composer,
+	}
+}
+
 func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
@@ -57,7 +65,14 @@ type SrcTxCommitHandler struct {
 
 	bus       bus.TxBus
 	submitter *poly.Submitter
-	config    *config.PolyTxCommitConfig
+	config    *config.SrcTxCommitConfig
+}
+
+func NewSrcTxCommitHandler(config *config.SrcTxCommitConfig, submitter *poly.Submitter) *SrcTxCommitHandler {
+	return &SrcTxCommitHandler{
+		config:    config,
+		submitter: submitter,
+	}
 }
 
 func (h *SrcTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
