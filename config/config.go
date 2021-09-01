@@ -127,6 +127,7 @@ type SrcTxSyncConfig struct {
 }
 
 type SrcTxCommitConfig struct {
+	ChainId uint64
 	Procs   int
 	Enabled bool
 }
@@ -138,11 +139,18 @@ type PolyTxSyncConfig struct {
 }
 
 type PolyTxCommitConfig struct {
+	ChainId uint64
 	Procs   int
 	Enabled bool
 }
 
 func (c *Config) Init() (err error) {
+	if c.MetricHost == "" {
+		c.MetricHost = "0.0.0.0"
+	}
+	if c.MetricPort == 0 {
+		c.MetricPort = 6500
+	}
 	CONFIG = c
 	return
 }

@@ -42,6 +42,7 @@ type IChainListener interface {
 
 type Handler interface {
 	Init(context.Context, *sync.WaitGroup) error
+	Chain() uint64
 	Start() error
 	Stop() error
 }

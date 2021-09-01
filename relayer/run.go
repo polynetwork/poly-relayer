@@ -52,7 +52,7 @@ func (s *Server) Start() (err error) {
 
 	// Initialize
 	for i, handler := range s.roles {
-		logs.Info("Initializing role(%d/%d) %v", i, len(s.roles), reflect.TypeOf(handler))
+		logs.Info("Initializing role(%d/%d) %v chain %d", i, len(s.roles), reflect.TypeOf(handler), handler.Chain())
 		err = handler.Init(s.ctx, s.wg)
 		if err != nil {
 			return
@@ -90,7 +90,7 @@ func (s *Server) parseHandler(conf interface{}) (handler Handler) {
 		logs.Error("Unknown config type %+v", conf)
 	}
 	if handler != nil {
-		c, _ := json.MarshalIndent(conf, "", "\t")
+		c, _ := json.MarshalIndent(conf, "", "  ")
 		logs.Info("Creating handler: %s with config:\n%s", reflect.TypeOf(handler), string(c))
 	}
 	return

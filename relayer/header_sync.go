@@ -97,3 +97,7 @@ func (h *HeaderSyncHandler) Start() (err error) {
 func (h *HeaderSyncHandler) Stop() (err error) {
 	return
 }
+
+func (h *HeaderSyncHandler) Chain() uint64 {
+	return h.config.ChainId
+}

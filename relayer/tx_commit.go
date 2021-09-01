@@ -59,6 +59,10 @@ func (h *PolyTxCommitHandler) Stop() (err error) {
 	return
 }
 
+func (h *PolyTxCommitHandler) Chain() uint64 {
+	return h.config.ChainId
+}
+
 type SrcTxCommitHandler struct {
 	context.Context
 	wg *sync.WaitGroup
@@ -88,4 +92,8 @@ func (h *SrcTxCommitHandler) Start() (err error) {
 
 func (h *SrcTxCommitHandler) Stop() (err error) {
 	return
+}
+
+func (h *SrcTxCommitHandler) Chain() uint64 {
+	return h.config.ChainId
 }

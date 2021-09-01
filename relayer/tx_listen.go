@@ -87,6 +87,10 @@ func (h *SrcTxSyncHandler) Stop() (err error) {
 	return
 }
 
+func (h *SrcTxSyncHandler) Chain() uint64 {
+	return h.config.ChainId
+}
+
 type PolyTxSyncHandler struct {
 	context.Context
 	wg *sync.WaitGroup
@@ -146,4 +150,8 @@ func (h *PolyTxSyncHandler) Start() (err error) {
 
 func (h *PolyTxSyncHandler) Stop() (err error) {
 	return
+}
+
+func (h *PolyTxSyncHandler) Chain() uint64 {
+	return h.config.ChainId
 }
