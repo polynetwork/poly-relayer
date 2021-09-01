@@ -19,8 +19,10 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/polynetwork/poly-relayer/config"
 )
 
@@ -36,5 +38,78 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Config) error
 }
 
 func (s *Server) Start() (err error) {
+	if s.config.Poly != nil {
+		err = s.StartPolyTxSync(s.config.Poly.PolyTxSync)
+		if err != nil {
+			return
+		}
+	}
+	for _, chain := range s.config.Chains {
+		err = s.StartHeaderSync(chain.HeaderSync)
+		if err != nil {
+			return
+		}
+		err = s.StartSrcTxSync(chain.SrcTxSync)
+		if err != nil {
+			return
+		}
+		err = s.StartSrcTxCommit(chain.SrcTxCommit)
+		if err != nil {
+			return
+		}
+		err = s.StartPolyTxCommit(chain.PolyTxCommit)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (s *Server) StartHeaderSync(config *config.HeaderSyncConfig) (err error) {
+	if config == nil || !config.Enabled {
+		return
+	}
+	logs.Info("Starting header sync role... with config:\n%+v\n", *config)
+	h := NewHeaderSyncHandler(config, nil, nil)
+	err = h.Init(s.ctx, s.wg)
+	if err != nil {
+		return fmt.Errorf("Failed to init header sync handler for chain %d error %v", config.ChainId, err)
+	}
+	err = h.Start()
+	if err != nil {
+		return fmt.Errorf("Failed to start header sync handler for chain %d error %v", config.ChainId, err)
+	}
+	return
+}
+
+func (s *Server) StartPolyTxSync(config *config.PolyTxSyncConfig) (err error) {
+	if config == nil || !config.Enabled {
+		return
+	}
+	logs.Info("Starting poly tx sync role...with config:\n%+v\n", *config)
+	return
+}
+
+func (s *Server) StartSrcTxSync(config *config.SrcTxSyncConfig) (err error) {
+	if config == nil || !config.Enabled {
+		return
+	}
+	logs.Info("Starting src tx sync role... with config:\n%+v\n", *config)
+	return
+}
+
+func (s *Server) StartSrcTxCommit(config *config.SrcTxCommitConfig) (err error) {
+	if config == nil || !config.Enabled {
+		return
+	}
+	logs.Info("Starting src tx commit role... with config:\n%+v\n", *config)
+	return
+}
+
+func (s *Server) StartPolyTxCommit(config *config.PolyTxCommitConfig) (err error) {
+	if config == nil || !config.Enabled {
+		return
+	}
+	logs.Info("Starting poly tx commit role... with config:\n%+v\n", *config)
 	return
 }

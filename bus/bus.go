@@ -31,13 +31,26 @@ type Key interface {
 	Key() string
 }
 
+type String string
+
+func (s String) Key() string {
+	return fmt.Sprintf("%s:%s", base.ENV, string(s))
+}
+
 type TxQueueKey struct {
 	ChainId uint64
 	TxType  msg.TxType
 }
 
 func (k *TxQueueKey) Key() string {
-	return fmt.Sprintf("%s_RELAYER_BUS_%v_%v", base.ENV, k.ChainId, k.TxType)
+	return fmt.Sprintf("%s:relayer:bus:%v:%v", base.ENV, k.ChainId, k.TxType)
+}
+
+func GetQueue(tx *msg.Tx) *TxQueueKey {
+	return &TxQueueKey{
+		ChainId: tx.DstChainId,
+		TxType:  tx.Type(),
+	}
 }
 
 type Bus interface {
@@ -49,6 +62,7 @@ type Bus interface {
 type TxBus interface {
 	Pop(context.Context) (*msg.Tx, error)
 	Push(context.Context, *msg.Tx) error
+	PushToChain(context.Context, *msg.Tx) error
 	PushBack(context.Context, *msg.Tx) error
 }
 
@@ -79,6 +93,14 @@ func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
 	return tx, err
 }
 
+func (b *RedisTxBus) PushToChain(ctx context.Context, tx *msg.Tx) error {
+	_, err := b.db.RPush(ctx, GetQueue(tx).Key(), tx.Encode()).Result()
+	if err != nil {
+		return fmt.Errorf("Failed to push message %v", err)
+	}
+	return nil
+}
+
 func (b *RedisTxBus) Push(ctx context.Context, tx *msg.Tx) error {
 	_, err := b.db.RPush(ctx, b.Key.Key(), tx.Encode()).Result()
 	if err != nil {
@@ -88,7 +110,7 @@ func (b *RedisTxBus) Push(ctx context.Context, tx *msg.Tx) error {
 }
 
 func (b *RedisTxBus) PushBack(ctx context.Context, tx *msg.Tx) error {
-	_, err := b.db.LPush(ctx, b.Key.Key(), tx.Encode()).Result()
+	_, err := b.db.LPush(ctx, GetQueue(tx).Key(), tx.Encode()).Result()
 	if err != nil {
 		return fmt.Errorf("Failed to push message %v", err)
 	}

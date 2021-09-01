@@ -59,16 +59,19 @@ func start(c *cli.Context) error {
 
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
+	status := 0
 	err = relayer.Start(ctx, wg, config)
-	if err != nil {
-		panic(err)
+	if err == nil {
+		sc := make(chan os.Signal, 1)
+		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		sig := <-sc
+		logs.Info("Validator is exiting with received signal:(%s).", sig.String())
+	} else {
+		logs.Error("Failed to start relayer service %v", err)
+		status = 2
 	}
-
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	sig := <-sc
-	logs.Info("Validator is exiting with received signal:(%s).", sig.String())
 	cancel()
 	wg.Wait()
+	os.Exit(status)
 	return nil
 }

@@ -33,10 +33,10 @@ var CONFIG *Config
 type Config struct {
 	Env        string
 	Bus        *BusConfig
+	Poly       *PolyChainConfig
+	Chains     map[uint64]*ChainConfig
 	MetricHost string
 	MetricPort int
-	Poly       *PolyChainConfig
-	Roles      map[uint64]*ChainConfig
 }
 
 func New(path string) (config *Config, err error) {
@@ -122,6 +122,7 @@ type HeaderSyncConfig struct {
 
 type SrcTxSyncConfig struct {
 	ListenerConfig `json:",inline"`
+	Procs          int
 	Enabled        bool
 }
 
@@ -132,6 +133,7 @@ type SrcTxCommitConfig struct {
 
 type PolyTxSyncConfig struct {
 	SubmitterConfig `json:",inline"`
+	Procs           int
 	Enabled         bool
 }
 
