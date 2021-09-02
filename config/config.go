@@ -144,11 +144,11 @@ type SrcTxSyncConfig struct {
 }
 
 type SrcTxCommitConfig struct {
-	ChainId uint64
-	Procs   int
-	Enabled bool
-	Bus     *BusConfig
-	Poly    *PolySubmitterConfig
+	*ListenerConfig `json:",inline"`
+	Procs           int
+	Enabled         bool
+	Bus             *BusConfig
+	Poly            *PolySubmitterConfig
 }
 
 type PolyTxSyncConfig struct {
@@ -240,6 +240,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 			c.SrcTxCommit.Bus = bus
 		}
 		c.SrcTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxCommit.Poly)
+		c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig)
 	}
 
 	if c.PolyTxCommit != nil {

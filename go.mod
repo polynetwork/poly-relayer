@@ -10,6 +10,8 @@ require (
 	github.com/ethereum/go-ethereum v1.10.7
 	github.com/go-redis/redis v6.14.2+incompatible
 	github.com/go-redis/redis/v8 v8.11.3
+	github.com/joeqian10/neo-gogogo v0.0.0-20201214075916-44b70d175579
+	github.com/joeqian10/neo3-gogogo v1.0.0
 	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.0.9
 	github.com/polynetwork/bridge-common v0.0.9

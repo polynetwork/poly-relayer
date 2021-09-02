@@ -82,6 +82,7 @@ type SrcTxCommitHandler struct {
 
 	bus       bus.TxBus
 	submitter *poly.Submitter
+	listener  IChainListener
 	config    *config.SrcTxCommitConfig
 }
 
@@ -89,6 +90,7 @@ func NewSrcTxCommitHandler(config *config.SrcTxCommitConfig) *SrcTxCommitHandler
 	return &SrcTxCommitHandler{
 		config:    config,
 		submitter: new(poly.Submitter),
+		listener:  GetListener(config.ChainId),
 	}
 }
 
@@ -102,11 +104,12 @@ func (h *SrcTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err 
 	}
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
+	err = h.listener.Init(h.config.ListenerConfig, nil)
 	return
 }
 
 func (h *SrcTxCommitHandler) Start() (err error) {
-	err = h.submitter.Start(h.Context, h.wg, h.bus)
+	err = h.submitter.Start(h.Context, h.wg, h.bus, h.listener.Compose)
 	return
 }
 

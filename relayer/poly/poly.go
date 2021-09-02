@@ -49,12 +49,13 @@ import (
 
 type Submitter struct {
 	context.Context
-	wg     *sync.WaitGroup
-	config *config.PolySubmitterConfig
-	sdk    *poly.SDK
-	signer *sdk.Account
-	name   string
-	sync   *config.HeaderSyncConfig
+	wg      *sync.WaitGroup
+	config  *config.PolySubmitterConfig
+	sdk     *poly.SDK
+	signer  *sdk.Account
+	name    string
+	sync    *config.HeaderSyncConfig
+	compose msg.PolyComposer
 }
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
@@ -363,7 +364,8 @@ func (s *Submitter) run(bus bus.TxBus) error {
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, composer msg.PolyComposer) error {
+	s.compose = composer
 	s.Context = ctx
 	s.wg = wg
 	for i := 0; i < s.config.Procs; i++ {

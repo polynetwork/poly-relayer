@@ -67,6 +67,6 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
-func (l *Listener) ScanTx(hash string) (err error) {
+func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	return
 }

@@ -111,6 +111,10 @@ func (l *Listener) getProof(txId []byte) (height uint64, proof []byte, err error
 	return
 }
 
+func (l *Listener) Compose(tx *msg.Tx) (err error) {
+	return
+}
+
 func (l *Listener) Header(height uint64) (header []byte, err error) {
 	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
 	if err != nil {
@@ -166,7 +170,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
-func (l *Listener) ScanTx(hash string) (err error) {
+func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	return
 }
 

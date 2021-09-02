@@ -29,6 +29,7 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly-relayer/relayer/neo"
 )
 
 type IChainListener interface {
@@ -39,7 +40,8 @@ type IChainListener interface {
 	Nodes() chains.Nodes
 	Header(height uint64) (header []byte, err error)
 	Scan(uint64) ([]*msg.Tx, error)
-	ScanTx(string) error
+	ScanTx(string) (*msg.Tx, error)
+	Compose(*msg.Tx) error
 }
 
 type Handler interface {
@@ -63,6 +65,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
 	case base.ETH:
 		listener = new(eth.Listener)
+	case base.NEO:
+		listener = new(neo.Listener)
 	default:
 	}
 	return
