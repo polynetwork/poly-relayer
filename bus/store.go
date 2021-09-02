@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -82,13 +83,15 @@ type Lock struct {
 	key Key
 	db  *redis.Client
 	ctx context.Context
+	wg  *sync.WaitGroup
 }
 
 func NewStatusLock(db *redis.Client, key Key) *Lock {
 	return &Lock{key: key, db: db, ctx: context.Background()}
 }
 
-func (l *Lock) Start(ctx context.Context) (ok bool, err error) {
+func (l *Lock) Start(ctx context.Context, wg *sync.WaitGroup) (ok bool, err error) {
+	l.wg = wg
 	l.ctx = ctx
 	ok, err = l.db.SetNX(context.Background(), l.key.Key(), time.Now(), 60*time.Second).Result()
 	if ok {
@@ -99,6 +102,7 @@ func (l *Lock) Start(ctx context.Context) (ok bool, err error) {
 
 func (l *Lock) start() {
 	defer l.stop()
+	l.wg.Add(1)
 	timer := time.NewTicker(10 * time.Second)
 	defer timer.Stop()
 	for {
@@ -119,4 +123,5 @@ func (l *Lock) stop() {
 	if err != nil {
 		logs.Error("Failed to remove redis status lock for %s", l.key.Key())
 	}
+	l.wg.Done()
 }

@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -60,16 +61,18 @@ type IChainSubmitter interface {
 
 func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
-	default:
+	case base.ETH:
 		listener = new(eth.Listener)
+	default:
 	}
 	return
 }
 
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
-	default:
+	case base.ETH:
 		submitter = new(eth.Submitter)
+	default:
 	}
 	return
 }

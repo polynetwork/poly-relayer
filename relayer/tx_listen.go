@@ -19,6 +19,7 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -64,6 +65,11 @@ func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 }
 
 func (h *SrcTxSyncHandler) Start() (err error) {
+	go h.start()
+	return
+}
+
+func (h *SrcTxSyncHandler) start() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	confirms := uint64(h.listener.Defer())
@@ -136,10 +142,22 @@ func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 	)
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
+	ok, err := bus.NewStatusLock(bus.New(h.config.Bus.Redis), bus.POLY_SYNC).Start(ctx, h.wg)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		err = fmt.Errorf("Only one poly tx listener is expected to run.")
+	}
 	return
 }
 
 func (h *PolyTxSyncHandler) Start() (err error) {
+	go h.start()
+	return
+}
+
+func (h *PolyTxSyncHandler) start() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	confirms := uint64(h.listener.Defer())

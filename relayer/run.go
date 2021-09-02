@@ -59,6 +59,14 @@ func (s *Server) Start() (err error) {
 		}
 	}
 
+	// Start the roles
+	for i, handler := range s.roles {
+		logs.Info("Starting role(%d/%d) %v chain %d", i, len(s.roles), reflect.TypeOf(handler), handler.Chain())
+		err = handler.Start()
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
