@@ -40,10 +40,15 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.config = config
 	s.sdk = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if config.Wallet != nil {
-		s.wallet = wallet.New(config.Wallet, eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1))
-		err = s.wallet.Init()
+		w := wallet.New(config.Wallet, eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1))
+		err = w.Init()
 		if err != nil {
 			return
+		}
+		if s.config.ChainId == base.ETH {
+			s.wallet = w.Upgrade()
+		} else {
+			s.wallet = w
 		}
 	}
 	s.name = base.GetChainName(config.ChainId)
