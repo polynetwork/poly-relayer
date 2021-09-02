@@ -38,13 +38,9 @@ type Submitter struct {
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.config = config
-	s.sdk, err = eth.NewSDK(config.ChainId, config.Nodes, time.Minute, 1)
-	if err != nil {
-		return
-	}
+	s.sdk = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if config.Wallet != nil {
-		config.Wallet.ChainId = config.ChainId
-		s.wallet = wallet.New(config.Wallet, s.sdk)
+		s.wallet = wallet.New(config.Wallet, eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1))
 		err = s.wallet.Init()
 		if err != nil {
 			return

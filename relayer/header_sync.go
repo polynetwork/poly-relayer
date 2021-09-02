@@ -54,7 +54,7 @@ func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 		return
 	}
 
-	err = h.listener.Init(h.config.ListenerConfig, nil)
+	err = h.listener.Init(h.config.ListenerConfig, h.submitter.SDK())
 	if err != nil {
 		return
 	}

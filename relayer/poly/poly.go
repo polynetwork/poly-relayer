@@ -58,13 +58,14 @@ type Submitter struct {
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	s.config = config
-	s.sdk, err = poly.NewSDK(config.ChainId, config.Nodes, time.Minute, 1)
-	if err != nil {
-		return
-	}
+	s.sdk = poly.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	s.signer, err = wallet.NewPolySigner(config.Wallet)
 	s.name = base.GetChainName(config.ChainId)
 	return
+}
+
+func (s *Submitter) SDK() *poly.SDK {
+	return s.sdk
 }
 
 func (s *Submitter) Submit(msg msg.Message) error {
@@ -77,6 +78,17 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
+func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte) {
+	for {
+		_, err := s.SubmitHeaders(chainId, headers)
+		if err == nil {
+			return
+		}
+		logs.Error("Failed to submit side chain(%d) header to poly, err %v", chainId, err)
+		time.Sleep(time.Second)
+	}
+}
+
 func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string, err error) {
 	tx, err := s.sdk.Node().Native.Hs.SyncBlockHeader(
 		chainId, s.signer.Address, headers, s.signer,
@@ -84,7 +96,9 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 	if err != nil {
 		return "", err
 	}
-	return tx.ToHexString(), nil
+	hash = tx.ToHexString()
+	logs.Info("Submitter side chain(%d) header to poly, hash: %s", chainId, hash)
+	return
 }
 
 func (s *Submitter) submit(tx *msg.Tx) error {
@@ -381,6 +395,7 @@ func (s *Submitter) startSync(ch chan []byte) {
 		headers := [][]byte{}
 		commit := false
 		duration := time.Duration(s.sync.Timeout) * time.Second
+	COMMIT:
 		for {
 			select {
 			case header, ok := <-ch:
@@ -389,15 +404,15 @@ func (s *Submitter) startSync(ch chan []byte) {
 					commit = len(headers) >= s.sync.Batch
 				} else {
 					commit = len(headers) > 0
-					break
+					break COMMIT
 				}
 			case <-time.After(duration):
 				commit = len(headers) > 0
 			}
 			if commit {
 				commit = false
-				//TODO: Reliable submit
-				s.SubmitHeaders(s.sync.ChainId, headers)
+				// NOTE: Submit failure may stuck here?
+				s.SubmitHeadersWithLoop(s.sync.ChainId, headers)
 				headers = [][]byte{}
 			}
 		}

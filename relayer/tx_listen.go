@@ -131,7 +131,7 @@ func NewPolyTxSyncHandler(config *config.PolyTxSyncConfig) *PolyTxSyncHandler {
 func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
-	err = h.listener.Init(h.config.Poly, nil)
+	err = h.listener.Init(h.config.ListenerConfig, nil)
 	if err != nil {
 		return
 	}
