@@ -35,6 +35,11 @@ const (
 	HEADER TxType = 2
 )
 
+type Header struct {
+	Height uint64
+	Data   []byte
+}
+
 type PolyComposer func(*Tx) error
 
 type Tx struct {

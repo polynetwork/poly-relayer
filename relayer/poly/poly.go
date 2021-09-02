@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,11 +79,17 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
-func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte) {
+func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte) error {
 	for {
 		_, err := s.SubmitHeaders(chainId, headers)
 		if err == nil {
-			return
+			return nil
+		}
+		msg := err.Error()
+		if strings.Contains(msg, "parent header not exist") || strings.Contains(msg, "missing required field") {
+			//NOTE: reset header height back here
+			logs.Error("Possible header fork for chain %d, will rollback some blocks, err %v", chainId, err)
+			return err
 		}
 		logs.Error("Failed to submit side chain(%d) header to poly, err %v", chainId, err)
 		time.Sleep(time.Second)
@@ -97,7 +104,10 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return "", err
 	}
 	hash = tx.ToHexString()
-	logs.Info("Submitter side chain(%d) header to poly, hash: %s", chainId, hash)
+	_, err = s.sdk.Node().Confirm(hash, 0, 10)
+	if err == nil {
+		logs.Info("Submitted side chain(%d) header to poly, hash: %s", chainId, hash)
+	}
 	return
 }
 
@@ -362,7 +372,7 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	return nil
 }
 
-func (s *Submitter) StartSync(ctx context.Context, wg *sync.WaitGroup, config *config.HeaderSyncConfig) (ch chan []byte, err error) {
+func (s *Submitter) StartSync(ctx context.Context, wg *sync.WaitGroup, config *config.HeaderSyncConfig, reset chan<- uint64) (ch chan msg.Header, err error) {
 	s.Context = ctx
 	s.wg = wg
 	s.sync = config
@@ -381,26 +391,36 @@ func (s *Submitter) StartSync(ctx context.Context, wg *sync.WaitGroup, config *c
 		return nil, fmt.Errorf("Invalid header sync side chain id")
 	}
 
-	ch = make(chan []byte, s.sync.Buffer)
-	go s.startSync(ch)
+	ch = make(chan msg.Header, s.sync.Buffer)
+	go s.startSync(ch, reset)
 	return
 }
 
-func (s *Submitter) startSync(ch chan []byte) {
+func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error) {
+	return s.sdk.Node().GetSideChainHeight(chainId)
+}
+
+func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 	if s.sync.Batch == 1 {
 		for header := range ch {
-			s.SubmitHeaders(s.sync.ChainId, [][]byte{header})
+			// NOTE err reponse here will revert header sync with delta -100
+			err := s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data})
+			if err != nil {
+				reset <- header.Height - 100
+			}
 		}
 	} else {
 		headers := [][]byte{}
 		commit := false
 		duration := time.Duration(s.sync.Timeout) * time.Second
+		var height uint64
 	COMMIT:
 		for {
 			select {
 			case header, ok := <-ch:
 				if ok {
-					headers = append(headers, header)
+					height = header.Height
+					headers = append(headers, header.Data)
 					commit = len(headers) >= s.sync.Batch
 				} else {
 					commit = len(headers) > 0
@@ -411,8 +431,11 @@ func (s *Submitter) startSync(ch chan []byte) {
 			}
 			if commit {
 				commit = false
-				// NOTE: Submit failure may stuck here?
-				s.SubmitHeadersWithLoop(s.sync.ChainId, headers)
+				// NOTE err reponse here will revert header sync with delta -100
+				err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers)
+				if err != nil {
+					reset <- height - 100 - uint64(len(headers))
+				}
 				headers = [][]byte{}
 			}
 		}
