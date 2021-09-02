@@ -109,39 +109,49 @@ type WalletConfig struct {
 }
 
 type BusConfig struct {
-	Redis *redis.Options
+	Redis                *redis.Options
+	HeightUpdateInterval uint64
 }
 
 type HeaderSyncConfig struct {
-	ChainId uint64
 	Batch   int
 	Timeout int
 	Buffer  int
 	Enabled bool
+	Poly    *PolySubmitterConfig
+	*ListenerConfig
+	Bus *BusConfig
 }
 
 type SrcTxSyncConfig struct {
-	ListenerConfig `json:",inline"`
-	Procs          int
-	Enabled        bool
+	*ListenerConfig `json:",inline"`
+	Procs           int
+	Enabled         bool
+	Bus             *BusConfig
 }
 
 type SrcTxCommitConfig struct {
 	ChainId uint64
 	Procs   int
 	Enabled bool
+	Bus     *BusConfig
+	Poly    *PolySubmitterConfig
 }
 
 type PolyTxSyncConfig struct {
-	SubmitterConfig `json:",inline"`
-	Procs           int
-	Enabled         bool
+	*SubmitterConfig `json:",inline"`
+	Procs            int
+	Enabled          bool
+	Bus              *BusConfig
+	Poly             *ListenerConfig
 }
 
 type PolyTxCommitConfig struct {
-	ChainId uint64
-	Procs   int
-	Enabled bool
+	*SubmitterConfig `json:",inline"`
+	Poly             *PolySubmitterConfig
+	Procs            int
+	Enabled          bool
+	Bus              *BusConfig
 }
 
 func (c *Config) Init() (err error) {

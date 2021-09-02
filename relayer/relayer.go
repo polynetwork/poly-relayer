@@ -27,6 +27,7 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 )
 
 type IChainListener interface {
@@ -55,4 +56,20 @@ type IChainSubmitter interface {
 	Process(msg.Message, msg.PolyComposer) error
 	ProcessTx(*msg.Tx, msg.PolyComposer) error
 	Stop() error
+}
+
+func GetListener(chain uint64) (listener IChainListener) {
+	switch chain {
+	default:
+		listener = new(eth.Listener)
+	}
+	return
+}
+
+func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
+	switch chain {
+	default:
+		submitter = new(eth.Submitter)
+	}
+	return
 }

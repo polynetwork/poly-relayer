@@ -77,15 +77,15 @@ func (s *Server) parseHandler(conf interface{}) (handler Handler) {
 	}
 	switch c := conf.(type) {
 	case *config.HeaderSyncConfig:
-		handler = NewHeaderSyncHandler(c, nil, nil)
+		handler = NewHeaderSyncHandler(c)
 	case *config.SrcTxSyncConfig:
-		handler = NewSrcTxSyncHandler(c, nil)
+		handler = NewSrcTxSyncHandler(c)
 	case *config.SrcTxCommitConfig:
-		handler = NewSrcTxCommitHandler(c, nil)
+		handler = NewSrcTxCommitHandler(c)
 	case *config.PolyTxSyncConfig:
-		handler = NewPolyTxSyncHandler(c, nil)
+		handler = NewPolyTxSyncHandler(c)
 	case *config.PolyTxCommitConfig:
-		handler = NewPolyTxCommitHandler(c, nil, nil)
+		handler = NewPolyTxCommitHandler(c)
 	default:
 		logs.Error("Unknown config type %+v", conf)
 	}

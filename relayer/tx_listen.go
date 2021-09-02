@@ -24,6 +24,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 type SrcTxSyncHandler struct {
@@ -37,16 +38,28 @@ type SrcTxSyncHandler struct {
 	config   *config.SrcTxSyncConfig
 }
 
-func NewSrcTxSyncHandler(config *config.SrcTxSyncConfig, listener IChainListener) *SrcTxSyncHandler {
+func NewSrcTxSyncHandler(config *config.SrcTxSyncConfig) *SrcTxSyncHandler {
 	return &SrcTxSyncHandler{
 		config:   config,
-		listener: listener,
+		listener: GetListener(config.ChainId),
 	}
 }
 
 func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
+	err = h.listener.Init(h.config.ListenerConfig, nil)
+	if err != nil {
+		return
+	}
+
+	h.state = bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_TX}, bus.New(h.config.Bus.Redis),
+		h.config.Bus.HeightUpdateInterval,
+	)
+
+	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
 	return
 }
 
@@ -102,16 +115,27 @@ type PolyTxSyncHandler struct {
 	config   *config.PolyTxSyncConfig
 }
 
-func NewPolyTxSyncHandler(config *config.PolyTxSyncConfig, listener IChainListener) *PolyTxSyncHandler {
+func NewPolyTxSyncHandler(config *config.PolyTxSyncConfig) *PolyTxSyncHandler {
 	return &PolyTxSyncHandler{
 		config:   config,
-		listener: listener,
+		listener: GetListener(config.ChainId),
 	}
 }
 
 func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+	err = h.listener.Init(h.config.Poly, nil)
+	if err != nil {
+		return
+	}
+
+	h.state = bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_TX}, bus.New(h.config.Bus.Redis),
+		h.config.Bus.HeightUpdateInterval,
+	)
+
+	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
 	return
 }
 

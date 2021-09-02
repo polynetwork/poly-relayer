@@ -37,10 +37,10 @@ type HeaderSyncHandler struct {
 	config    *config.HeaderSyncConfig
 }
 
-func NewHeaderSyncHandler(config *config.HeaderSyncConfig, listener IChainListener, submitter *poly.Submitter) *HeaderSyncHandler {
+func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 	return &HeaderSyncHandler{
-		listener:  listener,
-		submitter: submitter,
+		listener:  GetListener(config.ChainId),
+		submitter: new(poly.Submitter),
 		config:    config,
 	}
 }
@@ -48,6 +48,21 @@ func NewHeaderSyncHandler(config *config.HeaderSyncConfig, listener IChainListen
 func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
+	err = h.submitter.Init(h.config.Poly)
+	if err != nil {
+		return
+	}
+
+	err = h.listener.Init(h.config.ListenerConfig, nil)
+	if err != nil {
+		return
+	}
+
+	h.state = bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(h.config.Bus.Redis),
+		h.config.Bus.HeightUpdateInterval,
+	)
 	return
 }
 

@@ -23,6 +23,7 @@ import (
 
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/poly"
 )
 
@@ -36,17 +37,29 @@ type PolyTxCommitHandler struct {
 	config    *config.PolyTxCommitConfig
 }
 
-func NewPolyTxCommitHandler(config *config.PolyTxCommitConfig, submitter IChainSubmitter, composer *poly.Submitter) *PolyTxCommitHandler {
+func NewPolyTxCommitHandler(config *config.PolyTxCommitConfig) *PolyTxCommitHandler {
 	return &PolyTxCommitHandler{
 		config:    config,
-		submitter: submitter,
-		composer:  composer,
+		submitter: GetSubmitter(config.ChainId),
+		composer:  new(poly.Submitter),
 	}
 }
 
 func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
+	err = h.submitter.Init(h.config.SubmitterConfig)
+	if err != nil {
+		return
+	}
+
+	err = h.composer.Init(h.config.Poly)
+	if err != nil {
+		return
+	}
+
+	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
 	return
 }
 
@@ -72,16 +85,23 @@ type SrcTxCommitHandler struct {
 	config    *config.SrcTxCommitConfig
 }
 
-func NewSrcTxCommitHandler(config *config.SrcTxCommitConfig, submitter *poly.Submitter) *SrcTxCommitHandler {
+func NewSrcTxCommitHandler(config *config.SrcTxCommitConfig) *SrcTxCommitHandler {
 	return &SrcTxCommitHandler{
 		config:    config,
-		submitter: submitter,
+		submitter: new(poly.Submitter),
 	}
 }
 
 func (h *SrcTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
+	err = h.submitter.Init(h.config.Poly)
+	if err != nil {
+		return
+	}
+
+	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
 	return
 }
 

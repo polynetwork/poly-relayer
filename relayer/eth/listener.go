@@ -31,6 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	ceth "github.com/polynetwork/poly/native/service/cross_chain_manager/eth"
@@ -175,5 +176,13 @@ func (l *Listener) ListenCheck() time.Duration {
 }
 
 func (l *Listener) Nodes() chains.Nodes {
-	return l.sdk
+	return l.sdk.ChainSDK
+}
+
+func (l *Listener) ChainId() uint64 {
+	return l.config.ChainId
+}
+
+func (l *Listener) Defer() int {
+	return l.config.Defer
 }
