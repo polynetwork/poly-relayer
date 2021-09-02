@@ -23,7 +23,7 @@ type ChainHeightType string
 type ChainStore interface {
 	UpdateHeight(context.Context, uint64) error
 	GetHeight(context.Context) (uint64, error)
-	HeightMark(uint64)
+	HeightMark(uint64) error
 }
 
 type ChainHeightKey struct {
