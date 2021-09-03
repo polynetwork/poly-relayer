@@ -15,7 +15,7 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package heco
+package bsc
 
 import "github.com/polynetwork/poly-relayer/relayer/eth"
 

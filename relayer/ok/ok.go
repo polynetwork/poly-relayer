@@ -15,9 +15,10 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package heco
+package ok
 
-import "github.com/polynetwork/poly-relayer/relayer/eth"
+import (
+	"github.com/polynetwork/poly-relayer/relayer/eth"
+)
 
-type Listener = eth.Listener
 type Submitter eth.Submitter

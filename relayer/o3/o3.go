@@ -15,9 +15,9 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package heco
+package o3
 
 import "github.com/polynetwork/poly-relayer/relayer/eth"
 
 type Listener = eth.Listener
-type Submitter eth.Submitter
+type Submitter = eth.Submitter
