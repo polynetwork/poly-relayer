@@ -36,12 +36,13 @@ import (
 )
 
 type Listener struct {
-	sdk    *neo.SDK
-	poly   *poly.SDK
-	ccm    string
-	ccd    string
-	config *config.ListenerConfig
-	name   string
+	sdk       *neo.SDK
+	poly      *poly.SDK
+	ccm       string
+	ccd       string
+	config    *config.ListenerConfig
+	consensus string // NEO consensus state
+	name      string
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
@@ -83,6 +84,10 @@ func (l *Listener) Header(height uint64) (header []byte, err error) {
 	if res.HasError() {
 		return nil, fmt.Errorf("Fetch block header error #{response.Error.Message}")
 	}
+	if res.Result.NextConsensus == l.consensus {
+		return nil, nil
+	}
+	l.consensus = res.Result.NextConsensus
 	h, err := block.NewBlockHeaderFromRPC(&res.Result)
 	if err != nil {
 		return nil, err

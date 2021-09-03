@@ -117,7 +117,9 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 		}
 		header, err := h.listener.Header(h.height)
 		if err == nil {
-			ch <- msg.Header{Data: header, Height: h.height}
+			if header != nil {
+				ch <- msg.Header{Data: header, Height: h.height}
+			}
 			h.state.HeightMark(h.height)
 			continue
 		} else {

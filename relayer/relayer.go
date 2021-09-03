@@ -30,6 +30,7 @@ import (
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/neo"
+	"github.com/polynetwork/poly-relayer/relayer/ont"
 )
 
 type IChainListener interface {
@@ -67,6 +68,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(eth.Listener)
 	case base.NEO:
 		listener = new(neo.Listener)
+	case base.ONT:
+		listener = new(ont.Listener)
 	default:
 	}
 	return
