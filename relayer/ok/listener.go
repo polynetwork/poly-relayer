@@ -17,11 +17,6 @@
 
 package ok
 
-import "github.com/polynetwork/poly-relayer/relayer/eth"
-
-type Listener = eth.Listener
-
-/*
 import (
 	"bytes"
 	"fmt"
@@ -39,16 +34,16 @@ type Listener struct {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, err error) {
-	cr, err := l.tm.Node().Tendermint().QueryCommitResult(height)
+	cr, err := l.tm.Node().Tendermint().QueryCommitResult(int64(height))
 	if err != nil {
 		err = fmt.Errorf("OKex query commit result height %d error %v", height, err)
-		return
+		return nil, err
 	}
 	if !bytes.Equal(cr.Header.ValidatorsHash, cr.Header.NextValidatorsHash) {
 		vs, err := l.tm.Node().GetValidators(height)
 		if err != nil {
 			err = fmt.Errorf("OKex get validators height %d error %v", height, err)
-			return
+			return nil, err
 		}
 		hdr := cosmos.CosmosHeader{
 			Header:  *cr.Header,
@@ -59,8 +54,7 @@ func (l *Listener) Header(height uint64) (header []byte, err error) {
 		if err != nil {
 			err = fmt.Errorf("OKex header marshal binary height %d, err %v", height, err)
 		}
-		return
+		return header, err
 	}
 	return
 }
-*/
