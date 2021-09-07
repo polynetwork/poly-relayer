@@ -31,12 +31,14 @@ import (
 var CONFIG *Config
 
 type Config struct {
-	Env        string
-	Bus        *BusConfig
-	Poly       *PolyChainConfig
-	Chains     map[uint64]*ChainConfig
-	MetricHost string
-	MetricPort int
+	Env          string
+	Bus          *BusConfig
+	Poly         *PolyChainConfig
+	Chains       map[uint64]*ChainConfig
+	MetricHost   string
+	MetricPort   int
+	ValidMethods []string
+	validMethods map[string]bool
 }
 
 func New(path string) (config *Config, err error) {
@@ -52,6 +54,12 @@ func New(path string) (config *Config, err error) {
 	if config.Env != base.ENV {
 		util.Fatal("Config env(%s) and build env(%s) does not match!", config.Env, base.ENV)
 	}
+
+	methods := map[string]bool{}
+	for _, m := range config.ValidMethods {
+		methods[m] = true
+	}
+	config.validMethods = methods
 	return
 }
 
@@ -189,6 +197,10 @@ func (c *Config) Init() (err error) {
 
 	CONFIG = c
 	return
+}
+
+func (c *Config) AllowMethod(method string) bool {
+	return c.validMethods[method]
 }
 
 func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {

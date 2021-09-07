@@ -29,17 +29,17 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
-	ceth "github.com/polynetwork/poly/native/service/cross_chain_manager/eth"
-
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	pcom "github.com/polynetwork/poly/common"
 	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
+	ceth "github.com/polynetwork/poly/native/service/cross_chain_manager/eth"
 )
 
 type Listener struct {
@@ -157,6 +157,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			DstChainId: ev.ToChainId,
 			SrcEvent:   hex.EncodeToString(ev.Rawdata),
 			SrcHeight:  height,
+			Param:      param,
 		}
 		//TODO: Add filters here?
 		proofHeight, proof, err := l.GetProof(ev.TxId)

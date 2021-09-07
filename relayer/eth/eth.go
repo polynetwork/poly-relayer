@@ -3,6 +3,7 @@ package eth
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -179,6 +180,10 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
 			logs.Error("%s Process poly tx error %v", err)
+			if errors.Is(err, msg.ERR_INVALID_TX) {
+				logs.Error("Skipped invalid poly tx %s", tx.PolyHash)
+				continue
+			}
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
 		}
