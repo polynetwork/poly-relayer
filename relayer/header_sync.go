@@ -19,10 +19,12 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -50,6 +52,11 @@ func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 }
 
 func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
+	switch h.config.ChainId {
+	case base.OK, base.MATIC:
+		return fmt.Errorf("Please use dedicated build for header sync of chains: OK, MATIC")
+	}
+
 	h.Context = ctx
 	h.wg = wg
 
@@ -115,10 +122,10 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
 		}
-		header, err := h.listener.Header(h.height)
+		header, hash, err := h.listener.Header(h.height)
 		if err == nil {
 			if header != nil {
-				ch <- msg.Header{Data: header, Height: h.height}
+				ch <- msg.Header{Data: header, Height: h.height, Hash: hash}
 			}
 			h.state.HeightMark(h.height)
 			continue

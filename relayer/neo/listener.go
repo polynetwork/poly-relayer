@@ -79,22 +79,22 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	return
 }
 
-func (l *Listener) Header(height uint64) (header []byte, err error) {
+func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
 	res := l.sdk.Node().GetBlockHeaderByIndex(uint32(height))
 	if res.HasError() {
-		return nil, fmt.Errorf("Fetch block header error #{response.Error.Message}")
+		return nil, nil, fmt.Errorf("Fetch block header error #{response.Error.Message}")
 	}
 	if res.Result.NextConsensus == l.consensus {
-		return nil, nil
+		return nil, nil, nil
 	}
 	l.consensus = res.Result.NextConsensus
 	h, err := block.NewBlockHeaderFromRPC(&res.Result)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	buf := io.NewBufBinaryWriter()
 	h.Serialize(buf.BinaryWriter)
-	return buf.Bytes(), nil
+	return buf.Bytes(), nil, nil
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {

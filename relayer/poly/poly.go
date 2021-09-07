@@ -410,11 +410,26 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 	return s.sdk.Node().GetSideChainHeight(chainId)
 }
 
+func (s *Submitter) CheckHeaderExistence(header msg.Header) (ok bool, err error) {
+	hash, err := s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
+	if err != nil {
+		return
+	}
+	ok = bytes.Equal(hash, header.Hash)
+	return
+}
+
 func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 	if s.sync.Batch == 1 {
 		for header := range ch {
 			// NOTE err reponse here will revert header sync with delta -100
-			err := s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data})
+			ok, err := s.CheckHeaderExistence(header)
+			if ok {
+				continue
+			}
+			if err == nil {
+				err = s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data})
+			}
 			if err != nil {
 				reset <- header.Height - 100
 			}

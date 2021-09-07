@@ -37,6 +37,7 @@ const (
 
 type Header struct {
 	Height uint64
+	Hash   []byte
 	Data   []byte
 }
 

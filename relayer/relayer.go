@@ -44,7 +44,7 @@ type IChainListener interface {
 	ListenCheck() time.Duration
 	ChainId() uint64
 	Nodes() chains.Nodes
-	Header(height uint64) (header []byte, err error)
+	Header(height uint64) (header []byte, hash []byte, err error)
 	Scan(uint64) ([]*msg.Tx, error)
 	ScanTx(string) (*msg.Tx, error)
 	Compose(*msg.Tx) error

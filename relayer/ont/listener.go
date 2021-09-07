@@ -76,19 +76,19 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	return
 }
 
-func (l *Listener) Header(height uint64) (header []byte, err error) {
+func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
 	block, err := l.sdk.Node().GetBlockByHeight(uint32(height))
 	if err != nil {
 		return
 	}
 	info := &vconfig.VbftBlockInfo{}
 	if err := json.Unmarshal(block.Header.ConsensusPayload, info); err != nil {
-		return nil, fmt.Errorf("ONT unmarshal blockInfo error: %s", err)
+		return nil, nil, fmt.Errorf("ONT unmarshal blockInfo error: %s", err)
 	}
 	if info.NewChainConfig != nil {
-		return block.Header.ToArray(), nil
+		return block.Header.ToArray(), nil, nil
 	}
-	return nil, nil
+	return
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
