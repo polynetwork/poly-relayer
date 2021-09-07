@@ -19,5 +19,4 @@ package matic
 
 import "github.com/polynetwork/poly-relayer/relayer/eth"
 
-type Listener = eth.Listener
 type Submitter eth.Submitter

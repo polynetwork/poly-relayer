@@ -193,3 +193,11 @@ func (l *Listener) ChainId() uint64 {
 func (l *Listener) Defer() int {
 	return l.config.Defer
 }
+
+func (l *Listener) SDK() *eth.SDK {
+	return l.sdk
+}
+
+func (l *Listener) Poly() *poly.SDK {
+	return l.poly
+}

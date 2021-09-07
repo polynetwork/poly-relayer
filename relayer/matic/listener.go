@@ -19,48 +19,132 @@ package matic
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/polynetwork/bridge-common/chains/matic"
+	"github.com/polynetwork/bridge-common/chains/matic/cosmos"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly/common"
 )
 
 type Listener struct {
+	spans map[uint64][2]uint64 // spanId -> [start, end]
+	span  [3]uint64            // latest span: [spanId, start, end]
+	sync.RWMutex
+
+	tc           *matic.SDK
+	lastSpanSync uint64
 	*eth.Listener
 }
 
 func (l *Listener) Header(height uint64) (header []byte, err error) {
-	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
+	hdr, err := l.SDK().Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
 	if err != nil {
 		err = fmt.Errorf("Fetch block header error %v", err)
 		return nil, err
 	}
-	header := &matic.HeaderWithOptionalProof{
+	hp := &cosmos.HeaderWithOptionalProof{
 		Header: *hdr,
 	}
-	if (hdr.Number().Uint64()+1)%matic.SPRINT_SIZE == 0 {
-		ch, err := l.GetBaseCosmosHeight()
+	if (hdr.Number.Uint64()+1)%matic.SPRINT_SIZE == 0 {
+		spanId, err := l.GetBorSpanId(height)
 		if err != nil {
 			return nil, err
 		}
-		spanId, err := l.GetSpanId(height)
-		if err != nil {
-			return nil, err
-		}
-		if spanId == 0 {
-			return nil, fmt.Errorf("Span ID missing for block %d", height)
-		}
-		latestSpan, err := l
-	}
 
-	return hdr.MarshalJSON()
+		if spanId > l.lastSpanSync {
+			hmHeight, err := l.GetBestCosmosHeight()
+			if err != nil {
+				return nil, err
+			}
+			if spanId == 0 {
+				return nil, fmt.Errorf("Span ID missing for block %d", height)
+			}
+			err = l.tc.Node().ComposeHeaderProof(height, hmHeight, spanId, hp)
+			if err != nil {
+				return nil, err
+			}
+			l.lastSpanSync = spanId
+		}
+	}
+	header, err = json.Marshal(hp)
+	return
 }
 
-func (l *Listener) GetSpanId(height uint64) (id uint64, err error) {
+func (l *Listener) GetSpanRange(id uint64) (start uint64, end uint64, err error) {
+	l.RLock()
+	if r, ok := l.spans[id]; ok {
+		start = r[0]
+		end = r[1]
+	}
+	l.RUnlock()
+	if end != 0 {
+		return
+	}
+	span, err := l.tc.Node().GetSpan(id)
+	if err != nil {
+		return
+	}
+	l.Lock()
+	l.spans[id] = [2]uint64{span.StartBlock, span.EndBlock}
+	l.Unlock()
+	return span.StartBlock, span.EndBlock, nil
+}
+
+func (l *Listener) GetLatestSpan() (spandId uint64, start uint64, end uint64) {
+	l.RLock()
+	defer l.RUnlock()
+	return l.span[0], l.span[1], l.span[2]
+}
+
+func (l *Listener) FetchLatestSpan() (spandId uint64, start uint64, end uint64, err error) {
+	span, err := l.tc.Node().GetLatestSpan(0)
+	if err != nil {
+		return
+	}
+	l.Lock()
+	l.span = [3]uint64{span.ID, span.StartBlock, span.EndBlock}
+	l.spans[span.ID] = [2]uint64{span.StartBlock, span.EndBlock}
+	l.Unlock()
+	return span.ID, span.StartBlock, span.EndBlock, nil
+}
+
+func (l *Listener) GetBorSpanId(height uint64) (id uint64, err error) {
+	span, start, end := l.GetLatestSpan()
+	for {
+		if height >= start && height <= end {
+			return span, nil
+		} else if height < start {
+			// old span
+			span--
+			start, end, err = l.GetSpanRange(span)
+			if err != nil {
+				return
+			}
+		} else {
+			// new span
+			span, start, end, err = l.FetchLatestSpan()
+			if err != nil {
+				return
+			}
+		}
+	}
 	return
 }
 
 func (l *Listener) GetBestCosmosHeight() (height uint64, err error) {
+	data, err := l.Poly().Node().GetSideChainEpoch(l.ChainId())
+	if err != nil {
+		return
+	}
+	info := new(cosmos.CosmosEpochSwitchInfo)
+	err = info.Deserialization(common.NewZeroCopySource(data))
+	if err != nil {
+		return
+	}
+	height = uint64(info.Height)
 	return
 }
