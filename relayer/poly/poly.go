@@ -128,6 +128,12 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		return nil
 	}
 
+	data, _ := s.sdk.Node().GetDoneTx(s.config.ChainId, tx.Param.CrossChainID)
+	if len(data) != 0 {
+		logs.Error("Tx %s already imported", tx.SrcHash)
+		return nil
+	}
+
 	t, err := s.sdk.Node().Native.Ccm.ImportOuterTransfer(
 		tx.SrcChainId,
 		tx.SrcEvent,
