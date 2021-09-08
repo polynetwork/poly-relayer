@@ -80,16 +80,16 @@ func NewRedisTxBus(db *redis.Client, chainId uint64, txType msg.TxType) *RedisTx
 }
 
 func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
-	res, err := b.db.LPop(ctx, b.Key.Key()).Result()
+	res, err := b.db.BLPop(ctx, 0, b.Key.Key()).Result()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to pop message %v", err)
 	}
-	if res == "" || res == "nil" {
+	if len(res) < 2 || res[1] == "" || res[1] == "nil" {
 		logs.Info("Empty queue %s", b.Key.Key())
 		return nil, nil
 	}
 	tx := new(msg.Tx)
-	err = tx.Decode(res)
+	err = tx.Decode(res[1])
 	return tx, err
 }
 

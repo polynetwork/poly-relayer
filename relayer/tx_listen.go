@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/polynetwork/bridge-common/base"
@@ -90,16 +91,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
-				// TODO: do reliable push here
-				if tx.Param == nil || config.CONFIG.AllowMethod(tx.Param.Method) {
-					err = h.bus.Push(context.Background(), tx)
-				} else {
-					method := "missing param"
-					if tx.Param != nil {
-						method = tx.Param.Method
-					}
-					logs.Error("Invalid src chain(%v) tx(%s) method(%s)", h.config.ChainId, tx.SrcHash, method)
-				}
+				retry(func() error { return h.bus.Push(context.Background(), tx) }, time.Second)
 			}
 			h.state.HeightMark(h.height)
 			continue
@@ -186,16 +178,9 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
-				if tx.Param != nil && config.CONFIG.AllowMethod(tx.Param.Method) {
-					// TODO: do reliable push here
-					err = h.bus.PushToChain(context.Background(), tx)
-				} else {
-					method := "missing param"
-					if tx.Param != nil {
-						method = tx.Param.Method
-					}
-					logs.Error("Invalid poly chain(%v) tx(%s) method(%s)", h.config.ChainId, tx.PolyHash, method)
-				}
+				retry(func() error {
+					return h.bus.PushToChain(context.Background(), tx)
+				}, time.Second)
 			}
 			h.state.HeightMark(h.height)
 			continue

@@ -107,6 +107,14 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
+func (s *Submitter) GetPolyEpochStartHeight() (height uint32, err error) {
+	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
+	if err != nil {
+		return
+	}
+	return ccd.GetCurEpochStartHeight(nil)
+}
+
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	txId, err := tx.GetTxId()
 	if err != nil {
@@ -150,6 +158,10 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 
 	if m.DstChainId != s.config.ChainId {
 		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
+	}
+	m.DstPolyEpochStartHeight, err = s.GetPolyEpochStartHeight()
+	if err != nil {
+		return fmt.Errorf("%s fetch dst chain poly epoch height error %v", s.name, err)
 	}
 	err = compose(m)
 	if err != nil {

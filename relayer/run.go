@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/polynetwork/poly-relayer/config"
@@ -102,4 +103,15 @@ func (s *Server) parseHandler(conf interface{}) (handler Handler) {
 		logs.Info("Creating handler: %s with config:\n%s", reflect.TypeOf(handler), string(c))
 	}
 	return
+}
+
+func retry(f func() error, interval time.Duration) {
+	var err error
+	for {
+		err = f()
+		if err == nil {
+			return
+		}
+		time.Sleep(interval)
+	}
 }
