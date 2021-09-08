@@ -54,9 +54,10 @@ type Tx struct {
 	SrcHash        string
 	SrcHeight      uint64
 	SrcChainId     uint64
-	SrcProof       string
-	SrcEvent       string
-	SrcProofHeight uint64
+	SrcProof       []byte `json:"-"`
+	SrcEvent       []byte `json:"-"`
+	SrcProofHeight uint64 `json:"-"`
+	SrcParam       string
 
 	PolyHash     string
 	PolyHeight   uint32

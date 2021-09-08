@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -114,25 +115,24 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 
 func (s *Submitter) submit(tx *msg.Tx) error {
 	// TODO: Check storage to see if already imported
-	if tx.SrcHeight == 0 || tx.SrcProof == "" || tx.SrcEvent == "" || tx.SrcChainId == 0 || tx.SrcHash == "" || tx.SrcProofHeight == 0 {
-		return fmt.Errorf("Invalid src tx, missing some fields %v", *tx)
+	err := s.compose(tx)
+	if err != nil {
+		return err
+	}
+	if tx.Param == nil {
+		return fmt.Errorf("%s submitter src tx %s param is missing", s.name, tx.SrcHash)
 	}
 
-	value, err := hex.DecodeString(tx.SrcEvent)
-	if err != nil {
-		return fmt.Errorf("%s submitter decode src value error %v value %s", s.name, err, tx.SrcEvent)
-	}
-
-	proof, err := hex.DecodeString(tx.SrcProof)
-	if err != nil {
-		return fmt.Errorf("%s submitter decode src proof error %v proof %s", s.name, err, tx.SrcProof)
+	if !config.CONFIG.AllowMethod(tx.Param.Method) {
+		logs.Error("Invalid poly chain(%v) tx(%s) method(%s)", s.config.ChainId, tx.PolyHash, tx.Param.Method)
+		return nil
 	}
 
 	t, err := s.sdk.Node().Native.Ccm.ImportOuterTransfer(
 		tx.SrcChainId,
-		value,
+		tx.SrcEvent,
 		uint32(tx.SrcProofHeight),
-		proof,
+		tx.SrcProof,
 		common.Hex2Bytes(s.signer.Address.ToHexString()),
 		[]byte{},
 		s.signer,
@@ -368,6 +368,9 @@ func (s *Submitter) run(bus bus.TxBus) error {
 			logs.Error("%s Process poly tx error %v", err)
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
+			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
+				time.Sleep(time.Second)
+			}
 		}
 	}
 }

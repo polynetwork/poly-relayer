@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -72,7 +73,7 @@ func (h *SrcTxSyncHandler) Start() (err error) {
 func (h *SrcTxSyncHandler) start() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
-	confirms := uint64(h.listener.Defer())
+	confirms := base.BlocksToWait(h.config.ChainId)
 	var latest uint64
 	for {
 		select {
@@ -90,7 +91,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		if err == nil {
 			for _, tx := range txs {
 				// TODO: do reliable push here
-				if tx.Param != nil && config.CONFIG.AllowMethod(tx.Param.Method) {
+				if tx.Param == nil || config.CONFIG.AllowMethod(tx.Param.Method) {
 					err = h.bus.Push(context.Background(), tx)
 				} else {
 					method := "missing param"

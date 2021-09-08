@@ -25,7 +25,7 @@ import (
 	"math/big"
 	"time"
 
-	// "github.com/beego/beego/v2/core/logs"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -49,7 +49,7 @@ type Listener struct {
 	ccd            common.Address
 	config         *config.ListenerConfig
 	GetProofHeight func() (uint64, error)
-	GetProof       func([]byte) (uint64, []byte, error)
+	GetProof       func([]byte, uint64) (uint64, []byte, error)
 	name           string
 }
 
@@ -77,7 +77,7 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 		if err != nil {
 			return 0, err
 		}
-		height = h - uint64(l.config.Defer)
+		height = h - base.BlocksToWait(l.config.ChainId)
 	case base.OK:
 		h, err := l.sdk.Node().GetLatestHeight()
 		if err != nil {
@@ -90,7 +90,7 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 	return
 }
 
-func (l *Listener) getProof(txId []byte) (height uint64, proof []byte, err error) {
+func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof []byte, err error) {
 	id := msg.EncodeTxId(txId)
 	bytes, err := ceth.MappingKeyAt(id, "01")
 	if err != nil {
@@ -103,6 +103,10 @@ func (l *Listener) getProof(txId []byte) (height uint64, proof []byte, err error
 		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
 		return
 	}
+	if txHeight >= height {
+		err = fmt.Errorf("%w Proof not ready", msg.ERR_PROOF_UNAVAILABLE)
+		return
+	}
 	ethProof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
 	if err != nil {
 		return 0, nil, err
@@ -112,10 +116,33 @@ func (l *Listener) getProof(txId []byte) (height uint64, proof []byte, err error
 }
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
+	if tx.SrcHeight == 0 || len(tx.TxId) == 0 {
+		return fmt.Errorf("tx missing attributes src height %v, txid %s", tx.SrcHeight, tx.TxId)
+	}
+	if len(tx.SrcParam) == 0 {
+		return fmt.Errorf("src param is missing")
+	}
+	event, err := hex.DecodeString(tx.SrcParam)
+	if err != nil {
+		return fmt.Errorf("%s submitter decode src param error %v event %s", l.name, err, tx.SrcParam)
+	}
+	txId, err := hex.DecodeString(tx.TxId)
+	if err != nil {
+		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
+	}
+	param := &ccom.MakeTxParam{}
+	err = param.Deserialization(pcom.NewZeroCopySource(event))
+	if err != nil {
+		return
+	}
+	tx.Param = param
+	tx.SrcEvent = event
+	tx.SrcProofHeight, tx.SrcProof, err = l.GetProof(txId, tx.SrcHeight)
 	return
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
+	logs.Info("Fetching %s block %d header", l.name, height)
 	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
 	if err != nil {
 		err = fmt.Errorf("Fetch block header error %v", err)
@@ -157,16 +184,9 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			TxId:       msg.EncodeTxId(ev.TxId),
 			SrcHash:    ev.Raw.TxHash.String(),
 			DstChainId: ev.ToChainId,
-			SrcEvent:   hex.EncodeToString(ev.Rawdata),
 			SrcHeight:  height,
-			Param:      param,
+			SrcParam:   hex.EncodeToString(ev.Rawdata),
 		}
-		//TODO: Add filters here?
-		proofHeight, proof, err := l.GetProof(ev.TxId)
-		if err != nil {
-			return nil, err
-		}
-		tx.SrcProofHeight, tx.SrcProof = proofHeight, hex.EncodeToString(proof)
 		txs = append(txs, tx)
 	}
 
