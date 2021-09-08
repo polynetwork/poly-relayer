@@ -114,7 +114,7 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 		case <-h.Done():
 			logs.Info("Header sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
 			close(ch)
-			break
+			return
 		default:
 		}
 

@@ -79,7 +79,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		select {
 		case <-h.Done():
 			logs.Info("Src tx sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
-			break
+			return nil
 		default:
 		}
 
@@ -175,7 +175,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		select {
 		case <-h.Done():
 			logs.Info("Src tx sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
-			break
+			return nil
 		default:
 		}
 
