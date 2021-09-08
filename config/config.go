@@ -226,6 +226,9 @@ func (c *Config) AllowMethod(method string) bool {
 func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 	c.ChainId = base.POLY
 	if c.PolyTxSync != nil {
+		if c.PolyTxSync.ListenerConfig == nil {
+			c.PolyTxSync.ListenerConfig = new(ListenerConfig)
+		}
 		c.PolyTxSync.ChainId = base.POLY
 		if c.PolyTxSync.Bus == nil {
 			c.PolyTxSync.Bus = bus
