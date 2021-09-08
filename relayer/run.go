@@ -81,7 +81,7 @@ func (s *Server) parseHandlers(confs ...interface{}) {
 }
 
 func (s *Server) parseHandler(conf interface{}) (handler Handler) {
-	if conf == nil || !reflect.ValueOf(conf).Elem().FieldByName("Enabled").Interface().(bool) {
+	if reflect.ValueOf(conf).IsZero() || !reflect.ValueOf(conf).Elem().FieldByName("Enabled").Interface().(bool) {
 		return
 	}
 	switch c := conf.(type) {
