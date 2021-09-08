@@ -44,6 +44,9 @@ type RedisChainStore struct {
 }
 
 func NewRedisChainStore(key Key, db *redis.Client, interval uint64) *RedisChainStore {
+	if interval == 0 {
+		interval = 5
+	}
 	return &RedisChainStore{
 		height: key,
 		db:     db,
