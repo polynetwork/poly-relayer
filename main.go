@@ -28,7 +28,42 @@ func main() {
 				Usage: "configuration file",
 			},
 		},
-		Commands: []*cli.Command{},
+		Commands: []*cli.Command{
+			&cli.Command{
+				Name:   relayer.SET_HEADER_HEIGHT,
+				Usage:  "Set side chain header sync height",
+				Action: command(relayer.SET_HEADER_HEIGHT),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "height",
+						Usage:    "target block height",
+						Required: true,
+					},
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "target side chain",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.SET_TX_HEIGHT,
+				Usage:  "Set side chain header sync height",
+				Action: command(relayer.SET_TX_HEIGHT),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "height",
+						Usage:    "target block height",
+						Required: true,
+					},
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "target side chain",
+						Required: true,
+					},
+				},
+			},
+		},
 	}
 
 	err := app.Run(os.Args)
@@ -76,4 +111,24 @@ func start(c *cli.Context) error {
 	wg.Wait()
 	os.Exit(status)
 	return nil
+}
+
+func command(method string) func(*cli.Context) error {
+	return func(c *cli.Context) error {
+		config, err := config.New(c.String("config"))
+		if err != nil {
+			logs.Error("Failed to parse config file %v", err)
+			os.Exit(2)
+		}
+		err = config.Init()
+		if err != nil {
+			logs.Error("Failed to initialize configuration %v", err)
+			os.Exit(2)
+		}
+		err = relayer.HandleCommand(method, c)
+		if err != nil {
+			logs.Error("Command %s error %v", method, err)
+		}
+		return err
+	}
 }
