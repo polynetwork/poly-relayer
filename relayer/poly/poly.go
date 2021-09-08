@@ -430,20 +430,24 @@ func (s *Submitter) CheckHeaderExistence(header msg.Header) (ok bool, err error)
 
 func (s *Submitter) syncHeaderLoop(ch <-chan msg.Header, reset chan<- uint64) {
 	for {
-		header, ok := <-ch
-		if !ok {
+		select {
+		case <-s.Done():
 			return
-		}
-		// NOTE err reponse here will revert header sync with delta -100
-		ok, err := s.CheckHeaderExistence(header)
-		if ok {
-			continue
-		}
-		if err == nil {
-			err = s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data})
-		}
-		if err != nil {
-			reset <- header.Height - 100
+		case header, ok := <-ch:
+			if !ok {
+				return
+			}
+			// NOTE err reponse here will revert header sync with delta -100
+			ok, err := s.CheckHeaderExistence(header)
+			if ok {
+				continue
+			}
+			if err == nil {
+				err = s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data})
+			}
+			if err != nil {
+				reset <- header.Height - 100
+			}
 		}
 	}
 }
@@ -456,6 +460,8 @@ func (s *Submitter) syncHeaderBatchLoop(ch <-chan msg.Header, reset chan<- uint6
 COMMIT:
 	for {
 		select {
+		case <-s.Done():
+			break COMMIT
 		case header, ok := <-ch:
 			if ok {
 				height = header.Height
@@ -487,6 +493,7 @@ func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 	if s.sync.Batch == 1 {
 		s.syncHeaderLoop(ch, reset)
 	} else {
+		s.syncHeaderBatchLoop(ch, reset)
 	}
 	logs.Info("Header sync exiting loop now")
 }

@@ -99,6 +99,7 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 	feedback := make(chan uint64, 1)
 	go h.monitor(feedback)
 	var latest uint64
+LOOP:
 	for {
 		select {
 		case height := <-feedback:
@@ -112,9 +113,7 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 				h.height = reset - 1
 			}
 		case <-h.Done():
-			logs.Info("Header sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
-			close(ch)
-			return
+			break LOOP
 		default:
 		}
 
@@ -125,15 +124,21 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 		header, hash, err := h.listener.Header(h.height)
 		if err == nil {
 			if header != nil {
-				ch <- msg.Header{Data: header, Height: h.height, Hash: hash}
+				select {
+				case ch <- msg.Header{Data: header, Height: h.height, Hash: hash}:
+				case <-h.Done():
+					break LOOP
+				}
 			}
-			h.state.HeightMark(h.height)
+			h.state.HeightMark(h.height - uint64(len(ch)) - 1)
 			continue
 		} else {
 			logs.Error("Fetch chain(%v) block %v  header error %v", h.config.ChainId, h.height, err)
 		}
 		h.height--
 	}
+	logs.Info("Header sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
+	close(ch)
 }
 
 func (h *HeaderSyncHandler) Start() (err error) {
