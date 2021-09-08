@@ -30,7 +30,7 @@ type RedisConn struct {
 }
 
 func (c *RedisConn) Key() string {
-	return fmt.Sprintf("%s:%s:%d", c.options.Network, c.options.Addr, c.options.DB)
+	return fmt.Sprintf("%s:%d", c.options.Addr, c.options.DB)
 }
 
 func (c *RedisConn) Create() interface{} {

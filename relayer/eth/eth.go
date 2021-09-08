@@ -57,6 +57,9 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.ccd = common.HexToAddress(config.CCDContract)
 	s.ccm = common.HexToAddress(config.CCMContract)
 	s.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
+	if s.sdk.Node() == nil {
+		err = fmt.Errorf("%s sdk nodes unreachable", s.name)
+	}
 	return
 }
 

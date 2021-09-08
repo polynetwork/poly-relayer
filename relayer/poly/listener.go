@@ -18,6 +18,7 @@
 package poly
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -38,6 +39,9 @@ func (l *Listener) Init(config *config.ListenerConfig, sdk *poly.SDK) (err error
 		l.sdk = sdk
 	} else {
 		l.sdk = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+	}
+	if l.sdk.Node() == nil {
+		err = fmt.Errorf("poly sdk nodes unreachable")
 	}
 	return
 }

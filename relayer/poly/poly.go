@@ -64,6 +64,10 @@ func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	s.sdk = poly.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	s.signer, err = wallet.NewPolySigner(config.Wallet)
 	s.name = base.GetChainName(config.ChainId)
+
+	if s.sdk.Node() == nil {
+		err = fmt.Errorf("poly sdk nodes unreachable")
+	}
 	return
 }
 
