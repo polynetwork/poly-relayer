@@ -33,13 +33,14 @@ func (c *RedisConn) Key() string {
 	return fmt.Sprintf("%s:%d", c.options.Addr, c.options.DB)
 }
 
-func (c *RedisConn) Create() interface{} {
+func (c *RedisConn) Create() (interface{}, error) {
 	c.Conn = redis.NewClient(c.options)
-	return c
+	return c, nil
 }
 
 func New(options *redis.Options) *redis.Client {
-	return util.Single(&RedisConn{
+	c, _ := util.Single(&RedisConn{
 		options: options,
-	}).(*RedisConn).Conn
+	})
+	return c.(*RedisConn).Conn
 }

@@ -55,7 +55,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 		return fmt.Errorf("Poly sdk instance should be provided for the listener of %s", l.name)
 	}
 
-	l.sdk = ont.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	l.sdk, err = ont.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	return
 }
 

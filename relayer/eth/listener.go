@@ -66,13 +66,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	l.GetProofHeight = l.getProofHeight
 	l.GetProof = l.getProof
 
-	l.sdk = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
-	if l.sdk.Node() == nil {
-		err = fmt.Errorf("%s sdk nodes unreachable", l.name)
-	}
-	if l.poly.Node() == nil {
-		err = fmt.Errorf("poly sdk nodes unreachable")
-	}
+	l.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	return
 }
 

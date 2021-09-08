@@ -40,12 +40,19 @@ type Submitter struct {
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.config = config
-	s.sdk = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	s.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	if err != nil {
+		return
+	}
 	if config.Wallet != nil {
-		w := wallet.New(config.Wallet, eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1))
+		sdk, err := eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1)
+		if err != nil {
+			return err
+		}
+		w := wallet.New(config.Wallet, sdk)
 		err = w.Init()
 		if err != nil {
-			return
+			return err
 		}
 		if s.config.ChainId == base.ETH {
 			s.wallet = w.Upgrade()
@@ -57,9 +64,6 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.ccd = common.HexToAddress(config.CCDContract)
 	s.ccm = common.HexToAddress(config.CCMContract)
 	s.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
-	if s.sdk.Node() == nil {
-		err = fmt.Errorf("%s sdk nodes unreachable", s.name)
-	}
 	return
 }
 
