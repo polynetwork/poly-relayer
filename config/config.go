@@ -130,8 +130,24 @@ type WalletConfig struct {
 }
 
 type BusConfig struct {
-	Redis                *redis.Options
+	Redis                *redis.Options `json:"-"`
 	HeightUpdateInterval uint64
+	Config               *struct {
+		Network    string
+		Addr       string
+		Username   string
+		Password   string
+		DB         int
+		MaxRetries int
+	}
+}
+
+func (c *BusConfig) Init() {
+	c.Redis = new(redis.Options)
+	if c.Config != nil {
+		v, _ := json.Marshal(c.Config)
+		json.Unmarshal(v, c.Redis)
+	}
 }
 
 type HeaderSyncConfig struct {
@@ -181,6 +197,10 @@ func (c *Config) Init() (err error) {
 	if c.MetricPort == 0 {
 		c.MetricPort = 6500
 	}
+	if c.Bus != nil {
+		c.Bus.Init()
+	}
+
 	if c.Poly != nil {
 		err = c.Poly.Init(c.Bus)
 		if err != nil {
