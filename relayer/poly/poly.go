@@ -428,54 +428,65 @@ func (s *Submitter) CheckHeaderExistence(header msg.Header) (ok bool, err error)
 	return
 }
 
+func (s *Submitter) syncHeaderLoop(ch <-chan msg.Header, reset chan<- uint64) {
+	for {
+		header, ok := <-ch
+		if !ok {
+			return
+		}
+		// NOTE err reponse here will revert header sync with delta -100
+		ok, err := s.CheckHeaderExistence(header)
+		if ok {
+			continue
+		}
+		if err == nil {
+			err = s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data})
+		}
+		if err != nil {
+			reset <- header.Height - 100
+		}
+	}
+}
+
+func (s *Submitter) syncHeaderBatchLoop(ch <-chan msg.Header, reset chan<- uint64) {
+	headers := [][]byte{}
+	commit := false
+	duration := time.Duration(s.sync.Timeout) * time.Second
+	var height uint64
+COMMIT:
+	for {
+		select {
+		case header, ok := <-ch:
+			if ok {
+				height = header.Height
+				headers = append(headers, header.Data)
+				commit = len(headers) >= s.sync.Batch
+			} else {
+				commit = len(headers) > 0
+				break COMMIT
+			}
+		case <-time.After(duration):
+			commit = len(headers) > 0
+		}
+		if commit {
+			commit = false
+			// NOTE err reponse here will revert header sync with delta -100
+			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers)
+			if err != nil {
+				reset <- height - 100 - uint64(len(headers))
+			}
+			headers = [][]byte{}
+		}
+	}
+	if len(headers) > 0 {
+		s.SubmitHeaders(s.sync.ChainId, headers)
+	}
+}
+
 func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 	if s.sync.Batch == 1 {
-		for header := range ch {
-			// NOTE err reponse here will revert header sync with delta -100
-			ok, err := s.CheckHeaderExistence(header)
-			if ok {
-				continue
-			}
-			if err == nil {
-				err = s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data})
-			}
-			if err != nil {
-				reset <- header.Height - 100
-			}
-		}
+		s.syncHeaderLoop(ch, reset)
 	} else {
-		headers := [][]byte{}
-		commit := false
-		duration := time.Duration(s.sync.Timeout) * time.Second
-		var height uint64
-	COMMIT:
-		for {
-			select {
-			case header, ok := <-ch:
-				if ok {
-					height = header.Height
-					headers = append(headers, header.Data)
-					commit = len(headers) >= s.sync.Batch
-				} else {
-					commit = len(headers) > 0
-					break COMMIT
-				}
-			case <-time.After(duration):
-				commit = len(headers) > 0
-			}
-			if commit {
-				commit = false
-				// NOTE err reponse here will revert header sync with delta -100
-				err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers)
-				if err != nil {
-					reset <- height - 100 - uint64(len(headers))
-				}
-				headers = [][]byte{}
-			}
-		}
-		if len(headers) > 0 {
-			s.SubmitHeaders(s.sync.ChainId, headers)
-		}
 	}
 	logs.Info("Header sync exiting loop now")
 }
