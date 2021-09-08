@@ -230,15 +230,16 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 
 	if c.HeaderSync != nil {
+		c.HeaderSync.ListenerConfig = c.FillListener(c.HeaderSync.ListenerConfig)
 		c.HeaderSync.ChainId = chain
 		if c.HeaderSync.Bus == nil {
 			c.HeaderSync.Bus = bus
 		}
 		c.HeaderSync.Poly = poly.PolySubmitterConfig.Fill(c.HeaderSync.Poly)
-		c.HeaderSync.ListenerConfig = c.FillListener(c.HeaderSync.ListenerConfig)
 	}
 
 	if c.SrcTxSync != nil {
+		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig)
 		c.SrcTxSync.ChainId = chain
 		if c.SrcTxSync.Bus == nil {
 			c.SrcTxSync.Bus = bus
@@ -247,19 +248,19 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 
 	if c.SrcTxCommit != nil {
+		c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig)
 		c.SrcTxCommit.ChainId = chain
 		if c.SrcTxCommit.Bus == nil {
 			c.SrcTxCommit.Bus = bus
 		}
 		c.SrcTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxCommit.Poly)
-		c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig)
 	}
 
 	if c.PolyTxCommit != nil {
+		c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
 		c.SrcTxCommit.ChainId = chain
 		c.PolyTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.PolyTxCommit.Poly)
 	}
-	c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
 	return
 }
 
