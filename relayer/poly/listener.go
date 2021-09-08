@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -31,13 +32,13 @@ type Listener struct {
 	config *config.ListenerConfig
 }
 
-func (l *Listener) Init(config *config.ListenerConfig) (err error) {
+func (l *Listener) Init(config *config.ListenerConfig, sdk *poly.SDK) (err error) {
 	l.config = config
-	sdk, err := poly.NewSDK(base.POLY, config.Nodes, time.Minute, 1)
-	if err != nil {
-		return err
+	if sdk != nil {
+		l.sdk = sdk
+	} else {
+		l.sdk = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
 	}
-	l.sdk = sdk
 	return
 }
 
@@ -69,4 +70,32 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	return
+}
+
+func (l *Listener) ChainId() uint64 {
+	return base.POLY
+}
+
+func (l *Listener) Compose(tx *msg.Tx) (err error) {
+	return
+}
+
+func (l *Listener) Defer() int {
+	return 1
+}
+
+func (l *Listener) Header(uint64) (header []byte, hash []byte, err error) {
+	return
+}
+
+func (l *Listener) ListenCheck() time.Duration {
+	duration := time.Second
+	if l.config.ListenCheck > 0 {
+		duration = time.Duration(l.config.ListenCheck) * time.Second
+	}
+	return duration
+}
+
+func (l *Listener) Nodes() chains.Nodes {
+	return l.sdk.ChainSDK
 }

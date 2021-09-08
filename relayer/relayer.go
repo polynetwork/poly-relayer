@@ -36,6 +36,7 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/o3"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
+	po "github.com/polynetwork/poly-relayer/relayer/poly"
 )
 
 type IChainListener interface {
@@ -85,6 +86,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(neo.Listener)
 	case base.ONT:
 		listener = new(ont.Listener)
+	case base.POLY:
+		listener = new(po.Listener)
 	default:
 	}
 	return
@@ -93,6 +96,10 @@ func GetListener(chain uint64) (listener IChainListener) {
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
 	case base.ETH:
+		submitter = new(eth.Submitter)
+	case base.BSC:
+		submitter = new(eth.Submitter)
+	case base.HECO:
 		submitter = new(eth.Submitter)
 	default:
 	}
