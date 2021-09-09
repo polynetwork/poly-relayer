@@ -47,37 +47,37 @@ type Tx struct {
 	TxType   TxType
 	Attempts int
 
-	TxId        string
+	TxId        string                `json:",omitempty"`
 	MerkleValue *common.ToMerkleValue `json:"-"`
 	Param       *common.MakeTxParam   `json:"-"`
 
-	SrcHash        string
-	SrcHeight      uint64
-	SrcChainId     uint64
+	SrcHash        string `json:",omitempty"`
+	SrcHeight      uint64 `json:",omitempty"`
+	SrcChainId     uint64 `json:",omitempty"`
 	SrcProof       []byte `json:"-"`
 	SrcEvent       []byte `json:"-"`
 	SrcProofHeight uint64 `json:"-"`
-	SrcParam       string
+	SrcParam       string `json:",omitempty"`
 
-	PolyHash     string
-	PolyHeight   uint32
-	PolyKey      string
+	PolyHash     string        `json:",omitempty"`
+	PolyHeight   uint32        `json:",omitempty"`
+	PolyKey      string        `json:",omitempty"`
 	PolyHeader   *types.Header `json:"-"`
 	AnchorHeader *types.Header `json:"-"`
-	AnchorProof  string        `json:"omitempty"`
+	AnchorProof  string        `json:",omitempty"`
 	AuditPath    []byte        `json:"-"`
 
-	DstHash                 string
-	DstHeight               uint64
-	DstChainId              uint64
-	DstSigs                 []byte `json:"-"`
-	DstGasLimit             uint64
-	DstGasPrice             string
-	DstGasPriceX            string
+	DstHash                 string            `json:",omitempty"`
+	DstHeight               uint64            `json:",omitempty"`
+	DstChainId              uint64            `json:",omitempty"`
+	DstSigs                 []byte            `json:"-"`
+	DstGasLimit             uint64            `json:",omitempty"`
+	DstGasPrice             string            `json:",omitempty"`
+	DstGasPriceX            string            `json:",omitempty"`
 	DstSender               *accounts.Account `json:"-"`
-	DstPolyEpochStartHeight uint32
-	DstPolyKeepers          []byte `json:"-"`
-	DstData                 []byte `json:"-"`
+	DstPolyEpochStartHeight uint32            `json:",omitempty"`
+	DstPolyKeepers          []byte            `json:"-"`
+	DstData                 []byte            `json:"-"`
 }
 
 func (tx *Tx) Type() TxType {

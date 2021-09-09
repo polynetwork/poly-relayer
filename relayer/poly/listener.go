@@ -20,6 +20,7 @@ package poly
 import (
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/poly"
@@ -52,11 +53,22 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		for _, notify := range event.Notify {
 			if notify.ContractAddress == poly.CCM_ADDRESS {
 				states := notify.States.([]interface{})
+				if len(states) < 6 {
+					continue
+				}
 				method, _ := states[0].(string)
 				if method != "makeProof" {
 					continue
 				}
+
+				dstChain := uint64(states[2].(float64))
+				if dstChain == 0 {
+					logs.Error("Invalid dst chain id in poly tx %s", event.TxHash)
+					continue
+				}
+
 				tx := new(msg.Tx)
+				tx.DstChainId = dstChain
 				tx.PolyKey = states[5].(string)
 				tx.PolyHeight = uint32(height)
 				tx.PolyHash = event.TxHash
