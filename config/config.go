@@ -281,8 +281,11 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 
 	if c.PolyTxCommit != nil {
 		c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
-		c.SrcTxCommit.ChainId = chain
+		c.PolyTxCommit.ChainId = chain
 		c.PolyTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.PolyTxCommit.Poly)
+		if c.PolyTxCommit.Bus == nil {
+			c.PolyTxCommit.Bus = bus
+		}
 	}
 	return
 }
