@@ -388,7 +388,11 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	s.compose = composer
 	s.Context = ctx
 	s.wg = wg
+	if s.config.Procs == 0 {
+		s.config.Procs = 1
+	}
 	for i := 0; i < s.config.Procs; i++ {
+		logs.Info("Starting poly submitter worker(%d/%d) for chain %s", s.name, i, s.config.Procs)
 		go s.run(bus)
 	}
 	return nil

@@ -216,7 +216,12 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, compose msg.PolyComposer) error {
 	s.Context = ctx
 	s.wg = wg
-	for _, a := range s.wallet.Accounts() {
+	accounts := s.wallet.Accounts()
+	if len(accounts) == 0 {
+		logs.Warn("No account available for submitter workers of chain %s", s.name)
+	}
+	for i, a := range accounts {
+		logs.Info("Starting submitter worker(%d/%d) with account %s for chain %s", i, len(accounts), a, s.name)
 		go s.run(a, bus, compose)
 	}
 	return nil
