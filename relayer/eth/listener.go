@@ -101,7 +101,7 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 		return
 	}
 	if txHeight >= height {
-		err = fmt.Errorf("%w Proof not ready", msg.ERR_PROOF_UNAVAILABLE)
+		err = fmt.Errorf("%w Proof not ready tx height %v proof height %v", msg.ERR_PROOF_UNAVAILABLE, txHeight, height)
 		return
 	}
 	ethProof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
