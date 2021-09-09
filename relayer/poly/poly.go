@@ -163,7 +163,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		s.signer,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to import tx to poly, %v", err)
+		return fmt.Errorf("Failed to import tx to poly, %v tx %+v", err, *tx)
 	}
 	tx.PolyHash = t.ToHexString()
 	return nil
