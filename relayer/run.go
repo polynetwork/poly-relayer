@@ -19,6 +19,7 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -99,7 +100,8 @@ func (s *Server) parseHandler(conf interface{}) (handler Handler) {
 		log.Error("Unknown config type", "conf", conf)
 	}
 	if handler != nil {
-		log.Info("Creating handler", "type", reflect.TypeOf(handler), "config", util.Verbose(conf))
+		log.Info("Creating handler", "type", reflect.TypeOf(handler))
+		fmt.Println(util.Verbose(conf))
 	}
 	return
 }
