@@ -497,3 +497,7 @@ func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 	}
 	logs.Info("Header sync exiting loop now")
 }
+
+func (s *Submitter) Poly() *poly.SDK {
+	return s.sdk
+}

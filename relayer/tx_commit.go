@@ -104,7 +104,7 @@ func (h *SrcTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err 
 	}
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
-	err = h.listener.Init(h.config.ListenerConfig, nil)
+	err = h.listener.Init(h.config.ListenerConfig, h.submitter.Poly())
 	return
 }
 

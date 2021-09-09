@@ -51,7 +51,6 @@ func NewSrcTxSyncHandler(config *config.SrcTxSyncConfig) *SrcTxSyncHandler {
 func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
-
 	err = h.listener.Init(h.config.ListenerConfig, nil)
 	if err != nil {
 		return

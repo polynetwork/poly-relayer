@@ -59,9 +59,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	l.ccm = common.HexToAddress(config.CCMContract)
 	l.ccd = common.HexToAddress(config.CCDContract)
 	l.poly = poly
-	if poly == nil {
-		return fmt.Errorf("Poly sdk instance should be provided for the listener of %s", l.name)
-	}
 	// Common
 	l.GetProofHeight = l.getProofHeight
 	l.GetProof = l.getProof
