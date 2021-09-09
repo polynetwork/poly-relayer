@@ -392,7 +392,7 @@ func (s *Submitter) run(bus bus.TxBus) error {
 		logs.Info("Processing src tx %s direction %d -> %d", tx.SrcHash, tx.SrcChainId, tx.DstChainId)
 		err = s.submit(tx)
 		if err != nil {
-			logs.Error("%s Process poly tx error %v", l.name, err)
+			logs.Error("%s Process poly tx error %v", s.name, err)
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
 			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
