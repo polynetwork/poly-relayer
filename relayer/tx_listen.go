@@ -66,6 +66,11 @@ func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 }
 
 func (h *SrcTxSyncHandler) Start() (err error) {
+	h.height, err = h.state.GetHeight(context.Background())
+	if err != nil {
+		return
+	}
+
 	go h.start()
 	return
 }
@@ -87,7 +92,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
 		}
-		logs.Info("Scanning txs in block %d of chain %s", h.height, h.config.ChainId)
+		logs.Info("Scanning txs in block %d of chain %d", h.height, h.config.ChainId)
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
@@ -155,6 +160,11 @@ func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 }
 
 func (h *PolyTxSyncHandler) Start() (err error) {
+	h.height, err = h.state.GetHeight(context.Background())
+	if err != nil {
+		return
+	}
+
 	go h.start()
 	return
 }
@@ -176,7 +186,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
 		}
-		logs.Info("Scanning poly txs in block %d of chain %s", h.height)
+		logs.Info("Scanning poly txs in block %d of chain %d", h.height, h.config.ChainId)
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
