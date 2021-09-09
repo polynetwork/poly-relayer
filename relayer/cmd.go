@@ -52,16 +52,16 @@ func Status(ctx *cli.Context) (err error) {
 	for _, chain := range base.CHAINS {
 		fmt.Printf("Status %s:\n", base.GetChainName(chain))
 		h, err := getHeight(chain, bus.KEY_HEIGHT_HEADER)
-		if err == nil {
+		if err != nil {
 			fmt.Printf("  Check header sync height error %v\n", err)
 		} else {
-			fmt.Printf("  Header sync Height %d", h)
+			fmt.Printf("  Header sync Height %d\n", h)
 		}
 		h, err = getHeight(chain, bus.KEY_HEIGHT_TX)
-		if err == nil {
+		if err != nil {
 			fmt.Printf("  Check tx sync height error %v\n", err)
 		} else {
-			fmt.Printf("  Tx sync Height %d", h)
+			fmt.Printf("  Tx sync Height %d\n", h)
 		}
 	}
 	return nil
