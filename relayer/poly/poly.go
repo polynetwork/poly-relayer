@@ -258,9 +258,9 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 		return err
 	}
 
-	if tx.MerkleValue.MakeTxParam == nil || config.CONFIG.AllowMethod(tx.MerkleValue.MakeTxParam.Method) {
+	if tx.MerkleValue.MakeTxParam == nil || !config.CONFIG.AllowMethod(tx.MerkleValue.MakeTxParam.Method) {
 		method := "missing param"
-		if tx.Param != nil {
+		if tx.MerkleValue.MakeTxParam != nil {
 			method = tx.MerkleValue.MakeTxParam.Method
 		}
 		return fmt.Errorf("%w Invalid poly tx, src chain(%v) tx(%s) method(%s)", msg.ERR_INVALID_TX, tx.SrcChainId, tx.PolyHash, method)
