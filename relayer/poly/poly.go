@@ -100,7 +100,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 				return nil
 			}
 			msg := err.Error()
-			if strings.Contains(msg, "parent header not exist") || strings.Contains(msg, "missing required field") {
+			if strings.Contains(msg, "parent header not exist") || strings.Contains(msg, "missing required field") || strings.Contains(msg, "parent block failed") {
 				//NOTE: reset header height back here
 				logs.Error("Possible header fork for chain %d, will rollback some blocks, err %v", chainId, err)
 				return err
