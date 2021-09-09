@@ -186,6 +186,7 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 		case <-s.Done():
 			logs.Info("%s submitter is exiting now", s.name)
 			return nil
+		default:
 		}
 		tx, err := bus.Pop(context.Background())
 		if err != nil {

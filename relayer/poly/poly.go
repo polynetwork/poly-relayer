@@ -378,6 +378,7 @@ func (s *Submitter) run(bus bus.TxBus) error {
 		case <-s.Done():
 			logs.Info("%s submitter is exiting now", s.name)
 			return nil
+		default:
 		}
 		tx, err := bus.Pop(context.Background())
 		if err != nil {
