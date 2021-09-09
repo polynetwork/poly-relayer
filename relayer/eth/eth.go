@@ -19,6 +19,7 @@ import (
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -213,7 +214,7 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
-			logs.Error("%s Process poly tx error %v", err)
+			logs.Error("%s Process poly tx error %v tx: %s", s.name, err, util.Verbose(tx))
 			if errors.Is(err, msg.ERR_INVALID_TX) {
 				logs.Error("Skipped invalid poly tx %s", tx.PolyHash)
 				continue

@@ -31,6 +31,7 @@ import (
 const (
 	SET_HEADER_HEIGHT = "setheaderblock"
 	SET_TX_HEIGHT     = "settxblock"
+	RELAY_POLY_TX     = "submit"
 	STATUS            = "status"
 )
 
@@ -40,6 +41,17 @@ func init() {
 	_Handlers[SET_HEADER_HEIGHT] = SetHeaderSyncHeight
 	_Handlers[SET_TX_HEIGHT] = SetTxSyncHeight
 	_Handlers[STATUS] = Status
+	_Handlers[RELAY_POLY_TX] = RelayPolyTx
+}
+
+func RelayPolyTx(ctx *cli.Context) (err error) {
+	// height := uint64(ctx.Int("height"))
+	hash := ctx.String("tx")
+	if len(hash) == 0 {
+		return fmt.Errorf("Invalid tx hash")
+	}
+
+	return
 }
 
 func Status(ctx *cli.Context) (err error) {

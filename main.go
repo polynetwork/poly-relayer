@@ -68,6 +68,21 @@ func main() {
 				Usage:  "Check side chain header/tx sync height",
 				Action: command(relayer.STATUS),
 			},
+			&cli.Command{
+				Name:   relayer.RELAY_POLY_TX,
+				Usage:  "Submit poly tx to dest chain",
+				Action: command(relayer.RELAY_POLY_TX),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target block height",
+					},
+					&cli.StringFlag{
+						Name:  "tx",
+						Usage: "target tx hash",
+					},
+				},
+			},
 		},
 	}
 
