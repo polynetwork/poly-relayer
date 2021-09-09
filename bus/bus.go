@@ -64,6 +64,7 @@ type TxBus interface {
 	Push(context.Context, *msg.Tx) error
 	PushToChain(context.Context, *msg.Tx) error
 	PushBack(context.Context, *msg.Tx) error
+	Topic() string
 }
 
 type RedisTxBus struct {
@@ -77,6 +78,10 @@ func NewRedisTxBus(db *redis.Client, chainId uint64, txType msg.TxType) *RedisTx
 		Key: &TxQueueKey{ChainId: chainId, TxType: txType},
 	}
 	return bus
+}
+
+func (b *RedisTxBus) Topic() (topic string) {
+	return b.Key.Key()
 }
 
 func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {

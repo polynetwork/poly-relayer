@@ -96,7 +96,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
-				logs.Info("Found src tx %s on chain %s", tx.SrcHash, h.config.ChainId)
+				logs.Info("Found src tx %s on chain %d", tx.SrcHash, h.config.ChainId)
 				retry(func() error { return h.bus.Push(context.Background(), tx) }, time.Second)
 			}
 			h.state.HeightMark(h.height)

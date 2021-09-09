@@ -63,7 +63,7 @@ func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	s.config = config
 	s.signer, err = wallet.NewPolySigner(config.Wallet)
 	s.name = base.GetChainName(config.ChainId)
-	s.sdk, err = poly.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	s.sdk, err = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
 	return
 }
 
@@ -143,7 +143,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	}
 
 	if !config.CONFIG.AllowMethod(tx.Param.Method) {
-		logs.Error("Invalid poly chain(%v) tx(%s) method(%s)", s.config.ChainId, tx.PolyHash, tx.Param.Method)
+		logs.Error("Invalid poly tx(%s) src chain(%s) method(%s)", tx.PolyHash, s.name, tx.Param.Method)
 		return nil
 	}
 
@@ -411,7 +411,7 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 		s.config.Procs = 1
 	}
 	for i := 0; i < s.config.Procs; i++ {
-		logs.Info("Starting poly submitter worker(%d/%d) for chain %s", i, s.config.Procs, s.name)
+		logs.Info("Starting poly submitter worker(%d/%d) for chain %s topic: %s", i, s.config.Procs, s.name, bus.Topic())
 		go s.run(bus)
 	}
 	return nil
