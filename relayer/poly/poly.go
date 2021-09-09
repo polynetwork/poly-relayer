@@ -143,7 +143,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	}
 
 	if !config.CONFIG.AllowMethod(tx.Param.Method) {
-		logs.Error("Invalid poly tx(%s) src chain(%s) method(%s)", tx.PolyHash, s.name, tx.Param.Method)
+		logs.Error("Invalid src tx(%s) src chain(%s) method(%s)", tx.SrcHash, s.name, tx.Param.Method)
 		return nil
 	}
 
