@@ -392,7 +392,7 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 		s.config.Procs = 1
 	}
 	for i := 0; i < s.config.Procs; i++ {
-		logs.Info("Starting poly submitter worker(%d/%d) for chain %s", s.name, i, s.config.Procs)
+		logs.Info("Starting poly submitter worker(%d/%d) for chain %s", i, s.config.Procs, s.name)
 		go s.run(bus)
 	}
 	return nil

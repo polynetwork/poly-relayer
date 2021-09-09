@@ -72,6 +72,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 				tx.PolyKey = states[5].(string)
 				tx.PolyHeight = uint32(height)
 				tx.PolyHash = event.TxHash
+				tx.TxType = msg.POLY
 				txs = append(txs, tx)
 			}
 		}
