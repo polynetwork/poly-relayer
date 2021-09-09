@@ -81,20 +81,39 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
-func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte) error {
+func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) (err error) {
+	var ok bool
 	for {
-		_, err := s.SubmitHeaders(chainId, headers)
+		if header != nil {
+			ok, err = s.CheckHeaderExistence(header)
+			if ok {
+				return nil
+			}
+			if err != nil {
+				logs.Error("Failed to check header existence for chain %d height %d", chainId, header.Height)
+			}
+		}
+
 		if err == nil {
-			return nil
+			_, err = s.SubmitHeaders(chainId, headers)
+			if err == nil {
+				return nil
+			}
+			msg := err.Error()
+			if strings.Contains(msg, "parent header not exist") || strings.Contains(msg, "missing required field") {
+				//NOTE: reset header height back here
+				logs.Error("Possible header fork for chain %d, will rollback some blocks, err %v", chainId, err)
+				return err
+			}
+			logs.Error("Failed to submit side chain(%d) header to poly, err %v", chainId, err)
 		}
-		msg := err.Error()
-		if strings.Contains(msg, "parent header not exist") || strings.Contains(msg, "missing required field") {
-			//NOTE: reset header height back here
-			logs.Error("Possible header fork for chain %d, will rollback some blocks, err %v", chainId, err)
-			return err
+		select {
+		case <-s.Done():
+			logs.Warn("Header submitter exiting with headers not submitted for chain %d", chainId)
+			return
+		default:
+			time.Sleep(time.Second)
 		}
-		logs.Error("Failed to submit side chain(%d) header to poly, err %v", chainId, err)
-		time.Sleep(time.Second)
 	}
 }
 
@@ -426,7 +445,7 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 	return s.sdk.Node().GetSideChainHeight(chainId)
 }
 
-func (s *Submitter) CheckHeaderExistence(header msg.Header) (ok bool, err error) {
+func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
 	hash, err := s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
 	if err != nil {
 		return
@@ -445,13 +464,7 @@ func (s *Submitter) syncHeaderLoop(ch <-chan msg.Header, reset chan<- uint64) {
 				return
 			}
 			// NOTE err reponse here will revert header sync with delta -100
-			ok, err := s.CheckHeaderExistence(header)
-			if ok {
-				continue
-			}
-			if err == nil {
-				err = s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data})
-			}
+			err := s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data}, &header)
 			if err != nil {
 				reset <- header.Height - 100
 			}
@@ -463,7 +476,11 @@ func (s *Submitter) syncHeaderBatchLoop(ch <-chan msg.Header, reset chan<- uint6
 	headers := [][]byte{}
 	commit := false
 	duration := time.Duration(s.sync.Timeout) * time.Second
-	var height uint64
+	var (
+		height uint64
+		hdr    *msg.Header
+	)
+
 COMMIT:
 	for {
 		select {
@@ -471,6 +488,7 @@ COMMIT:
 			break COMMIT
 		case header, ok := <-ch:
 			if ok {
+				hdr = &header
 				height = header.Height
 				headers = append(headers, header.Data)
 				commit = len(headers) >= s.sync.Batch
@@ -484,7 +502,7 @@ COMMIT:
 		if commit {
 			commit = false
 			// NOTE err reponse here will revert header sync with delta -100
-			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers)
+			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers, hdr)
 			if err != nil {
 				reset <- height - 100 - uint64(len(headers))
 			}
@@ -492,7 +510,7 @@ COMMIT:
 		}
 	}
 	if len(headers) > 0 {
-		s.SubmitHeaders(s.sync.ChainId, headers)
+		s.SubmitHeadersWithLoop(s.sync.ChainId, headers, hdr)
 	}
 }
 
