@@ -63,6 +63,11 @@ func main() {
 					},
 				},
 			},
+			&cli.Command{
+				Name:   relayer.STATUS,
+				Usage:  "Check side chain header/tx sync height",
+				Action: command(relayer.STATUS),
+			},
 		},
 	}
 

@@ -23,6 +23,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 )
@@ -30,6 +31,7 @@ import (
 const (
 	SET_HEADER_HEIGHT = "setheaderblock"
 	SET_TX_HEIGHT     = "settxblock"
+	STATUS            = "status"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -37,6 +39,32 @@ var _Handlers = map[string]func(*cli.Context) error{}
 func init() {
 	_Handlers[SET_HEADER_HEIGHT] = SetHeaderSyncHeight
 	_Handlers[SET_TX_HEIGHT] = SetTxSyncHeight
+	_Handlers[STATUS] = Status
+}
+
+func Status(ctx *cli.Context) (err error) {
+	redis := bus.New(config.CONFIG.Bus.Redis)
+	getHeight := func(id uint64, key bus.ChainHeightType) (uint64, error) {
+		return bus.NewRedisChainStore(
+			bus.ChainHeightKey{ChainId: id, Type: key}, redis, 0,
+		).GetHeight(context.Background())
+	}
+	for _, chain := range base.CHAINS {
+		fmt.Printf("Status %s:\n", base.GetChainName(chain))
+		h, err := getHeight(chain, bus.KEY_HEIGHT_HEADER)
+		if err == nil {
+			fmt.Printf("  Check header sync height error %v\n", err)
+		} else {
+			fmt.Printf("  Header sync Height %d", h)
+		}
+		h, err = getHeight(chain, bus.KEY_HEIGHT_TX)
+		if err == nil {
+			fmt.Printf("  Check tx sync height error %v\n", err)
+		} else {
+			fmt.Printf("  Tx sync Height %d", h)
+		}
+	}
+	return nil
 }
 
 func SetHeaderSyncHeight(ctx *cli.Context) (err error) {
