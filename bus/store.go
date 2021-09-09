@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 )
 
 const (
@@ -115,7 +115,7 @@ func (l *Lock) start() {
 		case <-timer.C:
 			_, err := l.db.Set(context.Background(), l.key.Key(), time.Now(), 60*time.Second).Result()
 			if err != nil {
-				logs.Error("Failed to update redis status lock for %s", l.key.Key())
+				log.Error("Failed to update redis status lock", "key", l.key.Key())
 			}
 		}
 	}
@@ -124,7 +124,7 @@ func (l *Lock) start() {
 func (l *Lock) stop() {
 	_, err := l.db.Del(context.Background(), l.key.Key()).Result()
 	if err != nil {
-		logs.Error("Failed to remove redis status lock for %s", l.key.Key())
+		log.Error("Failed to remove redis status lock", "key", l.key.Key())
 	}
 	l.wg.Done()
 }

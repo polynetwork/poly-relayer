@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,6 +18,7 @@ import (
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -139,7 +139,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	}
 
 	if exist {
-		logs.Info("%s processPolyTx dst tx already relayed, tx id occupied %s", s.name, tx.TxId)
+		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "txid", tx.TxId)
 		return nil
 	}
 
@@ -197,32 +197,32 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 	for {
 		select {
 		case <-s.Done():
-			logs.Info("%s submitter is exiting now", s.name)
+			log.Info("Submitter is exiting now", "chain", s.name)
 			return nil
 		default:
 		}
 		tx, err := bus.Pop(context.Background())
 		if err != nil {
-			logs.Error("Bus pop error %v", err)
+			log.Error("Bus pop error", "err", err)
 			continue
 		}
 		if tx == nil {
 			time.Sleep(time.Second)
 			continue
 		}
-		logs.Info("Processing poly tx %s with account %s", tx.PolyHash, account)
+		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
-			logs.Error("%s Process poly tx error %v tx: %s", s.name, err, util.Verbose(tx))
+			log.Error("Process poly tx error", "chain", s.name, "err", err, "tx", util.Verbose(tx))
 			if errors.Is(err, msg.ERR_INVALID_TX) {
-				logs.Error("Skipped invalid poly tx %s", tx.PolyHash)
+				log.Error("Skipped invalid poly tx", "poly_hash", tx.PolyHash)
 				continue
 			}
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
 		} else {
-			logs.Info("Submitted poly tx %s to chain %s with hash %s", tx.PolyHash, s.name, tx.DstHash)
+			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
 		}
 	}
 }
@@ -232,10 +232,10 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	s.wg = wg
 	accounts := s.wallet.Accounts()
 	if len(accounts) == 0 {
-		logs.Warn("No account available for submitter workers of chain %s", s.name)
+		log.Warn("No account available for submitter workers", "chain", s.name)
 	}
 	for i, a := range accounts {
-		logs.Info("Starting submitter worker(%d/%d) with account %s for chain %s", i, len(accounts), a, s.name)
+		log.Info("Starting submitter worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
 		go s.run(a, bus, compose)
 	}
 	return nil

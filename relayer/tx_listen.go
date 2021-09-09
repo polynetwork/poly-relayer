@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -83,7 +83,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 	for {
 		select {
 		case <-h.Done():
-			logs.Info("Src tx sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
+			log.Info("Src tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
 			return nil
 		default:
 		}
@@ -92,17 +92,17 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
 		}
-		logs.Info("Scanning txs in block %d of chain %d", h.height, h.config.ChainId)
+		log.Info("Scanning txs in block", "height", h.height, "chain", h.config.ChainId)
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
-				logs.Info("Found src tx %s on chain %d", tx.SrcHash, h.config.ChainId)
+				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId)
 				retry(func() error { return h.bus.Push(context.Background(), tx) }, time.Second)
 			}
 			h.state.HeightMark(h.height)
 			continue
 		} else {
-			logs.Error("Fetch chain(%v) block %v  header error %v", h.config.ChainId, h.height, err)
+			log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
 		}
 		h.height--
 	}
@@ -177,7 +177,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 	for {
 		select {
 		case <-h.Done():
-			logs.Info("Src tx sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
+			log.Info("Src tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
 			return nil
 		default:
 		}
@@ -186,11 +186,11 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
 		}
-		logs.Info("Scanning poly txs in block %d of chain %d", h.height, h.config.ChainId)
+		log.Info("Scanning poly txs in block", "height", h.height, "chain", h.config.ChainId)
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
-				logs.Info("Found poly tx %s ", tx.PolyHash)
+				log.Info("Found poly tx", "hash", tx.PolyHash)
 				retry(func() error {
 					return h.bus.PushToChain(context.Background(), tx)
 				}, time.Second)
@@ -198,7 +198,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 			h.state.HeightMark(h.height)
 			continue
 		} else {
-			logs.Error("Fetch chain(%v) block %v  header error %v", h.config.ChainId, h.height, err)
+			log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
 		}
 		h.height--
 	}

@@ -13,7 +13,6 @@ require (
 	github.com/polynetwork/bridge-common v0.0.9
 	github.com/polynetwork/poly v1.3.1
 	github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4
-	github.com/urfave/cli v1.22.4
 	github.com/urfave/cli/v2 v2.3.0
 )
 

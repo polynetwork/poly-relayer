@@ -19,12 +19,12 @@ package relayer
 
 import (
 	"context"
-	"encoding/json"
 	"reflect"
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
+	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
 )
 
@@ -53,7 +53,7 @@ func (s *Server) Start() (err error) {
 
 	// Initialize
 	for i, handler := range s.roles {
-		logs.Info("Initializing role(%d/%d) %v chain %d", i, len(s.roles), reflect.TypeOf(handler), handler.Chain())
+		log.Info("Initializing role", "index", i, "total", len(s.roles), "type", reflect.TypeOf(handler), "chain", handler.Chain())
 		err = handler.Init(s.ctx, s.wg)
 		if err != nil {
 			return
@@ -62,7 +62,7 @@ func (s *Server) Start() (err error) {
 
 	// Start the roles
 	for i, handler := range s.roles {
-		logs.Info("Starting role(%d/%d) %v chain %d", i, len(s.roles), reflect.TypeOf(handler), handler.Chain())
+		log.Info("Starting role", "index", i, "total", len(s.roles), "type", reflect.TypeOf(handler), "chain", handler.Chain())
 		err = handler.Start()
 		if err != nil {
 			return
@@ -96,11 +96,10 @@ func (s *Server) parseHandler(conf interface{}) (handler Handler) {
 	case *config.PolyTxCommitConfig:
 		handler = NewPolyTxCommitHandler(c)
 	default:
-		logs.Error("Unknown config type %+v", conf)
+		log.Error("Unknown config type", "conf", conf)
 	}
 	if handler != nil {
-		c, _ := json.MarshalIndent(conf, "", "  ")
-		logs.Info("Creating handler: %s with config:\n%s", reflect.TypeOf(handler), string(c))
+		log.Info("Creating handler", "type", reflect.TypeOf(handler), "config", util.Verbose(conf))
 	}
 	return
 }

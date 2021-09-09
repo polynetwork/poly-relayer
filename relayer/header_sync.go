@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -104,12 +104,12 @@ LOOP:
 		select {
 		case height := <-feedback:
 			if height != 0 && height < h.height-uint64(2*h.config.Batch) {
-				logs.Info("Resetting side chain(%d) header sync with feedback to height %d from %d", h.config.ChainId, height, h.height)
+				log.Info("Resetting side header sync with feedback", "chain", h.config.ChainId, "to", height, "from", h.height)
 				h.height = height - 1
 			}
 		case reset := <-h.reset:
 			if reset < h.height && reset != 0 {
-				logs.Info("Resetting side chain(%d) header sync to height %d", h.config.ChainId, reset)
+				log.Info("Resetting side chain header sync", "chain", h.config.ChainId, "to", reset)
 				h.height = reset - 1
 			}
 		case <-h.Done():
@@ -133,11 +133,11 @@ LOOP:
 			h.state.HeightMark(h.height - uint64(len(ch)) - 1)
 			continue
 		} else {
-			logs.Error("Fetch chain(%v) block %v  header error %v", h.config.ChainId, h.height, err)
+			log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
 		}
 		h.height--
 	}
-	logs.Info("Header sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
+	log.Info("Header sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
 	close(ch)
 }
 

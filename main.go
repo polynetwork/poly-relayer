@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/metrics"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/relayer"
@@ -28,6 +27,7 @@ func main() {
 				Usage: "configuration file",
 			},
 		},
+		Before: Init,
 		Commands: []*cli.Command{
 			&cli.Command{
 				Name:   relayer.SET_HEADER_HEIGHT,
@@ -88,19 +88,19 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Start error", err)
 	}
 }
 
 func start(c *cli.Context) error {
 	config, err := config.New(c.String("config"))
 	if err != nil {
-		logs.Error("Failed to parse config file %v", err)
+		log.Error("Failed to parse config file", "err", err)
 		os.Exit(2)
 	}
 	err = config.Init()
 	if err != nil {
-		logs.Error("Failed to initialize configuration %v", err)
+		log.Error("Failed to initialize configuration", "err", err)
 		os.Exit(2)
 	}
 
@@ -122,9 +122,9 @@ func start(c *cli.Context) error {
 		sc := make(chan os.Signal, 1)
 		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 		sig := <-sc
-		logs.Info("Poly relayer is exiting with received signal:(%s).", sig.String())
+		log.Info("Poly relayer is exiting with received signal", "signal", sig.String())
 	} else {
-		logs.Error("Failed to start relayer service %v", err)
+		log.Error("Failed to start relayer service", "err", err)
 		status = 2
 	}
 	cancel()
@@ -137,18 +137,23 @@ func command(method string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
 		config, err := config.New(c.String("config"))
 		if err != nil {
-			logs.Error("Failed to parse config file %v", err)
+			log.Error("Failed to parse config file", "err", err)
 			os.Exit(2)
 		}
 		err = config.Init()
 		if err != nil {
-			logs.Error("Failed to initialize configuration %v", err)
+			log.Error("Failed to initialize configuration", "err", err)
 			os.Exit(2)
 		}
 		err = relayer.HandleCommand(method, c)
 		if err != nil {
-			logs.Error("Command %s error %v", method, err)
+			log.Error("Failure", "command", method, "err", err)
 		}
 		return err
 	}
+}
+
+func Init(ctx *cli.Context) (err error) {
+	log.Init()
+	return
 }

@@ -28,7 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/keypair"
@@ -36,6 +35,7 @@ import (
 	vconf "github.com/ontio/ontology/consensus/vbft/config"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	sdk "github.com/polynetwork/poly-go-sdk"
@@ -83,6 +83,14 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 }
 
 func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) (err error) {
+	start := time.Now()
+	defer func() {
+		h := uint64(0)
+		if header != nil {
+			h = header.Height
+		}
+		log.Info("Submit headers to poly", "chain", chainId, "size", len(headers), "height", h, "elapse", time.Since(start), "err", err)
+	}()
 	var ok bool
 	for {
 		if header != nil {
@@ -91,7 +99,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 				return nil
 			}
 			if err != nil {
-				logs.Error("Failed to check header existence for chain %d height %d", chainId, header.Height)
+				log.Error("Failed to check header existence", "chain", chainId, "height", header.Height)
 			}
 		}
 
@@ -103,14 +111,14 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			msg := err.Error()
 			if strings.Contains(msg, "parent header not exist") || strings.Contains(msg, "missing required field") || strings.Contains(msg, "parent block failed") {
 				//NOTE: reset header height back here
-				logs.Error("Possible header fork for chain %d, will rollback some blocks, err %v", chainId, err)
+				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
 				return err
 			}
-			logs.Error("Failed to submit side chain(%d) header to poly, err %v", chainId, err)
+			log.Error("Failed to submit header to poly", "chain", chainId, "err", err)
 		}
 		select {
 		case <-s.Done():
-			logs.Warn("Header submitter exiting with headers not submitted for chain %d", chainId)
+			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
 			return
 		default:
 			time.Sleep(time.Second)
@@ -128,7 +136,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 	hash = tx.ToHexString()
 	_, err = s.sdk.Node().Confirm(hash, 0, 10)
 	if err == nil {
-		logs.Info("Submitted side chain(%d) header to poly, hash: %s", chainId, hash)
+		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
 	}
 	return
 }
@@ -144,13 +152,13 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	}
 
 	if !config.CONFIG.AllowMethod(tx.Param.Method) {
-		logs.Error("Invalid src tx(%s) src chain(%s) method(%s)", tx.SrcHash, s.name, tx.Param.Method)
+		log.Error("Invalid src tx method", "src_hash", tx.SrcHash, "chain", s.name, "method", tx.Param.Method)
 		return nil
 	}
 
 	data, _ := s.sdk.Node().GetDoneTx(s.config.ChainId, tx.Param.CrossChainID)
 	if len(data) != 0 {
-		logs.Error("Tx %s already imported", tx.SrcHash)
+		log.Error("Tx already imported", "src_hash", tx.SrcHash)
 		return nil
 	}
 
@@ -318,7 +326,7 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path [
 				if method == "makeProof" {
 					param, path, evt, err = s.GetProof(tx.PolyHeight, states[5].(string))
 					if err != nil {
-						logs.Error("GetPolyParams: param.Deserialization error %v", err)
+						log.Error("GetPolyParams: param.Deserialization error", "err", err)
 					} else {
 						return
 					}
@@ -377,30 +385,30 @@ func (s *Submitter) run(bus bus.TxBus) error {
 	for {
 		select {
 		case <-s.Done():
-			logs.Info("%s submitter is exiting now", s.name)
+			log.Info("Submitter is exiting now", "chain", s.name)
 			return nil
 		default:
 		}
 		tx, err := bus.Pop(context.Background())
 		if err != nil {
-			logs.Error("Bus pop error %v", err)
+			log.Error("Bus pop error", "err", err)
 			continue
 		}
 		if tx == nil {
 			time.Sleep(time.Second)
 			continue
 		}
-		logs.Info("Processing src tx %s direction %d -> %d", tx.SrcHash, tx.SrcChainId, tx.DstChainId)
+		log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
 		err = s.submit(tx)
 		if err != nil {
-			logs.Error("%s Process poly tx error %v", s.name, err)
+			log.Error("Process poly tx error", "chain", s.name, "err", err)
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
 			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
 				time.Sleep(time.Second)
 			}
 		} else {
-			logs.Info("Submitted src tx %s to poly %s", tx.SrcHash, tx.PolyHash)
+			log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
 		}
 	}
 }
@@ -413,7 +421,7 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 		s.config.Procs = 1
 	}
 	for i := 0; i < s.config.Procs; i++ {
-		logs.Info("Starting poly submitter worker(%d/%d) for chain %s topic: %s", i, s.config.Procs, s.name, bus.Topic())
+		log.Info("Starting poly submitter worker", "index", i, "procs", s.config.Procs, "chain", s.name, "topic", bus.Topic())
 		go s.run(bus)
 	}
 	return nil
@@ -522,7 +530,7 @@ func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 	} else {
 		s.syncHeaderBatchLoop(ch, reset)
 	}
-	logs.Info("Header sync exiting loop now")
+	log.Info("Header sync exiting loop now")
 }
 
 func (s *Submitter) Poly() *poly.SDK {

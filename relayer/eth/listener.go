@@ -25,7 +25,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -35,6 +34,7 @@ import (
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	pcom "github.com/polynetwork/poly/common"
@@ -139,7 +139,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
-	logs.Info("Fetching %s block %d header", l.name, height)
+	log.Info("Fetching block header", "chain", l.name, "height", height)
 	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
 	if err != nil {
 		err = fmt.Errorf("Fetch block header error %v", err)

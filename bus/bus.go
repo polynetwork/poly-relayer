@@ -21,9 +21,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
@@ -90,7 +90,7 @@ func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
 		return nil, fmt.Errorf("Failed to pop message %v", err)
 	}
 	if len(res) < 2 || res[1] == "" || res[1] == "nil" {
-		logs.Info("Empty queue %s", b.Key.Key())
+		log.Info("Empty queue", "key", b.Key.Key())
 		return nil, nil
 	}
 	tx := new(msg.Tx)

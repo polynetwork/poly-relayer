@@ -20,10 +20,10 @@ package poly
 import (
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
@@ -63,7 +63,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 
 				dstChain := uint64(states[2].(float64))
 				if dstChain == 0 {
-					logs.Error("Invalid dst chain id in poly tx %s", event.TxHash)
+					log.Error("Invalid dst chain id in poly tx", "hash", event.TxHash)
 					continue
 				}
 
