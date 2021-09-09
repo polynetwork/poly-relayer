@@ -36,6 +36,7 @@ import (
 	vconf "github.com/ontio/ontology/consensus/vbft/config"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	sdk "github.com/polynetwork/poly-go-sdk"
 	scom "github.com/polynetwork/poly-go-sdk/common"
@@ -138,8 +139,8 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	if err != nil {
 		return err
 	}
-	if tx.Param == nil {
-		return fmt.Errorf("%s submitter src tx %s param is missing", s.name, tx.SrcHash)
+	if tx.Param == nil || tx.SrcChainId == 0 {
+		return fmt.Errorf("%s submitter src tx %s param is missing or src chain id not specified", s.name, tx.SrcHash)
 	}
 
 	if !config.CONFIG.AllowMethod(tx.Param.Method) {
@@ -163,7 +164,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		s.signer,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to import tx to poly, %v tx %+v", err, *tx)
+		return fmt.Errorf("Failed to import tx to poly, %v tx %s", err, util.Verbose(tx))
 	}
 	tx.PolyHash = t.ToHexString()
 	return nil

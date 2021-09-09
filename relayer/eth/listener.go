@@ -183,6 +183,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			DstChainId: ev.ToChainId,
 			SrcHeight:  height,
 			SrcParam:   hex.EncodeToString(ev.Rawdata),
+			SrcChainId: l.config.ChainId,
 		}
 		txs = append(txs, tx)
 	}
