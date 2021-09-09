@@ -369,6 +369,7 @@ func (s *Submitter) run(bus bus.TxBus) error {
 			time.Sleep(time.Second)
 			continue
 		}
+		logs.Info("Processing src tx %s direction %d -> %d", tx.SrcHash, tx.SrcChainId, tx.DstChainId)
 		err = s.submit(tx)
 		if err != nil {
 			logs.Error("%s Process poly tx error %v", err)
@@ -377,6 +378,8 @@ func (s *Submitter) run(bus bus.TxBus) error {
 			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
 				time.Sleep(time.Second)
 			}
+		} else {
+			logs.Info("Submitted src tx %s to poly %s", tx.SrcHash, tx.PolyHash)
 		}
 	}
 }

@@ -87,9 +87,11 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
 		}
+		logs.Info("Scanning txs in block %d of chain %s", h.height, h.config.ChainId)
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
+				logs.Info("Found src tx %s on chain %s", tx.SrcHash, h.config.ChainId)
 				retry(func() error { return h.bus.Push(context.Background(), tx) }, time.Second)
 			}
 			h.state.HeightMark(h.height)
@@ -174,9 +176,11 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
 		}
+		logs.Info("Scanning poly txs in block %d of chain %s", h.height)
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
+				logs.Info("Found poly tx %s ", tx.PolyHash)
 				retry(func() error {
 					return h.bus.PushToChain(context.Background(), tx)
 				}, time.Second)

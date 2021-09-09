@@ -196,6 +196,7 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 			time.Sleep(time.Second)
 			continue
 		}
+		logs.Info("Processing poly tx %s with account %s", tx.PolyHash, account)
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
@@ -206,6 +207,8 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 			}
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
+		} else {
+			logs.Info("Submitted poly tx %s to chain %s with hash %s", tx.PolyHash, s.name, tx.DstHash)
 		}
 	}
 }
