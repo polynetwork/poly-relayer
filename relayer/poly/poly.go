@@ -162,13 +162,25 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		return nil
 	}
 
+	if tx.SrcStateRoot == nil {
+		tx.SrcStateRoot = []byte{}
+	}
+
+	var account []byte
+	switch tx.SrcChainId {
+	case base.NEO:
+		account = s.signer.Address[:]
+	default:
+		account = common.Hex2Bytes(s.signer.Address.ToHexString())
+	}
+
 	t, err := s.sdk.Node().Native.Ccm.ImportOuterTransfer(
 		tx.SrcChainId,
 		tx.SrcEvent,
 		uint32(tx.SrcProofHeight),
 		tx.SrcProof,
-		common.Hex2Bytes(s.signer.Address.ToHexString()),
-		[]byte{},
+		account,
+		tx.SrcStateRoot,
 		s.signer,
 	)
 	if err != nil {
@@ -456,7 +468,16 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 }
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
-	hash, err := s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
+	var hash []byte
+	if s.sync.ChainId == base.NEO {
+		hash, err = s.sdk.Node().GetSideChainHeaderIndex(s.sync.ChainId, header.Height)
+		if err != nil {
+			return
+		}
+		ok = len(hash) != 0
+		return
+	}
+	hash, err = s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
 	if err != nil {
 		return
 	}

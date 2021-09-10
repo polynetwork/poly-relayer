@@ -142,10 +142,15 @@ LOOP:
 }
 
 func (h *HeaderSyncHandler) Start() (err error) {
-	h.height, err = h.state.GetHeight(context.Background())
+	height, err := h.state.GetHeight(context.Background())
 	if err != nil {
 		return
 	}
+	h.height, err = h.listener.LastHeaderSync(height)
+	if err != nil {
+		return
+	}
+	log.Info("Header sync will start...", "height", h.height+1, "force", height, "chain", h.config.ChainId)
 	ch, err := h.submitter.StartSync(h.Context, h.wg, h.config, h.reset)
 	if err != nil {
 		return

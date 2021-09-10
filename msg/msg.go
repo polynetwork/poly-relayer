@@ -58,6 +58,7 @@ type Tx struct {
 	SrcEvent       []byte `json:"-"`
 	SrcProofHeight uint64 `json:"-"`
 	SrcParam       string `json:",omitempty"`
+	SrcStateRoot   []byte `json:"-"`
 
 	PolyHash     string        `json:",omitempty"`
 	PolyHeight   uint32        `json:",omitempty"`

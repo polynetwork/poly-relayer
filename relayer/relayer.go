@@ -46,6 +46,7 @@ type IChainListener interface {
 	ChainId() uint64
 	Nodes() chains.Nodes
 	Header(height uint64) (header []byte, hash []byte, err error)
+	LastHeaderSync(uint64) (uint64, error)
 	Scan(uint64) ([]*msg.Tx, error)
 	ScanTx(string) (*msg.Tx, error)
 	Compose(*msg.Tx) error

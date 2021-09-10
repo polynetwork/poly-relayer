@@ -18,6 +18,7 @@
 package neo
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"time"
@@ -25,11 +26,16 @@ import (
 	"github.com/joeqian10/neo-gogogo/block"
 	"github.com/joeqian10/neo-gogogo/helper"
 	"github.com/joeqian10/neo-gogogo/helper/io"
+	"github.com/joeqian10/neo-gogogo/mpt"
+
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/neo"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/util"
+	"github.com/polynetwork/poly/common"
+	scom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
+	hsneo "github.com/polynetwork/poly/native/service/header_sync/neo"
 
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -54,10 +60,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	l.ccm = util.LowerHex(config.CCMContract)
 	l.ccd = util.LowerHex(config.CCDContract)
 	l.poly = poly
-	if poly == nil {
-		return fmt.Errorf("Poly sdk instance should be provided for the listener of %s", l.name)
-	}
-
 	l.sdk, err = neo.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	return
 }
@@ -75,7 +77,83 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	return
 }
 
+func verifyFromNeoTx(proof []byte, crosschainMsg *hsneo.NeoCrossChainMsg) (*scom.MakeTxParam, error) {
+	crossStateProofRoot, err := helper.UInt256FromString(crosschainMsg.StateRoot.StateRoot)
+	if err != nil {
+		return nil, fmt.Errorf("verifyFromNeoTx, decode cross state proof root from string error: %s", err)
+	}
+
+	scriptHash, key, proofs, err := mpt.ResolveProof(proof)
+	if err != nil {
+		return nil, fmt.Errorf("VerifyNeoCrossChainProof, neo-gogogo mpt.ResolveProof error: %v", err)
+	}
+	value, err := mpt.VerifyProof(crossStateProofRoot.Bytes(), scriptHash, key, proofs)
+	if err != nil {
+		return nil, fmt.Errorf("VerifyNeoCrossChainProof, neo-gogogo mpt.VerifyProof error: %v", err)
+	}
+
+	source := common.NewZeroCopySource(value)
+	txParam := new(scom.MakeTxParam)
+	if err := txParam.Deserialization(source); err != nil {
+		return nil, fmt.Errorf("VerifyFromNeoTx, deserialize merkleValue error: %s", err)
+	}
+	return txParam, nil
+}
+
+func (l *Listener) ParseParam(tx *msg.Tx) (err error) {
+	crossChainMsg := new(hsneo.NeoCrossChainMsg)
+	err = crossChainMsg.Deserialization(common.NewZeroCopySource(tx.SrcStateRoot))
+	if err != nil {
+		err = fmt.Errorf("neo MakeDepositProposal, deserialize crossChainMsg error: %v", err)
+		return
+	}
+
+	param, err := verifyFromNeoTx(tx.SrcProof, crossChainMsg)
+	if err != nil {
+		err = fmt.Errorf("neo MakeDepositProposal, deserialize crossChainMsg error: %v", err)
+		return
+	}
+	tx.Param = param
+	return
+}
+
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
+	res := l.sdk.Node().GetStateHeight()
+	if res.HasError() {
+		err = fmt.Errorf("Get neo state height error #{res.Error.Message}")
+		return
+	}
+	tx.SrcProofHeight = uint64(res.Result.StateHeight)
+	if tx.SrcProofHeight < tx.SrcHeight || tx.SrcHeight == 0 || tx.SrcProofHeight == 0 {
+		err = fmt.Errorf("Proof not available yet %d tx height %d", tx.SrcProofHeight, tx.SrcHeight)
+		return
+	}
+	sr := l.sdk.Node().GetStateRootByIndex(uint32(tx.SrcProofHeight))
+	if sr.HasError() {
+		err = fmt.Errorf("Get state root failure for neo, height %d #{sr.Error.Message}", tx.SrcProofHeight)
+		return
+	}
+	root := sr.Result.StateRoot
+	buf := io.NewBufBinaryWriter()
+	root.Serialize(buf.BinaryWriter)
+	tx.SrcStateRoot = buf.Bytes()
+
+	pf := l.sdk.Node().GetProof(root.StateRoot, "0x"+helper.ReverseString(l.ccm), tx.TxId)
+	if pf.HasError() {
+		err = fmt.Errorf("Get proof error for neo #{pf.Error.Message}")
+		return
+	}
+	tx.SrcProof, err = hex.DecodeString(pf.CrosschainProof.Proof)
+	if err != nil {
+		err = fmt.Errorf("Decode src proof error %v", err)
+		return
+	}
+	err = l.ParseParam(tx)
+	return
+}
+
+func (l *Listener) fetchLastConsensus() (height uint64, err error) {
+
 	return
 }
 
@@ -87,6 +165,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	if res.Result.NextConsensus == l.consensus {
 		return nil, nil, nil
 	}
+	// Assuming success relayer here?
 	l.consensus = res.Result.NextConsensus
 	h, err := block.NewBlockHeaderFromRPC(&res.Result)
 	if err != nil {
@@ -147,7 +226,8 @@ func (l *Listener) scanTx(hash string, height uint64) (tx *msg.Tx, err error) {
 					return
 				}
 				states := noti.State.Value
-				if states[0].Value != "43726f7373436861696e4c6f636b4576656e74" { // "CrossChainLockEvent"
+				method, _ := hex.DecodeString(states[0].Value)
+				if string(method) != "CrossChainLockEvent" {
 					continue
 				}
 				if len(states) != 6 {
@@ -163,9 +243,10 @@ func (l *Listener) scanTx(hash string, height uint64) (tx *msg.Tx, err error) {
 				}
 
 				tx := &msg.Tx{
-					TxId:      states[4].Value, // hexstring for storeKey: 0102 + toChainId + toRequestId, like 01020501
-					SrcHash:   hash,
-					SrcHeight: height,
+					TxId:       states[4].Value, // hexstring for storeKey: 0102 + toChainId + toRequestId, like 01020501
+					SrcHash:    hash,
+					SrcHeight:  height,
+					SrcChainId: l.config.ChainId,
 				}
 
 				if toChainId != nil {
@@ -196,4 +277,26 @@ func (l *Listener) ChainId() uint64 {
 
 func (l *Listener) Defer() int {
 	return l.config.Defer
+}
+
+func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
+	if l.poly == nil {
+		err = fmt.Errorf("No poly sdk provided for NEO FetchLastConsensus")
+		return
+	}
+	height, err = l.poly.Node().GetSideChainHeight(l.config.ChainId)
+	if err != nil {
+		return
+	}
+
+	res := l.sdk.Node().GetBlockHeaderByIndex(uint32(height))
+	if res.HasError() {
+		return 0, fmt.Errorf("Fetch block header error #{response.Error.Message}")
+	}
+	l.consensus = res.Result.NextConsensus
+
+	if force != 0 {
+		return force, nil
+	}
+	return
 }
