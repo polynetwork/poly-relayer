@@ -83,7 +83,7 @@ func SetHeaderSyncHeight(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	state := bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: chain, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.CONFIG.Bus.Redis), 0,
+		bus.ChainHeightKey{ChainId: chain, Type: bus.KEY_HEIGHT_HEADER_RESET}, bus.New(config.CONFIG.Bus.Redis), 0,
 	)
 	err = state.UpdateHeight(context.Background(), height)
 	return

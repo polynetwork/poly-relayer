@@ -15,8 +15,9 @@ import (
 const (
 	POLY_SYNC = String("poly_sync_running")
 
-	KEY_HEIGHT_HEADER ChainHeightType = "header_sync"
-	KEY_HEIGHT_TX     ChainHeightType = "tx_sync"
+	KEY_HEIGHT_HEADER       ChainHeightType = "header_sync"
+	KEY_HEIGHT_HEADER_RESET ChainHeightType = "header_sync_reset"
+	KEY_HEIGHT_TX           ChainHeightType = "tx_sync"
 )
 
 type ChainHeightType string

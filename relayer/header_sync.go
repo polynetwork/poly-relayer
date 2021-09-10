@@ -37,6 +37,7 @@ type HeaderSyncHandler struct {
 	listener  IChainListener
 	submitter *poly.Submitter
 	state     bus.ChainStore
+	input     bus.ChainStore
 	height    uint64
 	config    *config.HeaderSyncConfig
 	reset     chan uint64
@@ -72,6 +73,10 @@ func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 
 	h.state = bus.NewRedisChainStore(
 		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(h.config.Bus.Redis),
+		h.config.Bus.HeightUpdateInterval,
+	)
+	h.input = bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_HEADER_RESET}, bus.New(h.config.Bus.Redis),
 		h.config.Bus.HeightUpdateInterval,
 	)
 	return
@@ -130,7 +135,7 @@ LOOP:
 					break LOOP
 				}
 			}
-			h.state.HeightMark(h.height - uint64(len(ch)) - 1)
+			h.state.HeightMark(h.height)
 			continue
 		} else {
 			log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
@@ -142,9 +147,12 @@ LOOP:
 }
 
 func (h *HeaderSyncHandler) Start() (err error) {
-	height, err := h.state.GetHeight(context.Background())
+	height, err := h.input.GetHeight(context.Background())
 	if err != nil {
-		return
+		log.Warn("Get forced header sync start error, will fetch last header state", "err", err)
+	} else {
+		// Attempt to clear reset
+		h.input.UpdateHeight(context.Background(), 0)
 	}
 	h.height, err = h.listener.LastHeaderSync(height)
 	if err != nil {
