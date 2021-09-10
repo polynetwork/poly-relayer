@@ -76,9 +76,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	if len(tx.DstData) == 0 {
 		return nil
 	}
-	var gasPrice *big.Int
-	var gasPriceX *big.Float
-	var ok bool
+	var (
+		gasPrice  *big.Int
+		gasPriceX *big.Float
+		ok        bool
+	)
 	if tx.DstGasPrice != "" {
 		gasPrice, ok = new(big.Int).SetString(tx.DstGasPrice, 10)
 		if !ok {
@@ -91,14 +93,16 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			return fmt.Errorf("%s submit invalid gas priceX %s", tx.DstGasPriceX)
 		}
 	}
+	var err error
 	if tx.DstSender != nil {
-		return s.wallet.SendWithAccount(*tx.DstSender, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+		tx.DstHash, err = s.wallet.SendWithAccount(*tx.DstSender, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	} else {
-		return s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+		tx.DstHash, err = s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	}
+	return err
 }
 
-func (s *Submitter) Send(addr common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, gasPriceX *big.Float, data []byte) (err error) {
+func (s *Submitter) Send(addr common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, gasPriceX *big.Float, data []byte) (hash string, err error) {
 	return s.wallet.Send(addr, amount, gasLimit, gasPrice, gasPriceX, data)
 }
 
@@ -152,7 +156,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	if tx.AnchorHeader != nil {
 		anchor = tx.AnchorHeader.GetMessage()
 	}
-	tx.DstData, err = s.abi.Pack("verifyHeaderAndExecuteTx", tx.AuditPath, tx.PolyHeader.GetMessage(), proof, anchor, tx.DstSigs)
+	tx.DstData, err = s.abi.Pack("verifyHeaderAndExecuteTx", tx.AuditPath, tx.PolyHeader.GetMessage(), proof, anchor, tx.PolySigs)
 	if err != nil {
 		err = fmt.Errorf("%s processPolyTx pack tx error %v", err)
 		return err

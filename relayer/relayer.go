@@ -99,9 +99,11 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	case base.ETH:
 		submitter = new(eth.Submitter)
 	case base.BSC:
-		submitter = new(eth.Submitter)
+		submitter = new(bsc.Submitter)
 	case base.HECO:
-		submitter = new(eth.Submitter)
+		submitter = new(heco.Submitter)
+	case base.NEO:
+		submitter = new(neo.Submitter)
 	default:
 	}
 	return

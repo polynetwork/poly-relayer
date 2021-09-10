@@ -67,11 +67,11 @@ type Tx struct {
 	AnchorHeader *types.Header `json:"-"`
 	AnchorProof  string        `json:",omitempty"`
 	AuditPath    []byte        `json:"-"`
+	PolySigs     []byte        `json:"-"`
 
 	DstHash                 string            `json:",omitempty"`
 	DstHeight               uint64            `json:",omitempty"`
 	DstChainId              uint64            `json:",omitempty"`
-	DstSigs                 []byte            `json:"-"`
 	DstGasLimit             uint64            `json:",omitempty"`
 	DstGasPrice             string            `json:",omitempty"`
 	DstGasPriceX            string            `json:",omitempty"`

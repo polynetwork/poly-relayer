@@ -28,7 +28,9 @@ import (
 	"github.com/polynetwork/bridge-common/wallet"
 )
 
-var CONFIG *Config
+var (
+	CONFIG *Config
+)
 
 type Config struct {
 	Env          string

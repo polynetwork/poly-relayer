@@ -224,7 +224,7 @@ func (s *Submitter) CollectSigs(tx *msg.Tx) (err error) {
 		}
 		sigs = append(sigs, s...)
 	}
-	tx.DstSigs = sigs
+	tx.PolySigs = sigs
 	return
 }
 
@@ -351,6 +351,9 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path [
 }
 
 func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKeys []byte, err error) {
+	if tx.DstChainId == base.NEO {
+		return
+	}
 	if len(tx.DstPolyKeepers) == 0 {
 		err = fmt.Errorf("Dst chain poly keeper not provided")
 		return
