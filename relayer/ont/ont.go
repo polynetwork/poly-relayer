@@ -25,10 +25,14 @@ import (
 	"time"
 
 	sdk "github.com/ontio/ontology-go-sdk"
+	ccm "github.com/ontio/ontology/smartcontract/service/native/cross_chain/cross_chain_manager"
+	"github.com/ontio/ontology/smartcontract/service/native/utils"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/ont"
+	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -40,9 +44,10 @@ type Submitter struct {
 	wg      *sync.WaitGroup
 	config  *config.SubmitterConfig
 	sdk     *ont.SDK
-	signer  *sdk.Account
+	signer  *wallet.OntSigner
 	name    string
 	compose msg.PolyComposer
+	polyId  uint64
 }
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
@@ -50,6 +55,14 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.signer, err = wallet.NewOntSigner(config.Wallet)
 	s.name = base.GetChainName(config.ChainId)
 	s.sdk, err = ont.WithOptions(base.ONT, config.Nodes, time.Minute, 1)
+	if err != nil {
+		return
+	}
+	s.polyId = poly.ReadChainID()
+	if s.polyId == 0 {
+		err = fmt.Errorf("Poly chain id not set for neo submitter")
+	}
+
 	return
 }
 
@@ -67,34 +80,44 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
-func (s *Submitter) submit(tx *msg.Tx, compose msg.PolyComposer) error {
-	// TODO: Check storage to see if already imported
-	err := s.compose(tx)
-	if err != nil {
-		return err
-	}
-	if tx.Param == nil || tx.SrcChainId == 0 {
-		return fmt.Errorf("%s submitter src tx %s param is missing or src chain id not specified", s.name, tx.SrcHash)
-	}
-
-	if !config.CONFIG.AllowMethod(tx.Param.Method) {
-		log.Error("Invalid src tx method", "src_hash", tx.SrcHash, "chain", s.name, "method", tx.Param.Method)
-		return nil
-	}
-
-	if tx.SrcStateRoot == nil {
-		tx.SrcStateRoot = []byte{}
-	}
-
-	return nil
-}
-
-func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.PolyComposer) (err error) {
-	if m.Type() != msg.SRC {
+func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
+	if m.Type() != msg.POLY {
 		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
 	}
+	if m.DstChainId != s.config.ChainId {
+		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
+	}
+	err = compose(m)
+	if err != nil {
+		return
+	}
+	return s.processPolyTx(m)
+}
 
-	return s.submit(m, composer)
+func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
+	if tx.AuditPath == "" {
+		return fmt.Errorf("Invalid poly audit path")
+	}
+
+	param := &ccm.ProcessCrossChainTxParam{
+		Address:     s.signer.Address,
+		FromChainID: s.polyId,
+		Height:      tx.PolyHeight + 1,
+		Proof:       tx.AuditPath,
+	}
+
+	v, _ := s.sdk.Node().GetSideChainHeaderIndex(s.polyId, uint64(tx.PolyHeight+1))
+	if len(v) == 0 {
+		param.Header = tx.PolyHeader.ToArray()
+	}
+	hash, err := s.sdk.Node().Native.InvokeNativeContract(
+		s.signer.Config.GasPrice, s.signer.Config.GasLimit,
+		s.signer.Account, s.signer.Account, byte(0), utils.CrossChainContractAddress, ccm.PROCESS_CROSS_CHAIN_TX, []interface{}{param},
+	)
+	if err == nil {
+		tx.DstHash = hash.ToHexString()
+	}
+	return
 }
 
 func (s *Submitter) Process(msg msg.Message, composer msg.PolyComposer) error {
@@ -106,7 +129,7 @@ func (s *Submitter) Stop() error {
 	return nil
 }
 
-func (s *Submitter) run(bus bus.TxBus, compose msg.PolyComposer) error {
+func (s *Submitter) run(account *sdk.Account, bus bus.TxBus, compose msg.PolyComposer) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
@@ -116,7 +139,7 @@ func (s *Submitter) run(bus bus.TxBus, compose msg.PolyComposer) error {
 			return nil
 		default:
 		}
-		tx, err := bus.Pop(context.Background())
+		tx, err := bus.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
 			continue
@@ -125,17 +148,19 @@ func (s *Submitter) run(bus bus.TxBus, compose msg.PolyComposer) error {
 			time.Sleep(time.Second)
 			continue
 		}
-		log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
-		err = s.submit(tx, compose)
+		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
+		err = s.ProcessTx(tx, compose)
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
+			fmt.Println(util.Verbose(tx))
+			if errors.Is(err, msg.ERR_INVALID_TX) {
+				log.Error("Skipped invalid poly tx", "poly_hash", tx.PolyHash)
+				continue
+			}
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
-			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
-				time.Sleep(time.Second)
-			}
 		} else {
-			log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
+			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
 		}
 	}
 }
@@ -144,6 +169,5 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	s.Context = ctx
 	s.wg = wg
 	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address, "chain", s.name)
-	go s.run(bus, composer)
 	return nil
 }

@@ -128,9 +128,13 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	if err != nil {
 		return fmt.Errorf("%s processPolyTx decode anchor proof hex error %v", s.name, err)
 	}
+	path, err := hex.DecodeString(tx.AuditPath)
+	if err != nil {
+		return
+	}
 	scriptHash := helper.HexToBytes(s.ccm)
 	args := []sc.ContractParameter{
-		ContractByteParam(tx.AuditPath),
+		ContractByteParam(path),
 		ContractByteParam(tx.PolyHeader.GetMessage()),
 		ContractByteParam(proof),
 		ContractByteParam(tx.AnchorHeader.GetMessage()),
@@ -187,7 +191,7 @@ func (s *Submitter) run(account *nw.Account, bus bus.TxBus, compose msg.PolyComp
 			return nil
 		default:
 		}
-		tx, err := bus.Pop(context.Background())
+		tx, err := bus.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
 			continue

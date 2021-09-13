@@ -85,7 +85,8 @@ func (b *RedisTxBus) Topic() (topic string) {
 }
 
 func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
-	res, err := b.db.BLPop(ctx, 0, b.Key.Key()).Result()
+	c, _ := context.WithCancel(ctx)
+	res, err := b.db.BLPop(c, 0, b.Key.Key()).Result()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to pop message %v", err)
 	}

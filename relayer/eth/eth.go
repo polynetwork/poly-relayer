@@ -205,7 +205,7 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 			return nil
 		default:
 		}
-		tx, err := bus.Pop(context.Background())
+		tx, err := bus.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
 			continue
@@ -225,6 +225,7 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 				continue
 			}
 			tx.Attempts++
+			// TODO: retry with increased gas price?
 			bus.Push(context.Background(), tx)
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)

@@ -66,7 +66,7 @@ type Tx struct {
 	PolyHeader   *types.Header `json:"-"`
 	AnchorHeader *types.Header `json:"-"`
 	AnchorProof  string        `json:",omitempty"`
-	AuditPath    []byte        `json:"-"`
+	AuditPath    string        `json:"-"`
 	PolySigs     []byte        `json:"-"`
 
 	DstHash                 string            `json:",omitempty"`
