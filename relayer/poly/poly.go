@@ -55,6 +55,9 @@ type Submitter struct {
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	s.config = config
 	s.signer, err = wallet.NewPolySigner(config.Wallet)
+	if err != nil {
+		return
+	}
 	s.name = base.GetChainName(config.ChainId)
 	s.sdk, err = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
 	return
