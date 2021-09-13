@@ -142,7 +142,6 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 }
 
 func (s *Submitter) submit(tx *msg.Tx) error {
-	// TODO: Check storage to see if already imported
 	err := s.compose(tx)
 	if err != nil {
 		return err
@@ -156,22 +155,27 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		return nil
 	}
 
-	data, _ := s.sdk.Node().GetDoneTx(s.config.ChainId, tx.Param.CrossChainID)
-	if len(data) != 0 {
-		log.Error("Tx already imported", "src_hash", tx.SrcHash)
-		return nil
-	}
-
 	if tx.SrcStateRoot == nil {
 		tx.SrcStateRoot = []byte{}
 	}
 
 	var account []byte
 	switch tx.SrcChainId {
-	case base.NEO:
+	case base.NEO, base.ONT:
 		account = s.signer.Address[:]
+		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
+			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
+		}
 	default:
+		// For other chains, reversed?
 		account = common.Hex2Bytes(s.signer.Address.ToHexString())
+
+		// Check done tx existence
+		data, _ := s.sdk.Node().GetDoneTx(s.config.ChainId, tx.Param.CrossChainID)
+		if len(data) != 0 {
+			log.Error("Tx already imported", "src_hash", tx.SrcHash)
+			return nil
+		}
 	}
 
 	t, err := s.sdk.Node().Native.Ccm.ImportOuterTransfer(
@@ -472,7 +476,7 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
 	var hash []byte
-	if s.sync.ChainId == base.NEO {
+	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT {
 		hash, err = s.sdk.Node().GetSideChainHeaderIndex(s.sync.ChainId, header.Height)
 		if err != nil {
 			return

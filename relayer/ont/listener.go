@@ -18,20 +18,23 @@
 package ont
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/ontio/ontology/common"
+	ccom "github.com/ontio/ontology/smartcontract/service/native/cross_chain/common"
 	outils "github.com/ontio/ontology/smartcontract/service/native/utils"
+
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
-
 	"github.com/polynetwork/bridge-common/chains/ont"
 	"github.com/polynetwork/bridge-common/chains/poly"
-	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
-
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
+	pcom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 )
 
 type Listener struct {
@@ -73,6 +76,52 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 }
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
+	if tx.SrcHeight == 0 {
+		return fmt.Errorf("Invalid tx src height(0)")
+	}
+	v, _ := l.poly.Node().GetSideChainMsg(base.ONT, tx.SrcHeight)
+	if len(v) == 0 {
+		msg, err := l.sdk.Node().GetCrossChainMsg(uint32(tx.SrcHeight))
+		if err != nil {
+			return err
+		}
+		tx.SrcStateRoot, err = hex.DecodeString(msg)
+		if err != nil {
+			return err
+		}
+	}
+	key, err := hex.DecodeString(tx.TxId)
+	if err != nil {
+		return
+	}
+	proof, err := l.sdk.Node().GetCrossStatesProof(uint32(tx.SrcHeight), key)
+	if err != nil {
+		return
+	}
+	tx.SrcProof, err = hex.DecodeString(proof.AuditPath)
+	if err != nil {
+		return
+	}
+	{
+		value, _, _, _ := msg.ParseAuditPath(tx.SrcProof)
+		if len(value) == 0 {
+			return fmt.Errorf("ParseAuditPath got null param")
+		}
+		param := &ccom.MakeTxParam{}
+		err = param.Deserialization(common.NewZeroCopySource(value))
+		if err != nil {
+			return
+		}
+		tx.Param = &pcom.MakeTxParam{
+			TxHash:              param.TxHash,
+			CrossChainID:        param.CrossChainID,
+			FromContractAddress: param.FromContractAddress,
+			ToChainID:           param.ToChainID,
+			ToContractAddress:   param.ToContractAddress,
+			Method:              param.Method,
+			Args:                param.Args,
+		}
+	}
 	return
 }
 
@@ -154,6 +203,13 @@ func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
 	}
 	if force != 0 {
 		return force, nil
+	}
+	height, err = l.poly.Node().GetSideChainMsgHeight(base.ONT)
+	if err != nil {
+		return
+	}
+	if height == 0 {
+		height, err = l.poly.Node().GetSideChainHeight(base.ONT)
 	}
 	return
 }
