@@ -85,6 +85,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 			l.lastSpanSync = spanId
 		}
 	}
+	hash = hp.Hash().Bytes()
 	header, err = json.Marshal(hp)
 	return
 }

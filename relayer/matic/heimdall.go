@@ -19,6 +19,7 @@ package matic
 
 import (
 	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -89,7 +90,18 @@ func (l *HeimdallListener) Defer() int {
 }
 
 func (l *HeimdallListener) LastHeaderSync(force uint64) (uint64, error) {
-	return 0, nil
+	if l.poly == nil {
+		return 0, fmt.Errorf("No poly sdk provided for listener", "chain", l.name)
+	}
+
+	if force != 0 {
+		return force, nil
+	}
+	epoch, err := l.GetEpochSwitch()
+	if err != nil {
+		return 0, err
+	}
+	return uint64(epoch.Height), nil
 }
 
 func (l *HeimdallListener) ListenCheck() time.Duration {

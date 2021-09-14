@@ -305,19 +305,27 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
 	var hash []byte
-	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT {
+	switch s.sync.ChainId {
+	case base.NEO, base.ONT:
 		hash, err = s.sdk.Node().GetSideChainHeaderIndex(s.sync.ChainId, header.Height)
 		if err != nil {
 			return
 		}
 		ok = len(hash) != 0
 		return
+	case base.HEIMDALL:
+		hash, err = s.sdk.Node().GetSideChainEpochWithHeight(s.sync.ChainId, header.Height)
+		if err != nil {
+			return
+		}
+		ok = len(hash) != 0
+	default:
+		hash, err = s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
+		if err != nil {
+			return
+		}
+		ok = bytes.Equal(hash, header.Hash)
 	}
-	hash, err = s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
-	if err != nil {
-		return
-	}
-	ok = bytes.Equal(hash, header.Hash)
 	return
 }
 
