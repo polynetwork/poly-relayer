@@ -155,15 +155,17 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	}
 
 	var account []byte
+	account = s.signer.Address[:]
 	switch tx.SrcChainId {
 	case base.NEO, base.ONT:
-		account = s.signer.Address[:]
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
 			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
 		}
 	default:
-		// For other chains, reversed?
-		account = common.Hex2Bytes(s.signer.Address.ToHexString())
+		if tx.SrcChainId != ok.OK {
+			// For other chains, reversed?
+			account = common.Hex2Bytes(s.signer.Address.ToHexString())
+		}
 
 		// Check done tx existence
 		data, _ := s.sdk.Node().GetDoneTx(s.config.ChainId, tx.Param.CrossChainID)

@@ -83,3 +83,29 @@ func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
 	height = uint64(info.Height)
 	return
 }
+
+func (l *Listener) Compose(tx *msg.Tx) (err error) {
+	if tx.SrcHeight == 0 || len(tx.TxId) == 0 {
+		return fmt.Errorf("tx missing attributes src height %v, txid %s", tx.SrcHeight, tx.TxId)
+	}
+	if len(tx.SrcParam) == 0 {
+		return fmt.Errorf("src param is missing")
+	}
+	event, err := hex.DecodeString(tx.SrcParam)
+	if err != nil {
+		return fmt.Errorf("%s submitter decode src param error %v event %s", l.name, err, tx.SrcParam)
+	}
+	txId, err := hex.DecodeString(tx.TxId)
+	if err != nil {
+		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
+	}
+	param := &ccom.MakeTxParam{}
+	err = param.Deserialization(pcom.NewZeroCopySource(event))
+	if err != nil {
+		return
+	}
+	tx.Param = param
+	tx.SrcEvent = event
+	tx.SrcProofHeight, tx.SrcProof, err = l.GetProof(txId, tx.SrcHeight)
+	return
+}
