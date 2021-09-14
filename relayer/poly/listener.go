@@ -113,6 +113,6 @@ func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
 }
 
-func (l *Listener) LastHeaderSync(uint64) (uint64, error) {
+func (l *Listener) LastHeaderSync(uint64, uint64) (uint64, error) {
 	return 0, nil
 }

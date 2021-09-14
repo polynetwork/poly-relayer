@@ -89,7 +89,7 @@ func (l *HeimdallListener) Defer() int {
 	return l.config.Defer
 }
 
-func (l *HeimdallListener) LastHeaderSync(force uint64) (uint64, error) {
+func (l *HeimdallListener) LastHeaderSync(force, last uint64) (uint64, error) {
 	if l.poly == nil {
 		return 0, fmt.Errorf("No poly sdk provided for listener", "chain", l.name)
 	}
@@ -101,7 +101,11 @@ func (l *HeimdallListener) LastHeaderSync(force uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return uint64(epoch.Height), nil
+	height := uint64(epoch.Height)
+	if last > height {
+		height = last
+	}
+	return height, nil
 }
 
 func (l *HeimdallListener) ListenCheck() time.Duration {
