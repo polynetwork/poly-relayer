@@ -28,14 +28,7 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/polynetwork/poly-relayer/relayer/bsc"
-	"github.com/polynetwork/poly-relayer/relayer/eth"
-	"github.com/polynetwork/poly-relayer/relayer/heco"
-	"github.com/polynetwork/poly-relayer/relayer/matic"
-	"github.com/polynetwork/poly-relayer/relayer/neo"
-	"github.com/polynetwork/poly-relayer/relayer/o3"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
-	"github.com/polynetwork/poly-relayer/relayer/ont"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
 )
 
@@ -71,22 +64,8 @@ type IChainSubmitter interface {
 
 func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
-	case base.ETH:
-		listener = new(eth.Listener)
 	case base.OK:
 		listener = new(ok.Listener)
-	case base.MATIC:
-		listener = new(matic.Listener)
-	case base.BSC:
-		listener = new(bsc.Listener)
-	case base.HECO:
-		listener = new(heco.Listener)
-	case base.O3:
-		listener = new(o3.Listener)
-	case base.NEO:
-		listener = new(neo.Listener)
-	case base.ONT:
-		listener = new(ont.Listener)
 	case base.POLY:
 		listener = new(po.Listener)
 	default:
@@ -96,16 +75,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
-	case base.ETH:
-		submitter = new(eth.Submitter)
-	case base.BSC:
-		submitter = new(bsc.Submitter)
-	case base.HECO:
-		submitter = new(heco.Submitter)
-	case base.NEO:
-		submitter = new(neo.Submitter)
-	case base.ONT:
-		submitter = new(ont.Submitter)
+	case base.OK:
+		submitter = new(ok.Submitter)
 	default:
 	}
 	return
