@@ -19,13 +19,17 @@ package ok
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 
 	"github.com/polynetwork/bridge-common/chains/ok"
+	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
+	pcom "github.com/polynetwork/poly/common"
+	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 	"github.com/polynetwork/poly/native/service/header_sync/cosmos"
 )
 
@@ -61,7 +65,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	return
 }
 
-func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
+func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
 	if l.Poly() == nil {
 		err = fmt.Errorf("No poly sdk provided for listener", "chain", l.ChainId())
 		return
@@ -81,6 +85,9 @@ func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
 		return
 	}
 	height = uint64(info.Height)
+	if last > height {
+		height = last
+	}
 	return
 }
 
@@ -93,11 +100,11 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	}
 	event, err := hex.DecodeString(tx.SrcParam)
 	if err != nil {
-		return fmt.Errorf("%s submitter decode src param error %v event %s", l.name, err, tx.SrcParam)
+		return fmt.Errorf("%v submitter decode src param error %v event %s", l.ChainId(), err, tx.SrcParam)
 	}
 	txId, err := hex.DecodeString(tx.TxId)
 	if err != nil {
-		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
+		return fmt.Errorf("%v failed to decode src txid %s, err %v", l.ChainId(), tx.TxId, err)
 	}
 	param := &ccom.MakeTxParam{}
 	err = param.Deserialization(pcom.NewZeroCopySource(event))

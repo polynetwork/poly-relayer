@@ -128,7 +128,6 @@ LOOP:
 					break LOOP
 				}
 			}
-			h.state.HeightMark(h.height)
 			continue
 		} else {
 			log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
@@ -140,6 +139,7 @@ LOOP:
 }
 
 func (h *HeaderSyncHandler) Start() (err error) {
+	// Reset height input
 	height, err := h.input.GetHeight(context.Background())
 	if err != nil {
 		log.Warn("Get forced header sync start error, will fetch last header state", "err", err)
@@ -147,12 +147,14 @@ func (h *HeaderSyncHandler) Start() (err error) {
 		// Attempt to clear reset
 		h.input.UpdateHeight(context.Background(), 0)
 	}
-	h.height, err = h.listener.LastHeaderSync(height)
+	// Last successful sync height
+	lastHeight, _ := h.state.GetHeight(context.Background())
+	h.height, err = h.listener.LastHeaderSync(height, lastHeight)
 	if err != nil {
 		return
 	}
-	log.Info("Header sync will start...", "height", h.height+1, "force", height, "chain", h.config.ChainId)
-	ch, err := h.submitter.StartSync(h.Context, h.wg, h.config, h.reset)
+	log.Info("Header sync will start...", "height", h.height+1, "force", height, "last", lastHeight, "chain", h.config.ChainId)
+	ch, err := h.submitter.StartSync(h.Context, h.wg, h.config, h.reset, h.state)
 	if err != nil {
 		return
 	}

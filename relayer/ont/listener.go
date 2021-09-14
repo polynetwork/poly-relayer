@@ -196,7 +196,7 @@ func (l *Listener) Defer() int {
 	return l.config.Defer
 }
 
-func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
+func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
 	if l.poly == nil {
 		err = fmt.Errorf("No poly sdk provided for NEO FetchLastConsensus")
 		return
@@ -210,6 +210,9 @@ func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
 	}
 	if height == 0 {
 		height, err = l.poly.Node().GetSideChainHeight(base.ONT)
+	}
+	if last > height {
+		height = last
 	}
 	return
 }

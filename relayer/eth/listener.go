@@ -219,7 +219,7 @@ func (l *Listener) Poly() *poly.SDK {
 	return l.poly
 }
 
-func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
+func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
 	if l.poly == nil {
 		err = fmt.Errorf("No poly sdk provided for listener", "chain", l.name)
 		return
