@@ -50,6 +50,7 @@ type Submitter struct {
 	name    string
 	sync    *config.HeaderSyncConfig
 	compose msg.PolyComposer
+	state   bus.ChainStore // Header sync marking
 }
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
@@ -79,13 +80,19 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 
 func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) (err error) {
 	start := time.Now()
-	defer func() {
-		h := uint64(0)
-		if header != nil {
-			h = header.Height
+	h := uint64(0)
+	err = s.submitHeadersWithLoop(chainId, headers, header)
+	if header != nil {
+		h = header.Height
+		if err == nil {
+			s.state.HeightMark(h) // Mark header sync height
 		}
-		log.Info("Submit headers to poly", "chain", chainId, "size", len(headers), "height", h, "elapse", time.Since(start), "err", err)
-	}()
+	}
+	log.Info("Submit headers to poly", "chain", chainId, "size", len(headers), "height", h, "elapse", time.Since(start), "err", err)
+	return
+}
+
+func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) (err error) {
 	var ok bool
 	for {
 		if header != nil {
@@ -275,10 +282,14 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	return nil
 }
 
-func (s *Submitter) StartSync(ctx context.Context, wg *sync.WaitGroup, config *config.HeaderSyncConfig, reset chan<- uint64) (ch chan msg.Header, err error) {
+func (s *Submitter) StartSync(
+	ctx context.Context, wg *sync.WaitGroup, config *config.HeaderSyncConfig,
+	reset chan<- uint64, state bus.ChainStore,
+) (ch chan msg.Header, err error) {
 	s.Context = ctx
 	s.wg = wg
 	s.sync = config
+	s.state = state
 
 	if s.sync.Batch == 0 {
 		s.sync.Batch = 1
