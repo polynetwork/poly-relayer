@@ -35,6 +35,7 @@ import (
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	pcom "github.com/polynetwork/poly/common"
@@ -51,6 +52,7 @@ type Listener struct {
 	GetProofHeight func() (uint64, error)
 	GetProof       func([]byte, uint64) (uint64, []byte, error)
 	name           string
+	state          bus.ChainStore // Header sync state
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
@@ -62,6 +64,11 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	// Common
 	l.GetProofHeight = l.getProofHeight
 	l.GetProof = l.getProof
+
+	l.state = bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
+		config.Bus.HeightUpdateInterval,
+	)
 
 	l.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	return
@@ -76,11 +83,15 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 		}
 		height = h - base.BlocksToWait(l.config.ChainId)
 	case base.OK:
-		h, err := l.sdk.Node().GetLatestHeight()
+		height, _ = l.state.GetHeight(context.Background())
+		if height > 0 {
+			return
+		}
+		height, err = l.sdk.Node().GetLatestHeight()
 		if err != nil {
 			return 0, err
 		}
-		height = h - 3
+		height = height - 3
 	default:
 		return 0, fmt.Errorf("getProofHeight unsupported chain %s", l.name)
 	}
@@ -213,6 +224,14 @@ func (l *Listener) ChainId() uint64 {
 
 func (l *Listener) Defer() int {
 	return l.config.Defer
+}
+
+func (l *Listener) Name() string {
+	return l.name
+}
+
+func (l *Listener) SDK() *eth.SDK {
+	return l.sdk
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
