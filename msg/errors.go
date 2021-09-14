@@ -15,32 +15,11 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bus
+package msg
 
-import (
-	"fmt"
+import "errors"
 
-	"github.com/go-redis/redis/v8"
-	"github.com/polynetwork/bridge-common/util"
+var (
+	ERR_INVALID_TX        = errors.New("Invalid TX")
+	ERR_PROOF_UNAVAILABLE = errors.New("Tx proof unavailable")
 )
-
-type RedisConn struct {
-	Conn    *redis.Client
-	options *redis.Options
-}
-
-func (c *RedisConn) Key() string {
-	return fmt.Sprintf("%s:%d", c.options.Addr, c.options.DB)
-}
-
-func (c *RedisConn) Create() (interface{}, error) {
-	c.Conn = redis.NewClient(c.options)
-	return c, nil
-}
-
-func New(options *redis.Options) *redis.Client {
-	c, _ := util.Single(&RedisConn{
-		options: options,
-	})
-	return c.(*RedisConn).Conn
-}

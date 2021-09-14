@@ -20,4 +20,4 @@ package heco
 import "github.com/polynetwork/poly-relayer/relayer/eth"
 
 type Listener = eth.Listener
-type Submitter eth.Submitter
+type Submitter = eth.Submitter
