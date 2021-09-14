@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
@@ -48,7 +49,11 @@ func (s *Server) Start() (err error) {
 	}
 
 	// Create handlers
-	for _, chain := range s.config.Chains {
+	for id, chain := range s.config.Chains {
+		switch id {
+		case base.OK, base.MATIC, base.HEIMDALL:
+			return fmt.Errorf("Please use dedicated build for header sync of chains: OK, MATIC")
+		}
 		s.parseHandlers(chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit)
 	}
 

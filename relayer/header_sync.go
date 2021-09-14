@@ -19,11 +19,9 @@ package relayer
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -53,11 +51,6 @@ func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 }
 
 func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
-	switch h.config.ChainId {
-	case base.OK, base.MATIC:
-		return fmt.Errorf("Please use dedicated build for header sync of chains: OK, MATIC")
-	}
-
 	h.Context = ctx
 	h.wg = wg
 
