@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
@@ -42,13 +43,13 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Config) error
 }
 
 func (s *Server) Start() (err error) {
-	// Create poly tx sync handler
-	if s.config.Poly != nil {
-		s.parseHandlers(s.config.Poly.PolyTxSync)
-	}
-
 	// Create handlers
-	for _, chain := range s.config.Chains {
+	for id, chain := range s.config.Chains {
+		switch id {
+		case base.POLY, base.MATIC, base.HEIMDALL:
+		default:
+			return fmt.Errorf("This build is only matic chain")
+		}
 		s.parseHandlers(chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit)
 	}
 
