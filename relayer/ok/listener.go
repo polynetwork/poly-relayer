@@ -22,8 +22,10 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/codec"
+
 	"github.com/polynetwork/bridge-common/chains/ok"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/native/service/header_sync/cosmos"
 )
 
@@ -33,17 +35,17 @@ type Listener struct {
 	codec *codec.Codec
 }
 
-func (l *Listener) Header(height uint64) (header []byte, err error) {
+func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
 	cr, err := l.tm.Node().Tendermint().QueryCommitResult(int64(height))
 	if err != nil {
 		err = fmt.Errorf("OKex query commit result height %d error %v", height, err)
-		return nil, err
+		return
 	}
 	if !bytes.Equal(cr.Header.ValidatorsHash, cr.Header.NextValidatorsHash) {
 		vs, err := l.tm.Node().GetValidators(height)
 		if err != nil {
 			err = fmt.Errorf("OKex get validators height %d error %v", height, err)
-			return nil, err
+			return nil, nil, err
 		}
 		hdr := cosmos.CosmosHeader{
 			Header:  *cr.Header,
@@ -54,7 +56,30 @@ func (l *Listener) Header(height uint64) (header []byte, err error) {
 		if err != nil {
 			err = fmt.Errorf("OKex header marshal binary height %d, err %v", height, err)
 		}
-		return header, err
+		return header, nil, err
 	}
+	return
+}
+
+func (l *Listener) LastHeaderSync(force uint64) (height uint64, err error) {
+	if l.Poly() == nil {
+		err = fmt.Errorf("No poly sdk provided for listener", "chain", l.ChainId())
+		return
+	}
+
+	if force != 0 {
+		return force, nil
+	}
+	epoch, err := l.Poly().Node().GetSideChainEpoch(l.ChainId())
+	if err != nil {
+		return
+	}
+
+	info := &cosmos.CosmosEpochSwitchInfo{}
+	err = info.Deserialization(common.NewZeroCopySource(epoch))
+	if err != nil {
+		return
+	}
+	height = uint64(info.Height)
 	return
 }
