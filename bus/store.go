@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 )
 
 const (
@@ -17,6 +17,7 @@ const (
 
 	KEY_HEIGHT_HEADER       ChainHeightType = "header_sync"
 	KEY_HEIGHT_EXTRA_HEADER ChainHeightType = "header_extra_sync"
+	KEY_HEIGHT_HEADER_RESET ChainHeightType = "header_sync_reset"
 	KEY_HEIGHT_TX           ChainHeightType = "tx_sync"
 )
 
@@ -45,6 +46,9 @@ type RedisChainStore struct {
 }
 
 func NewRedisChainStore(key Key, db *redis.Client, interval uint64) *RedisChainStore {
+	if interval == 0 {
+		interval = 5
+	}
 	return &RedisChainStore{
 		height: key,
 		db:     db,
@@ -113,7 +117,7 @@ func (l *Lock) start() {
 		case <-timer.C:
 			_, err := l.db.Set(context.Background(), l.key.Key(), time.Now(), 60*time.Second).Result()
 			if err != nil {
-				logs.Error("Failed to update redis status lock for %s", l.key.Key())
+				log.Error("Failed to update redis status lock", "key", l.key.Key())
 			}
 		}
 	}
@@ -122,7 +126,7 @@ func (l *Lock) start() {
 func (l *Lock) stop() {
 	_, err := l.db.Del(context.Background(), l.key.Key()).Result()
 	if err != nil {
-		logs.Error("Failed to remove redis status lock for %s", l.key.Key())
+		log.Error("Failed to remove redis status lock", "key", l.key.Key())
 	}
 	l.wg.Done()
 }

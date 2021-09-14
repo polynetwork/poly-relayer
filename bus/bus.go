@@ -21,9 +21,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
@@ -64,6 +64,7 @@ type TxBus interface {
 	Push(context.Context, *msg.Tx) error
 	PushToChain(context.Context, *msg.Tx) error
 	PushBack(context.Context, *msg.Tx) error
+	Topic() string
 }
 
 type RedisTxBus struct {
@@ -79,17 +80,22 @@ func NewRedisTxBus(db *redis.Client, chainId uint64, txType msg.TxType) *RedisTx
 	return bus
 }
 
+func (b *RedisTxBus) Topic() (topic string) {
+	return b.Key.Key()
+}
+
 func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
-	res, err := b.db.LPop(ctx, b.Key.Key()).Result()
+	c, _ := context.WithCancel(ctx)
+	res, err := b.db.BLPop(c, 0, b.Key.Key()).Result()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to pop message %v", err)
 	}
-	if res == "" || res == "nil" {
-		logs.Info("Empty queue %s", b.Key.Key())
+	if len(res) < 2 || res[1] == "" || res[1] == "nil" {
+		log.Info("Empty queue", "key", b.Key.Key())
 		return nil, nil
 	}
 	tx := new(msg.Tx)
-	err = tx.Decode(res)
+	err = tx.Decode(res[1])
 	return tx, err
 }
 

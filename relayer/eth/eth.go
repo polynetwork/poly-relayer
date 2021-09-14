@@ -3,20 +3,23 @@ package eth
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/polynetwork/bridge-common/abi/eccd_abi"
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
+	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -38,12 +41,19 @@ type Submitter struct {
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.config = config
-	s.sdk = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	s.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	if err != nil {
+		return
+	}
 	if config.Wallet != nil {
-		w := wallet.New(config.Wallet, eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1))
+		sdk, err := eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1)
+		if err != nil {
+			return err
+		}
+		w := wallet.New(config.Wallet, sdk)
 		err = w.Init()
 		if err != nil {
-			return
+			return err
 		}
 		if s.config.ChainId == base.ETH {
 			s.wallet = w.Upgrade()
@@ -66,9 +76,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	if len(tx.DstData) == 0 {
 		return nil
 	}
-	var gasPrice *big.Int
-	var gasPriceX *big.Float
-	var ok bool
+	var (
+		gasPrice  *big.Int
+		gasPriceX *big.Float
+		ok        bool
+	)
 	if tx.DstGasPrice != "" {
 		gasPrice, ok = new(big.Int).SetString(tx.DstGasPrice, 10)
 		if !ok {
@@ -81,14 +93,16 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			return fmt.Errorf("%s submit invalid gas priceX %s", tx.DstGasPriceX)
 		}
 	}
+	var err error
 	if tx.DstSender != nil {
-		return s.wallet.SendWithAccount(*tx.DstSender, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+		tx.DstHash, err = s.wallet.SendWithAccount(*tx.DstSender, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	} else {
-		return s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+		tx.DstHash, err = s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	}
+	return err
 }
 
-func (s *Submitter) Send(addr common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, gasPriceX *big.Float, data []byte) (err error) {
+func (s *Submitter) Send(addr common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, gasPriceX *big.Float, data []byte) (hash string, err error) {
 	return s.wallet.Send(addr, amount, gasLimit, gasPrice, gasPriceX, data)
 }
 
@@ -96,6 +110,22 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	s.Context = ctx
 	s.wg = wg
 	return nil
+}
+
+func (s *Submitter) GetPolyKeepers() (keepers []byte, err error) {
+	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
+	if err != nil {
+		return
+	}
+	return ccd.GetCurEpochConPubKeyBytes(nil)
+}
+
+func (s *Submitter) GetPolyEpochStartHeight() (height uint32, err error) {
+	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
+	if err != nil {
+		return
+	}
+	return ccd.GetCurEpochStartHeight(nil)
 }
 
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
@@ -113,7 +143,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	}
 
 	if exist {
-		logs.Info("%s processPolyTx dst tx already relayed, tx id occupied %s", s.name, tx.TxId)
+		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "txid", tx.TxId)
 		return nil
 	}
 
@@ -126,7 +156,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	if tx.AnchorHeader != nil {
 		anchor = tx.AnchorHeader.GetMessage()
 	}
-	tx.DstData, err = s.abi.Pack("verifyHeaderAndExecuteTx", tx.AuditPath, tx.PolyHeader.GetMessage(), proof, anchor, tx.DstSigs)
+	tx.DstData, err = s.abi.Pack("verifyHeaderAndExecuteTx", tx.AuditPath, tx.PolyHeader.GetMessage(), proof, anchor, tx.PolySigs)
 	if err != nil {
 		err = fmt.Errorf("%s processPolyTx pack tx error %v", err)
 		return err
@@ -141,6 +171,14 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 
 	if m.DstChainId != s.config.ChainId {
 		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
+	}
+	m.DstPolyEpochStartHeight, err = s.GetPolyEpochStartHeight()
+	if err != nil {
+		return fmt.Errorf("%s fetch dst chain poly epoch height error %v", s.name, err)
+	}
+	m.DstPolyKeepers, err = s.GetPolyKeepers()
+	if err != nil {
+		return fmt.Errorf("%s fetch dst chain poly keepers error %v", s.name, err)
 	}
 	err = compose(m)
 	if err != nil {
@@ -163,24 +201,34 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 	for {
 		select {
 		case <-s.Done():
-			logs.Info("%s submitter is exiting now", s.name)
+			log.Info("Submitter is exiting now", "chain", s.name)
 			return nil
+		default:
 		}
-		tx, err := bus.Pop(context.Background())
+		tx, err := bus.Pop(s.Context)
 		if err != nil {
-			logs.Error("Bus pop error %v", err)
+			log.Error("Bus pop error", "err", err)
 			continue
 		}
 		if tx == nil {
 			time.Sleep(time.Second)
 			continue
 		}
+		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
-			logs.Error("%s Process poly tx error %v", err)
+			log.Error("Process poly tx error", "chain", s.name, "err", err)
+			fmt.Println(util.Verbose(tx))
+			if errors.Is(err, msg.ERR_INVALID_TX) {
+				log.Error("Skipped invalid poly tx", "poly_hash", tx.PolyHash)
+				continue
+			}
 			tx.Attempts++
+			// TODO: retry with increased gas price?
 			bus.Push(context.Background(), tx)
+		} else {
+			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
 		}
 	}
 }
@@ -188,7 +236,12 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, compose msg.PolyComposer) error {
 	s.Context = ctx
 	s.wg = wg
-	for _, a := range s.wallet.Accounts() {
+	accounts := s.wallet.Accounts()
+	if len(accounts) == 0 {
+		log.Warn("No account available for submitter workers", "chain", s.name)
+	}
+	for i, a := range accounts {
+		log.Info("Starting submitter worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
 		go s.run(a, bus, compose)
 	}
 	return nil

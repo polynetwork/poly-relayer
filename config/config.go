@@ -28,15 +28,19 @@ import (
 	"github.com/polynetwork/bridge-common/wallet"
 )
 
-var CONFIG *Config
+var (
+	CONFIG *Config
+)
 
 type Config struct {
-	Env        string
-	Bus        *BusConfig
-	Poly       *PolyChainConfig
-	Chains     map[uint64]*ChainConfig
-	MetricHost string
-	MetricPort int
+	Env          string
+	Bus          *BusConfig
+	Poly         *PolyChainConfig
+	Chains       map[uint64]*ChainConfig
+	MetricHost   string
+	MetricPort   int
+	ValidMethods []string
+	validMethods map[string]bool
 }
 
 func New(path string) (config *Config, err error) {
@@ -52,6 +56,12 @@ func New(path string) (config *Config, err error) {
 	if config.Env != base.ENV {
 		util.Fatal("Config env(%s) and build env(%s) does not match!", config.Env, base.ENV)
 	}
+
+	methods := map[string]bool{}
+	for _, m := range config.ValidMethods {
+		methods[m] = true
+	}
+	config.validMethods = methods
 	return
 }
 
@@ -63,6 +73,7 @@ type PolyChainConfig struct {
 type ChainConfig struct {
 	ChainId           uint64
 	Nodes             []string
+	ExtraNodes        []string // tc or cosmos nodes
 	LockProxyContract []string
 	CCMContract       string
 	CCDContract       string
@@ -79,6 +90,7 @@ type ChainConfig struct {
 type ListenerConfig struct {
 	ChainId           uint64
 	Nodes             []string
+	ExtraNodes        []string // tc or cosmos nodes
 	LockProxyContract []string
 	CCMContract       string
 	CCDContract       string
@@ -110,6 +122,7 @@ func (c *PolySubmitterConfig) Fill(o *PolySubmitterConfig) *PolySubmitterConfig 
 type SubmitterConfig struct {
 	ChainId     uint64
 	Nodes       []string
+	ExtraNodes  []string // tc or cosmos nodes
 	CCMContract string
 	CCDContract string
 	Wallet      *wallet.Config
@@ -122,8 +135,24 @@ type WalletConfig struct {
 }
 
 type BusConfig struct {
-	Redis                *redis.Options
+	Redis                *redis.Options `json:"-"`
 	HeightUpdateInterval uint64
+	Config               *struct {
+		Network    string
+		Addr       string
+		Username   string
+		Password   string
+		DB         int
+		MaxRetries int
+	}
+}
+
+func (c *BusConfig) Init() {
+	c.Redis = new(redis.Options)
+	if c.Config != nil {
+		v, _ := json.Marshal(c.Config)
+		json.Unmarshal(v, c.Redis)
+	}
 }
 
 type HeaderSyncConfig struct {
@@ -173,6 +202,10 @@ func (c *Config) Init() (err error) {
 	if c.MetricPort == 0 {
 		c.MetricPort = 6500
 	}
+	if c.Bus != nil {
+		c.Bus.Init()
+	}
+
 	if c.Poly != nil {
 		err = c.Poly.Init(c.Bus)
 		if err != nil {
@@ -191,9 +224,16 @@ func (c *Config) Init() (err error) {
 	return
 }
 
+func (c *Config) AllowMethod(method string) bool {
+	return c.validMethods[method]
+}
+
 func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 	c.ChainId = base.POLY
 	if c.PolyTxSync != nil {
+		if c.PolyTxSync.ListenerConfig == nil {
+			c.PolyTxSync.ListenerConfig = new(ListenerConfig)
+		}
 		c.PolyTxSync.ChainId = base.POLY
 		if c.PolyTxSync.Bus == nil {
 			c.PolyTxSync.Bus = bus
@@ -218,15 +258,16 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 
 	if c.HeaderSync != nil {
+		c.HeaderSync.ListenerConfig = c.FillListener(c.HeaderSync.ListenerConfig)
 		c.HeaderSync.ChainId = chain
 		if c.HeaderSync.Bus == nil {
 			c.HeaderSync.Bus = bus
 		}
 		c.HeaderSync.Poly = poly.PolySubmitterConfig.Fill(c.HeaderSync.Poly)
-		c.HeaderSync.ListenerConfig = c.FillListener(c.HeaderSync.ListenerConfig)
 	}
 
 	if c.SrcTxSync != nil {
+		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig)
 		c.SrcTxSync.ChainId = chain
 		if c.SrcTxSync.Bus == nil {
 			c.SrcTxSync.Bus = bus
@@ -235,19 +276,22 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 
 	if c.SrcTxCommit != nil {
+		c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig)
 		c.SrcTxCommit.ChainId = chain
 		if c.SrcTxCommit.Bus == nil {
 			c.SrcTxCommit.Bus = bus
 		}
 		c.SrcTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxCommit.Poly)
-		c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig)
 	}
 
 	if c.PolyTxCommit != nil {
-		c.SrcTxCommit.ChainId = chain
+		c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
+		c.PolyTxCommit.ChainId = chain
 		c.PolyTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.PolyTxCommit.Poly)
+		if c.PolyTxCommit.Bus == nil {
+			c.PolyTxCommit.Bus = bus
+		}
 	}
-	c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
 	return
 }
 
@@ -261,6 +305,9 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 	o.ChainId = c.ChainId
 	if len(o.Nodes) == 0 {
 		o.Nodes = c.Nodes
+	}
+	if len(o.ExtraNodes) == 0 {
+		o.ExtraNodes = c.ExtraNodes
 	}
 	if o.Wallet == nil {
 		o.Wallet = c.Wallet
@@ -289,6 +336,10 @@ func (c *ChainConfig) FillListener(o *ListenerConfig) *ListenerConfig {
 	if len(o.Nodes) == 0 {
 		o.Nodes = c.Nodes
 	}
+	if len(o.ExtraNodes) == 0 {
+		o.ExtraNodes = c.ExtraNodes
+	}
+
 	if o.Defer == 0 {
 		o.Defer = c.Defer
 	}

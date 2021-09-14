@@ -23,9 +23,13 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/matic"
 	"github.com/polynetwork/bridge-common/chains/matic/cosmos"
+	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
 )
@@ -40,11 +44,22 @@ type Listener struct {
 	*eth.Listener
 }
 
-func (l *Listener) Header(height uint64) (header []byte, err error) {
+func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+	l.Listener = new(eth.Listener)
+	err = l.Listener.Init(config, poly)
+	if err != nil {
+		return
+	}
+	l.spans = map[uint64][2]uint64{}
+	l.tc, err = matic.WithOptions(base.HEIMDALL, config.ExtraNodes, time.Minute, 1)
+	return
+}
+
+func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
 	hdr, err := l.SDK().Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
 	if err != nil {
 		err = fmt.Errorf("Fetch block header error %v", err)
-		return nil, err
+		return
 	}
 	hp := &cosmos.HeaderWithOptionalProof{
 		Header: *hdr,
@@ -52,20 +67,20 @@ func (l *Listener) Header(height uint64) (header []byte, err error) {
 	if (hdr.Number.Uint64()+1)%matic.SPRINT_SIZE == 0 {
 		spanId, err := l.GetBorSpanId(height)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if spanId > l.lastSpanSync {
 			hmHeight, err := l.GetBestCosmosHeight()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if spanId == 0 {
-				return nil, fmt.Errorf("Span ID missing for block %d", height)
+				return nil, nil, fmt.Errorf("Span ID missing for block %d", height)
 			}
 			err = l.tc.Node().ComposeHeaderProof(height, hmHeight, spanId, hp)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			l.lastSpanSync = spanId
 		}

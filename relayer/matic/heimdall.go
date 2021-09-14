@@ -19,27 +19,42 @@ package matic
 
 import (
 	"bytes"
+	"time"
 
+	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/matic"
 	"github.com/polynetwork/bridge-common/chains/matic/cosmos"
-	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 type HeimdallListener struct {
-	tc *matic.SDK
-	*eth.Listener
+	sdk    *matic.SDK // heimdall tclient
+	config *config.ListenerConfig
+	poly   *poly.SDK
+	name   string
 }
 
-func (l *Listener) HeimdallHeader(height uint64) (header []byte, err error) {
+func (l *HeimdallListener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+	l.config = config
+	l.name = base.GetChainName(base.HEIMDALL)
+	l.poly = poly
+	l.sdk, err = matic.WithOptions(base.HEIMDALL, config.ExtraNodes, time.Minute, 1)
+	return
+}
+
+func (l *HeimdallListener) Header(height uint64) (header []byte, hash []byte, err error) {
 	h := int64(height)
-	rc, err := l.tc.Node().Commit(&h)
+	rc, err := l.sdk.Node().Commit(&h)
 	if err != nil {
-		return nil, err
+		return
 	}
 	if bytes.Equal(rc.Header.ValidatorsHash, rc.Header.NextValidatorsHash) {
-		return nil, nil
+		return nil, nil, nil
 	}
-	vs, err := l.tc.Node().GetValidators(height)
+	vs, err := l.sdk.Node().GetValidators(height)
 	if err != nil {
 		return
 	}
@@ -48,15 +63,51 @@ func (l *Listener) HeimdallHeader(height uint64) (header []byte, err error) {
 		Commit:  rc.Commit,
 		Valsets: vs,
 	}
-	header, err = l.tc.Node().MarshalHeader(hdr)
+	header, err = l.sdk.Node().MarshalHeader(hdr)
 	return
 }
 
 func (l *HeimdallListener) GetEpochSwitch() (info *cosmos.CosmosEpochSwitchInfo, err error) {
-	data, err := l.Poly().Node().GetSideChainEpoch(l.ChainId())
+	data, err := l.poly.Node().GetSideChainEpoch(base.HEIMDALL)
 	if err != nil {
 		return nil, err
 	}
 	info, err = matic.ParseEpochSwitch(data)
+	return
+}
+
+func (l *HeimdallListener) ChainId() uint64 {
+	return base.HEIMDALL
+}
+
+func (l *HeimdallListener) Compose(tx *msg.Tx) error {
+	return nil
+}
+
+func (l *HeimdallListener) Defer() int {
+	return l.config.Defer
+}
+
+func (l *HeimdallListener) LastHeaderSync(force uint64) (uint64, error) {
+	return 0, nil
+}
+
+func (l *HeimdallListener) ListenCheck() time.Duration {
+	duration := time.Second
+	if l.config.ListenCheck > 0 {
+		duration = time.Duration(l.config.ListenCheck) * time.Second
+	}
+	return duration
+}
+
+func (l *HeimdallListener) Nodes() chains.Nodes {
+	return l.sdk.ChainSDK
+}
+
+func (l *HeimdallListener) ScanTx(hash string) (tx *msg.Tx, err error) {
+	return
+}
+
+func (l *HeimdallListener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	return
 }

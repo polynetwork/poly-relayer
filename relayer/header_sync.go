@@ -19,10 +19,12 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
+	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -35,6 +37,7 @@ type HeaderSyncHandler struct {
 	listener  IChainListener
 	submitter *poly.Submitter
 	state     bus.ChainStore
+	input     bus.ChainStore
 	height    uint64
 	config    *config.HeaderSyncConfig
 	reset     chan uint64
@@ -50,6 +53,11 @@ func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 }
 
 func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
+	switch h.config.ChainId {
+	case base.OK, base.MATIC:
+		return fmt.Errorf("Please use dedicated build for header sync of chains: OK, MATIC")
+	}
+
 	h.Context = ctx
 	h.wg = wg
 
@@ -65,6 +73,10 @@ func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 
 	h.state = bus.NewRedisChainStore(
 		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(h.config.Bus.Redis),
+		h.config.Bus.HeightUpdateInterval,
+	)
+	h.input = bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_HEADER_RESET}, bus.New(h.config.Bus.Redis),
 		h.config.Bus.HeightUpdateInterval,
 	)
 	return
@@ -92,22 +104,21 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 	feedback := make(chan uint64, 1)
 	go h.monitor(feedback)
 	var latest uint64
+LOOP:
 	for {
 		select {
 		case height := <-feedback:
 			if height != 0 && height < h.height-uint64(2*h.config.Batch) {
-				logs.Info("Resetting side chain(%d) header sync with feedback to height %d from %d", h.config.ChainId, height, h.height)
+				log.Info("Resetting side header sync with feedback", "chain", h.config.ChainId, "to", height, "from", h.height)
 				h.height = height - 1
 			}
 		case reset := <-h.reset:
 			if reset < h.height && reset != 0 {
-				logs.Info("Resetting side chain(%d) header sync to height %d", h.config.ChainId, reset)
+				log.Info("Resetting side chain header sync", "chain", h.config.ChainId, "to", reset)
 				h.height = reset - 1
 			}
 		case <-h.Done():
-			logs.Info("Header sync handler(chain %v height %v) is exiting...", h.config.ChainId, h.height)
-			close(ch)
-			break
+			break LOOP
 		default:
 		}
 
@@ -115,25 +126,39 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
 		}
-		header, err := h.listener.Header(h.height)
+		header, hash, err := h.listener.Header(h.height)
 		if err == nil {
 			if header != nil {
-				ch <- msg.Header{Data: header, Height: h.height}
+				select {
+				case ch <- msg.Header{Data: header, Height: h.height, Hash: hash}:
+				case <-h.Done():
+					break LOOP
+				}
 			}
 			h.state.HeightMark(h.height)
 			continue
 		} else {
-			logs.Error("Fetch chain(%v) block %v  header error %v", h.config.ChainId, h.height, err)
+			log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
 		}
 		h.height--
 	}
+	log.Info("Header sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
+	close(ch)
 }
 
 func (h *HeaderSyncHandler) Start() (err error) {
-	h.height, err = h.state.GetHeight(context.Background())
+	height, err := h.input.GetHeight(context.Background())
+	if err != nil {
+		log.Warn("Get forced header sync start error, will fetch last header state", "err", err)
+	} else {
+		// Attempt to clear reset
+		h.input.UpdateHeight(context.Background(), 0)
+	}
+	h.height, err = h.listener.LastHeaderSync(height)
 	if err != nil {
 		return
 	}
+	log.Info("Header sync will start...", "height", h.height+1, "force", height, "chain", h.config.ChainId)
 	ch, err := h.submitter.StartSync(h.Context, h.wg, h.config, h.reset)
 	if err != nil {
 		return
