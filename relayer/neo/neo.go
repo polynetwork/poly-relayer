@@ -77,6 +77,9 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		}
 		s.wallet = w
 	}
+
+	s.ccm = util.LowerHex(config.CCMContract)
+	s.ccd = util.LowerHex(config.CCDContract)
 	s.name = base.GetChainName(config.ChainId)
 	s.polyId = poly.ReadChainID()
 	if s.polyId == 0 {
@@ -109,7 +112,10 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	}
 	h, err := s.sdk.Node().GetPolyEpochHeight(s.ccm, s.polyId)
 	if err != nil {
-		return fmt.Errorf("%s fetch dst chain poly epoch height error %v", s.name, err)
+		log.Debug("Neo fetch dst chain poly epoch height error", "err", err)
+	}
+	if h == 0 {
+		h = 1
 	}
 	m.DstPolyEpochStartHeight = uint32(h)
 	err = compose(m)
@@ -133,11 +139,15 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		return
 	}
 	scriptHash := helper.HexToBytes(s.ccm)
+	var anchor []byte
+	if tx.AnchorHeader != nil {
+		anchor = tx.AnchorHeader.GetMessage()
+	}
 	args := []sc.ContractParameter{
 		ContractByteParam(path),
 		ContractByteParam(tx.PolyHeader.GetMessage()),
 		ContractByteParam(proof),
-		ContractByteParam(tx.AnchorHeader.GetMessage()),
+		ContractByteParam(anchor),
 		ContractByteParam(tx.PolySigs),
 	}
 	builder := sc.NewScriptBuilder()
