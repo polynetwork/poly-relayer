@@ -112,7 +112,10 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	}
 	h, err := s.sdk.Node().GetPolyEpochHeight(s.ccm, s.polyId)
 	if err != nil {
-		return fmt.Errorf("%s fetch dst chain poly epoch height error %v", s.name, err)
+		log.Debug("Neo fetch dst chain poly epoch height error", "err", err)
+	}
+	if h == 0 {
+		h = 1
 	}
 	m.DstPolyEpochStartHeight = uint32(h)
 	err = compose(m)
