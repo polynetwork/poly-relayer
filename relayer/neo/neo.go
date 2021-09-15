@@ -139,11 +139,15 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		return
 	}
 	scriptHash := helper.HexToBytes(s.ccm)
+	var anchor []byte
+	if tx.AnchorHeader != nil {
+		anchor = tx.AnchorHeader.GetMessage()
+	}
 	args := []sc.ContractParameter{
 		ContractByteParam(path),
 		ContractByteParam(tx.PolyHeader.GetMessage()),
 		ContractByteParam(proof),
-		ContractByteParam(tx.AnchorHeader.GetMessage()),
+		ContractByteParam(anchor),
 		ContractByteParam(tx.PolySigs),
 	}
 	builder := sc.NewScriptBuilder()
