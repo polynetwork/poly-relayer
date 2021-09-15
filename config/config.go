@@ -73,6 +73,7 @@ type PolyChainConfig struct {
 type ChainConfig struct {
 	ChainId           uint64
 	Nodes             []string
+	ExtraNodes        []string
 	LockProxyContract []string
 	CCMContract       string
 	CCDContract       string
@@ -89,6 +90,7 @@ type ChainConfig struct {
 type ListenerConfig struct {
 	ChainId           uint64
 	Nodes             []string
+	ExtraNodes        []string
 	LockProxyContract []string
 	CCMContract       string
 	CCDContract       string
@@ -121,6 +123,7 @@ func (c *PolySubmitterConfig) Fill(o *PolySubmitterConfig) *PolySubmitterConfig 
 type SubmitterConfig struct {
 	ChainId     uint64
 	Nodes       []string
+	ExtraNodes  []string
 	CCMContract string
 	CCDContract string
 	Wallet      *wallet.Config
@@ -304,6 +307,9 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 	if len(o.Nodes) == 0 {
 		o.Nodes = c.Nodes
 	}
+	if len(o.ExtraNodes) == 0 {
+		o.ExtraNodes = c.ExtraNodes
+	}
 	if o.Wallet == nil {
 		o.Wallet = c.Wallet
 	} else if len(o.Wallet.Nodes) == 0 {
@@ -330,6 +336,9 @@ func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerC
 	o.ChainId = c.ChainId
 	if len(o.Nodes) == 0 {
 		o.Nodes = c.Nodes
+	}
+	if len(o.ExtraNodes) == 0 {
+		o.ExtraNodes = c.ExtraNodes
 	}
 	if o.Defer == 0 {
 		o.Defer = c.Defer
