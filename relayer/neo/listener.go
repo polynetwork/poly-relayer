@@ -120,7 +120,7 @@ func (l *Listener) ParseParam(tx *msg.Tx) (err error) {
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	res := l.sdk.Node().GetStateHeight()
 	if res.HasError() {
-		err = fmt.Errorf("Get neo state height error #{res.Error.Message}")
+		err = fmt.Errorf("Get neo state height error %s", res.Error.Message)
 		return
 	}
 	tx.SrcProofHeight = uint64(res.Result.StateHeight)
@@ -130,7 +130,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	}
 	sr := l.sdk.Node().GetStateRootByIndex(uint32(tx.SrcProofHeight))
 	if sr.HasError() {
-		err = fmt.Errorf("Get state root failure for neo, height %d #{sr.Error.Message}", tx.SrcProofHeight)
+		err = fmt.Errorf("Get state root failure for neo, height %d %s", tx.SrcProofHeight, sr.Error.Message)
 		return
 	}
 	root := sr.Result.StateRoot
@@ -140,7 +140,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 
 	pf := l.sdk.Node().GetProof(root.StateRoot, "0x"+helper.ReverseString(l.ccm), tx.TxId)
 	if pf.HasError() {
-		err = fmt.Errorf("Get proof error for neo #{pf.Error.Message}")
+		err = fmt.Errorf("Get proof error for neo %s", pf.Error.Message)
 		return
 	}
 	tx.SrcProof, err = hex.DecodeString(pf.CrosschainProof.Proof)
@@ -160,7 +160,7 @@ func (l *Listener) fetchLastConsensus() (height uint64, err error) {
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
 	res := l.sdk.Node().GetBlockHeaderByIndex(uint32(height))
 	if res.HasError() {
-		return nil, nil, fmt.Errorf("Fetch block header error #{response.Error.Message}")
+		return nil, nil, fmt.Errorf("Fetch block header error %s", res.Error.Message)
 	}
 	if res.Result.NextConsensus == l.consensus {
 		return nil, nil, nil
@@ -294,7 +294,7 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 
 	res := l.sdk.Node().GetBlockHeaderByIndex(uint32(height))
 	if res.HasError() {
-		return 0, fmt.Errorf("Fetch block header error #{response.Error.Message}")
+		return 0, fmt.Errorf("Fetch block header error %s", res.Error.Message)
 	}
 	l.consensus = res.Result.NextConsensus
 
