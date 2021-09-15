@@ -131,12 +131,10 @@ LOOP:
 		}
 		header, hash, err := h.listener.Header(h.height)
 		if err == nil {
-			if header != nil {
-				select {
-				case ch <- msg.Header{Data: header, Height: h.height, Hash: hash}:
-				case <-h.Done():
-					break LOOP
-				}
+			select {
+			case ch <- msg.Header{Data: header, Height: h.height, Hash: hash}:
+			case <-h.Done():
+				break LOOP
 			}
 			continue
 		} else {
