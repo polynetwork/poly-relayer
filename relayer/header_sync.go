@@ -19,9 +19,11 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -57,6 +59,10 @@ func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 	err = h.submitter.Init(h.config.Poly)
 	if err != nil {
 		return
+	}
+
+	if h.listener == nil {
+		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
 	err = h.listener.Init(h.config.ListenerConfig, h.submitter.SDK())

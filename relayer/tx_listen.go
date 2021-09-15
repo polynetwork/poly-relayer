@@ -56,6 +56,10 @@ func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 		return
 	}
 
+	if h.listener == nil {
+		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
+	}
+
 	h.state = bus.NewRedisChainStore(
 		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_TX}, bus.New(h.config.Bus.Redis),
 		h.config.Bus.HeightUpdateInterval,
@@ -141,6 +145,10 @@ func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 	err = h.listener.Init(h.config.ListenerConfig, nil)
 	if err != nil {
 		return
+	}
+
+	if h.listener == nil {
+		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
 	h.state = bus.NewRedisChainStore(
