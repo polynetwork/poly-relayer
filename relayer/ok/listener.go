@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/store/rootmulti"
@@ -31,8 +32,11 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/ok"
+	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/util"
+	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
@@ -48,6 +52,17 @@ type Listener struct {
 	*eth.Listener
 	tm    *ok.SDK
 	codec *codec.Codec
+}
+
+func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+	l.Listener = new(eth.Listener)
+	err = l.Listener.Init(config, poly)
+	if err != nil {
+		return
+	}
+	l.codec = okex2.NewCDC()
+	l.tm, err = ok.WithOptions(base.OK, config.ExtraNodes, time.Minute, 1)
+	return
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
