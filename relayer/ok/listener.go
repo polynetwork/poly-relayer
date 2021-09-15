@@ -21,15 +21,26 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/store/rootmulti"
+	ethcom "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/crypto/merkle"
 
 	"github.com/polynetwork/bridge-common/chains/ok"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
 	pcom "github.com/polynetwork/poly/common"
 	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
+	"github.com/polynetwork/poly/native/service/cross_chain_manager/okex"
+	okex2 "github.com/polynetwork/poly/native/service/header_sync/okex"
+
 	"github.com/polynetwork/poly/native/service/header_sync/cosmos"
 )
 
@@ -112,7 +123,76 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 		return
 	}
 	tx.Param = param
-	tx.SrcEvent = event
-	tx.SrcProofHeight, tx.SrcProof, err = l.GetProof(txId, tx.SrcHeight)
+
+	height, proof, err := l.FetchProof(txId, tx.SrcHeight)
+	tx.SrcProofHeight = height + 1
+	var mp merkle.Proof
+	err = proto.UnmarshalText(proof.StorageProofs[0].Proof[0], &mp)
+	if err != nil {
+		return
+	}
+	path := "/"
+	for i := range mp.Ops {
+		op := mp.Ops[len(mp.Ops)-1-i]
+		path += "x:" + hex.EncodeToString(op.Key)
+		path += "/"
+	}
+	keyPath := strings.TrimSuffix(path, "/")
+	tx.SrcEvent, err = l.codec.MarshalBinaryBare(&okex.CosmosProofValue{
+		Kp:    keyPath,
+		Value: event,
+	})
+	if err != nil {
+		return
+	}
+	cr, err := l.tm.Node().Tendermint().QueryCommitResult(int64(tx.SrcProofHeight))
+	if err != nil {
+		return
+	}
+	vs, err := l.tm.Node().GetValidators(tx.SrcProofHeight)
+	if err != nil {
+		return
+	}
+	tx.SrcStateRoot, err = l.codec.MarshalBinaryBare(&okex2.CosmosHeader{
+		Header:  *cr.Header,
+		Commit:  cr.Commit,
+		Valsets: vs,
+	})
+	if err != nil {
+		return
+	}
+
+	err = l.verifyMerkleProof(&mp)
+	if err != nil {
+		return
+	}
+
+	prt := rootmulti.DefaultProofRuntime()
+	err = prt.VerifyValue(&mp, cr.AppHash, keyPath, crypto.Keccak256(event))
+	if err != nil {
+		log.Fatal("Unexpected proof verify error", "err", err, "mp", util.Verbose(mp), "path", keyPath, "event", tx.SrcParam)
+		return
+	}
+	tx.SrcProof, err = l.codec.MarshalBinaryBare(mp)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (l *Listener) verifyMerkleProof(mp *merkle.Proof) (err error) {
+	if len(mp.Ops) != 2 {
+		return fmt.Errorf("proof ops size is not 2")
+	}
+	if len(mp.Ops[0].Key) != 1+ethcom.HashLength+ethcom.AddressLength {
+		return fmt.Errorf("mp.Ops[0].Key incorrect size %v", mp.Ops[0].Key)
+	}
+
+	if !bytes.HasPrefix(mp.Ops[0].Key, append([]byte{5}, l.ECCD().Bytes()...)) {
+		return fmt.Errorf("Invalid mp.Ops[0].Key %x", mp.Ops[0].Key)
+	}
+	if !bytes.Equal(mp.Ops[1].Key, []byte("evm")) {
+		return fmt.Errorf("Invalid mp.Ops[1].Key %x", mp.Ops[1].Key)
+	}
 	return
 }

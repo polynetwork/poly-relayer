@@ -93,6 +93,7 @@ type ListenerConfig struct {
 	CCMContract       string
 	CCDContract       string
 	ListenCheck       int
+	Bus               *BusConfig
 	Defer             int
 }
 
@@ -255,7 +256,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 
 	if c.HeaderSync != nil {
-		c.HeaderSync.ListenerConfig = c.FillListener(c.HeaderSync.ListenerConfig)
+		c.HeaderSync.ListenerConfig = c.FillListener(c.HeaderSync.ListenerConfig, bus)
 		c.HeaderSync.ChainId = chain
 		if c.HeaderSync.Bus == nil {
 			c.HeaderSync.Bus = bus
@@ -264,16 +265,16 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 
 	if c.SrcTxSync != nil {
-		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig)
+		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig, bus)
 		c.SrcTxSync.ChainId = chain
 		if c.SrcTxSync.Bus == nil {
 			c.SrcTxSync.Bus = bus
 		}
-		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig)
+		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig, bus)
 	}
 
 	if c.SrcTxCommit != nil {
-		c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig)
+		c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig, bus)
 		c.SrcTxCommit.ChainId = chain
 		if c.SrcTxCommit.Bus == nil {
 			c.SrcTxCommit.Bus = bus
@@ -319,7 +320,7 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 	return o
 }
 
-func (c *ChainConfig) FillListener(o *ListenerConfig) *ListenerConfig {
+func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerConfig {
 	if o == nil {
 		o = new(ListenerConfig)
 	}
@@ -345,6 +346,10 @@ func (c *ChainConfig) FillListener(o *ListenerConfig) *ListenerConfig {
 
 	if o.ListenCheck == 0 {
 		o.ListenCheck = c.ListenCheck
+	}
+
+	if o.Bus == nil {
+		o.Bus = bus
 	}
 
 	return o

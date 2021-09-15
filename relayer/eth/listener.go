@@ -35,6 +35,7 @@ import (
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	pcom "github.com/polynetwork/poly/common"
@@ -51,6 +52,7 @@ type Listener struct {
 	GetProofHeight func() (uint64, error)
 	GetProof       func([]byte, uint64) (uint64, []byte, error)
 	name           string
+	state          bus.ChainStore // Header sync state
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
@@ -62,6 +64,11 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	// Common
 	l.GetProofHeight = l.getProofHeight
 	l.GetProof = l.getProof
+
+	l.state = bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
+		config.Bus.HeightUpdateInterval,
+	)
 
 	l.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	return
@@ -76,11 +83,15 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 		}
 		height = h - base.BlocksToWait(l.config.ChainId)
 	case base.OK:
-		h, err := l.sdk.Node().GetLatestHeight()
+		h, _ := l.state.GetHeight(context.Background())
+		height, err = l.sdk.Node().GetLatestHeight()
 		if err != nil {
 			return 0, err
 		}
-		height = h - 3
+		if h > height {
+			height = h
+		}
+		height = height - base.BlocksToWait(l.config.ChainId)
 	default:
 		return 0, fmt.Errorf("getProofHeight unsupported chain %s", l.name)
 	}
@@ -88,6 +99,15 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 }
 
 func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof []byte, err error) {
+	var p *eth.ETHProof
+	height, p, err = l.FetchProof(txId, txHeight)
+	if err != nil {
+		proof, err = json.Marshal(p)
+	}
+	return
+}
+
+func (l *Listener) FetchProof(txId []byte, txHeight uint64) (height uint64, proof *eth.ETHProof, err error) {
 	id := msg.EncodeTxId(txId)
 	bytes, err := ceth.MappingKeyAt(id, "01")
 	if err != nil {
@@ -104,11 +124,7 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 		err = fmt.Errorf("%w Proof not ready tx height %v proof height %v", msg.ERR_PROOF_UNAVAILABLE, txHeight, height)
 		return
 	}
-	ethProof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
-	if err != nil {
-		return 0, nil, err
-	}
-	proof, err = json.Marshal(ethProof)
+	proof, err = l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
 	return
 }
 
@@ -217,6 +233,18 @@ func (l *Listener) Defer() int {
 
 func (l *Listener) Poly() *poly.SDK {
 	return l.poly
+}
+
+func (l *Listener) Name() string {
+	return l.name
+}
+
+func (l *Listener) SDK() *eth.SDK {
+	return l.sdk
+}
+
+func (l *Listener) ECCD() common.Address {
+	return l.ccd
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
