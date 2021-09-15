@@ -19,8 +19,10 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -48,6 +50,10 @@ func NewPolyTxCommitHandler(config *config.PolyTxCommitConfig) *PolyTxCommitHand
 func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
+	if h.submitter == nil {
+		return fmt.Errorf("Unabled to create submitter for chain %s", base.GetChainName(h.config.ChainId))
+	}
 
 	err = h.submitter.Init(h.config.SubmitterConfig)
 	if err != nil {
@@ -102,6 +108,10 @@ func (h *SrcTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err 
 	err = h.submitter.Init(h.config.Poly)
 	if err != nil {
 		return
+	}
+
+	if h.listener == nil {
+		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)

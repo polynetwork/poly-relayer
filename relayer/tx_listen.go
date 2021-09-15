@@ -51,6 +51,11 @@ func NewSrcTxSyncHandler(config *config.SrcTxSyncConfig) *SrcTxSyncHandler {
 func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
+	if h.listener == nil {
+		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
+	}
+
 	err = h.listener.Init(h.config.ListenerConfig, nil)
 	if err != nil {
 		return
@@ -138,6 +143,9 @@ func NewPolyTxSyncHandler(config *config.PolyTxSyncConfig) *PolyTxSyncHandler {
 func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+	if h.listener == nil {
+		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
+	}
 	err = h.listener.Init(h.config.ListenerConfig, nil)
 	if err != nil {
 		return
