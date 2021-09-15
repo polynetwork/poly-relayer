@@ -45,16 +45,12 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Config) error
 func (s *Server) Start() (err error) {
 	// Create poly tx sync handler
 	if s.config.Poly != nil {
-		s.parseHandlers(s.config.Poly.PolyTxSync)
+		s.parseHandlers(base.POLY, s.config.Poly.PolyTxSync)
 	}
 
 	// Create handlers
 	for id, chain := range s.config.Chains {
-		switch id {
-		case base.OK, base.MATIC, base.HEIMDALL:
-			return fmt.Errorf("Please use dedicated build for header sync of chains: OK, MATIC")
-		}
-		s.parseHandlers(chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit)
+		s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit)
 	}
 
 	// Initialize
@@ -77,19 +73,24 @@ func (s *Server) Start() (err error) {
 	return
 }
 
-func (s *Server) parseHandlers(confs ...interface{}) {
+func (s *Server) parseHandlers(chain uint64, confs ...interface{}) {
 	for _, conf := range confs {
-		handler := s.parseHandler(conf)
+		handler := s.parseHandler(chain, conf)
 		if handler != nil {
 			s.roles = append(s.roles, handler)
 		}
 	}
 }
 
-func (s *Server) parseHandler(conf interface{}) (handler Handler) {
+func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) {
 	if reflect.ValueOf(conf).IsZero() || !reflect.ValueOf(conf).Elem().FieldByName("Enabled").Interface().(bool) {
 		return
 	}
+	switch chain {
+	case base.OK, base.MATIC, base.HEIMDALL:
+		return nil
+	}
+
 	switch c := conf.(type) {
 	case *config.HeaderSyncConfig:
 		handler = NewHeaderSyncHandler(c)
