@@ -19,9 +19,11 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -59,6 +61,10 @@ func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 		return
 	}
 
+	if h.listener == nil {
+		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
+	}
+
 	err = h.listener.Init(h.config.ListenerConfig, h.submitter.SDK())
 	if err != nil {
 		return
@@ -82,9 +88,13 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 		case <-h.Done():
 			return
 		case <-timer.C:
-			height, err := h.submitter.GetSideChainHeight(h.config.ChainId)
-			if err == nil {
-				ch <- height
+			switch h.config.ChainId {
+			case base.ONT, base.NEO, base.HEIMDALL, base.OK:
+			default:
+				height, err := h.submitter.GetSideChainHeight(h.config.ChainId)
+				if err == nil {
+					ch <- height
+				}
 			}
 		}
 	}
@@ -121,12 +131,10 @@ LOOP:
 		}
 		header, hash, err := h.listener.Header(h.height)
 		if err == nil {
-			if header != nil {
-				select {
-				case ch <- msg.Header{Data: header, Height: h.height, Hash: hash}:
-				case <-h.Done():
-					break LOOP
-				}
+			select {
+			case ch <- msg.Header{Data: header, Height: h.height, Hash: hash}:
+			case <-h.Done():
+				break LOOP
 			}
 			continue
 		} else {

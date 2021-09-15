@@ -81,7 +81,9 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) (err error) {
 	start := time.Now()
 	h := uint64(0)
-	err = s.submitHeadersWithLoop(chainId, headers, header)
+	if len(headers) > 0 {
+		err = s.submitHeadersWithLoop(chainId, headers, header)
+	}
 	if header != nil {
 		h = header.Height
 		if err == nil {
@@ -350,7 +352,11 @@ func (s *Submitter) syncHeaderLoop(ch <-chan msg.Header, reset chan<- uint64) {
 				return
 			}
 			// NOTE err reponse here will revert header sync with delta -100
-			err := s.SubmitHeadersWithLoop(s.sync.ChainId, [][]byte{header.Data}, &header)
+			headers := [][]byte{header.Data}
+			if header.Data == nil {
+				headers = nil
+			}
+			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers, &header)
 			if err != nil {
 				reset <- header.Height - 100
 			}
@@ -376,8 +382,15 @@ COMMIT:
 			if ok {
 				hdr = &header
 				height = header.Height
-				headers = append(headers, header.Data)
-				commit = len(headers) >= s.sync.Batch
+				if hdr.Data == nil {
+					// Update header sync height
+					if len(headers) == 0 {
+						s.SubmitHeadersWithLoop(s.sync.ChainId, nil, hdr)
+					}
+				} else {
+					headers = append(headers, header.Data)
+					commit = len(headers) >= s.sync.Batch
+				}
 			} else {
 				commit = len(headers) > 0
 				break COMMIT
