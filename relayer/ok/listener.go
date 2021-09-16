@@ -140,6 +140,9 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	tx.Param = param
 
 	height, proof, err := l.FetchProof(txId, tx.SrcHeight)
+	if err != nil {
+		return fmt.Errorf("OK chain fetch proof error %v", err)
+	}
 	tx.SrcProofHeight = height + 1
 	var mp merkle.Proof
 	err = proto.UnmarshalText(proof.StorageProofs[0].Proof[0], &mp)
