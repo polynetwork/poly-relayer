@@ -175,7 +175,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		account = common.Hex2Bytes(s.signer.Address.ToHexString())
 
 		// Check done tx existence
-		data, _ := s.sdk.Node().GetDoneTx(s.config.ChainId, tx.Param.CrossChainID)
+		data, _ := s.sdk.Node().GetDoneTx(tx.SrcChainId, tx.Param.CrossChainID)
 		if len(data) != 0 {
 			log.Error("Tx already imported", "src_hash", tx.SrcHash)
 			return nil
@@ -403,7 +403,7 @@ COMMIT:
 			// NOTE err reponse here will revert header sync with delta -100
 			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers, hdr)
 			if err != nil {
-				reset <- height - 100 - uint64(len(headers))
+				reset <- height - uint64(len(headers)) - 2
 			}
 			headers = [][]byte{}
 		}
