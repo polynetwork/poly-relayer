@@ -183,7 +183,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		}
 
 		// Check done tx existence
-		data, _ := s.sdk.Node().GetDoneTx(s.config.ChainId, tx.Param.CrossChainID)
+		data, _ := s.sdk.Node().GetDoneTx(tx.SrcChainId, tx.Param.CrossChainID)
 		if len(data) != 0 {
 			log.Error("Tx already imported", "src_hash", tx.SrcHash)
 			return nil

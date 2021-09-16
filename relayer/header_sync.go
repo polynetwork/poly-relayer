@@ -18,6 +18,7 @@
 package relayer
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -82,7 +83,7 @@ func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 }
 
 func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
-	timer := time.NewTicker(120 * time.Second)
+	timer := time.NewTicker(60 * time.Second)
 	for {
 		select {
 		case <-h.Done():
@@ -100,6 +101,38 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 	}
 }
 
+func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint64 {
+	log.Warn("Rolling header sync back to common ancestor", "current", height, "goal", target, "chain", h.config.ChainId)
+	switch h.config.ChainId {
+	case base.ETH, base.HECO, base.BSC:
+	default:
+		return target
+	}
+
+	var (
+		a, b []byte
+		err  error
+	)
+	for {
+		// Check err here?
+		b, _ = h.submitter.Poly().Node().GetSideChainHeader(h.config.ChainId, target)
+		if len(b) == 0 {
+			target--
+			continue
+		}
+		_, a, err = h.listener.Header(target)
+		if err == nil {
+			if bytes.Equal(a, b) {
+				log.Info("Found common ancestor", "chain", h.config.ChainId, "height", target)
+				return target
+			}
+		} else {
+			log.Error("RollbackToCommonAncestor error", "chain", h.config.ChainId, "height", target)
+			time.Sleep(time.Second)
+		}
+	}
+}
+
 func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 	h.wg.Add(1)
 	defer h.wg.Done()
@@ -112,13 +145,13 @@ LOOP:
 		select {
 		case height := <-feedback:
 			if height != 0 && height < h.height-uint64(2*h.config.Batch) {
-				log.Info("Resetting side header sync with feedback", "chain", h.config.ChainId, "to", height, "from", h.height)
-				h.height = height - 1
+				log.Info("Detected synced height reset", "chain", h.config.ChainId, "value", height)
+				h.height = h.RollbackToCommonAncestor(h.height, height-1)
 			}
 		case reset := <-h.reset:
 			if reset < h.height && reset != 0 {
-				log.Info("Resetting side chain header sync", "chain", h.config.ChainId, "to", reset)
-				h.height = reset - 1
+				log.Info("Detected submit failure reset", "chain", h.config.ChainId, "value", reset)
+				h.height = h.RollbackToCommonAncestor(h.height, reset-1)
 			}
 		case <-h.Done():
 			break LOOP
