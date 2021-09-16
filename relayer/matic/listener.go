@@ -29,6 +29,7 @@ import (
 	"github.com/polynetwork/bridge-common/chains/matic"
 	"github.com/polynetwork/bridge-common/chains/matic/cosmos"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
