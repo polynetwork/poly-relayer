@@ -395,7 +395,7 @@ COMMIT:
 			// NOTE err reponse here will revert header sync with delta -100
 			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers, hdr)
 			if err != nil {
-				reset <- height - 100 - uint64(len(headers))
+				reset <- height - uint64(len(headers)) - 2
 			}
 			headers = [][]byte{}
 		}

@@ -102,6 +102,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(bsc.Submitter)
 	case base.HECO:
 		submitter = new(heco.Submitter)
+	case base.O3:
+		submitter = new(o3.Submitter)
 	case base.NEO:
 		submitter = new(neo.Submitter)
 	case base.ONT:
