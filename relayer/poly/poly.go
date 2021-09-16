@@ -113,6 +113,12 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 				return nil
 			}
 			msg := err.Error()
+			switch chainId {
+			case base.OK:
+				if strings.Contains(msg, "no header you commited is useful") {
+					return fmt.Errorf("Sync ok chain header to poly failed: %s", msg)
+				}
+			}
 			if strings.Contains(msg, "parent header not exist") || strings.Contains(msg, "missing required field") || strings.Contains(msg, "parent block failed") {
 				//NOTE: reset header height back here
 				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
@@ -401,7 +407,8 @@ COMMIT:
 			// NOTE err reponse here will revert header sync with delta -100
 			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers, hdr)
 			if err != nil {
-				reset <- height - 100 - uint64(len(headers))
+				rollback := 1
+				reset <- height - uint64(len(headers)+rollback)
 			}
 			headers = [][]byte{}
 		}
