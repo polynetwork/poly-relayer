@@ -31,6 +31,7 @@ import (
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
 )
@@ -81,6 +82,9 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 			}
 			err = l.tc.Node().ComposeHeaderProof(height, hmHeight, spanId, hp)
 			if err != nil {
+				if err == matic.ERR_SPAN_TOO_NEW {
+					err = msg.ERR_NOT_READY
+				}
 				return nil, nil, err
 			}
 			l.lastSpanSync = spanId

@@ -139,7 +139,10 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 	confirms := uint64(h.listener.Defer())
 	feedback := make(chan uint64, 1)
 	go h.monitor(feedback)
-	var latest uint64
+	var (
+		err    error
+		latest uint64
+	)
 LOOP:
 	for {
 		select {
@@ -161,6 +164,9 @@ LOOP:
 		h.height++
 		if latest < h.height+confirms {
 			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
+		}
+		if err == msg.ERR_NOT_READY {
+			time.Sleep(time.Second)
 		}
 		header, hash, err := h.listener.Header(h.height)
 		if err == nil {

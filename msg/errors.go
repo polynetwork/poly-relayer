@@ -22,4 +22,5 @@ import "errors"
 var (
 	ERR_INVALID_TX        = errors.New("Invalid TX")
 	ERR_PROOF_UNAVAILABLE = errors.New("Tx proof unavailable")
+	ERR_NOT_READY         = errors.New("Resource not ready yet")
 )
