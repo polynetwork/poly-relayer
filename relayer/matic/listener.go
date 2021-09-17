@@ -158,7 +158,7 @@ func (l *Listener) GetBorSpanId(height uint64) (id uint64, err error) {
 }
 
 func (l *Listener) GetBestCosmosHeight() (height uint64, err error) {
-	data, err := l.Poly().Node().GetSideChainEpoch(l.ChainId())
+	data, err := l.Poly().Node().GetSideChainEpoch(base.HEIMDALL)
 	if err != nil {
 		return
 	}
