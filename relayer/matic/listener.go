@@ -73,7 +73,8 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 		}
 
 		if spanId > l.lastSpanSync {
-			hmHeight, err := l.GetBestCosmosHeight()
+			hmHeight, err := l.tc.Node().GetLatestHeight()
+			hmHeight -= 20 // Allowed heimdall sync lag?
 			if err != nil {
 				return nil, nil, err
 			}
