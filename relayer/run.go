@@ -87,7 +87,8 @@ func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) 
 		return
 	}
 	switch chain {
-	case base.OK, base.MATIC, base.HEIMDALL:
+	case base.ONT:
+	default:
 		return nil
 	}
 
