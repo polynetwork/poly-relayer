@@ -61,6 +61,10 @@ func New(path string) (config *Config, err error) {
 	for _, m := range config.ValidMethods {
 		methods[m] = true
 	}
+
+	if config.Chains == nil {
+		config.Chains = map[uint64]*ChainConfig{}
+	}
 	config.validMethods = methods
 	return
 }
