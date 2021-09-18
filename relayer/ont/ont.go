@@ -169,5 +169,6 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	s.Context = ctx
 	s.wg = wg
 	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address, "chain", s.name)
+	go s.run(s.signer.Account, bus, composer)
 	return nil
 }
