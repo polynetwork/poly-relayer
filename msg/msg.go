@@ -32,7 +32,7 @@ type TxType int
 const (
 	SRC    TxType = 1
 	POLY   TxType = 2
-	HEADER TxType = 2
+	HEADER TxType = 3
 )
 
 type Header struct {
