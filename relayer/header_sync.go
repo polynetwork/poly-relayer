@@ -125,6 +125,9 @@ func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint
 			if bytes.Equal(a, b) {
 				log.Info("Found common ancestor", "chain", h.config.ChainId, "height", target)
 				return target
+			} else {
+				target--
+				continue
 			}
 		} else {
 			log.Error("RollbackToCommonAncestor error", "chain", h.config.ChainId, "height", target)
