@@ -67,20 +67,21 @@ func recordMetrics() {
 	timer := time.NewTicker(2 * time.Second)
 	for range timer.C {
 		for _, chain := range base.CHAINS {
+			name := base.GetChainName(chain)
 			latest, _ := getHeight(chain, bus.KEY_HEIGHT_CHAIN)
 			header, _ := getHeight(chain, bus.KEY_HEIGHT_HEADER)
 			tx, _ := getHeight(chain, bus.KEY_HEIGHT_TX)
-			metrics.Record(header, "height.header_sync.%d", chain)
-			metrics.Record(tx, "height.tx_sync.%d", chain)
-			metrics.Record(latest, "height.node.%d", chain)
+			metrics.Record(header, "height.header_sync.%s", name)
+			metrics.Record(tx, "height.tx_sync.%s", name)
+			metrics.Record(latest, "height.node.%s", name)
 			if latest > 0 {
-				metrics.Record(latest-header, "height_diff.header_sync.%d", chain)
-				metrics.Record(latest-tx, "height_diff.tx_sync.%d", chain)
+				metrics.Record(latest-header, "height_diff.header_sync.%s", name)
+				metrics.Record(latest-tx, "height_diff.tx_sync.%s", name)
 			}
 			qSrc, _ := getLen(chain, msg.SRC)
 			qPoly, _ := getLen(chain, msg.POLY)
-			metrics.Record(qSrc, "queue_size.src.%d", chain)
-			metrics.Record(qPoly, "queue_size.poly.%d", chain)
+			metrics.Record(qSrc, "queue_size.src.%s", name)
+			metrics.Record(qPoly, "queue_size.poly.%s", name)
 		}
 	}
 }
