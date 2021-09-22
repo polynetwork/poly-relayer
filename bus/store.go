@@ -18,6 +18,7 @@ const (
 	KEY_HEIGHT_HEADER       ChainHeightType = "header_sync"
 	KEY_HEIGHT_EXTRA_HEADER ChainHeightType = "header_extra_sync"
 	KEY_HEIGHT_HEADER_RESET ChainHeightType = "header_sync_reset"
+	KEY_HEIGHT_CHAIN        ChainHeightType = "chain_height"
 	KEY_HEIGHT_TX           ChainHeightType = "tx_sync"
 )
 

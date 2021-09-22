@@ -18,11 +18,17 @@
 package relayer
 
 import (
+	"context"
+	"time"
+
 	"github.com/beego/beego/v2/server/web"
 	"github.com/urfave/cli/v2"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/metrics"
+	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 func Metric(ctx *cli.Context) (err error) {
@@ -36,10 +42,45 @@ func Metric(ctx *cli.Context) (err error) {
 	if host == "" {
 		host = config.CONFIG.MetricHost
 	}
+
+	go recordMetrics()
 	web.BConfig.Listen.HTTPAddr = host
 	web.BConfig.Listen.HTTPPort = port
 	web.BConfig.RunMode = "prod"
 	web.BConfig.AppName = "relayer"
 	web.Run()
 	return
+}
+
+func recordMetrics() {
+	redis := bus.New(config.CONFIG.Bus.Redis)
+	getHeight := func(id uint64, key bus.ChainHeightType) (uint64, error) {
+		return bus.NewRedisChainStore(
+			bus.ChainHeightKey{ChainId: id, Type: key}, redis, 0,
+		).GetHeight(context.Background())
+	}
+
+	getLen := func(id uint64, ty msg.TxType) (uint64, error) {
+		return bus.NewRedisTxBus(redis, id, ty).Len(context.Background())
+	}
+
+	timer := time.NewTicker(2 * time.Second)
+	for range timer.C {
+		for _, chain := range base.CHAINS {
+			latest, _ := getHeight(chain, bus.KEY_HEIGHT_CHAIN)
+			header, _ := getHeight(chain, bus.KEY_HEIGHT_HEADER)
+			tx, _ := getHeight(chain, bus.KEY_HEIGHT_TX)
+			metrics.Record(header, "height.header_sync.%d", chain)
+			metrics.Record(tx, "height.tx_sync.%d", chain)
+			metrics.Record(latest, "height.node.%d", chain)
+			if latest > 0 {
+				metrics.Record(latest-header, "height_diff.header_sync.%d", chain)
+				metrics.Record(latest-tx, "height_diff.tx_sync.%d", chain)
+			}
+			qSrc, _ := getLen(chain, msg.SRC)
+			qPoly, _ := getLen(chain, msg.POLY)
+			metrics.Record(qSrc, "queue_size.src.%d", chain)
+			metrics.Record(qPoly, "queue_size.poly.%d", chain)
+		}
+	}
 }
