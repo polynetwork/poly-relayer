@@ -7,9 +7,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/beego/beego/v2/server/web"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/metrics"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/relayer"
 	"github.com/urfave/cli/v2"
@@ -25,6 +23,11 @@ func main() {
 				Name:  "config",
 				Value: "config.json",
 				Usage: "configuration file",
+			},
+			&cli.StringFlag{
+				Name:  "roles",
+				Value: "roles.json",
+				Usage: "roles configuration file",
 			},
 		},
 		Before: Init,
@@ -83,6 +86,21 @@ func main() {
 					},
 				},
 			},
+			&cli.Command{
+				Name:   relayer.METRIC,
+				Usage:  "Run metric reader",
+				Action: command(relayer.METRIC),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "port",
+						Usage: "metric endpoint port",
+					},
+					&cli.StringFlag{
+						Name:  "host",
+						Usage: "metric endpoint host",
+					},
+				},
+			},
 		},
 	}
 
@@ -98,21 +116,16 @@ func start(c *cli.Context) error {
 		log.Error("Failed to parse config file", "err", err)
 		os.Exit(2)
 	}
+	err = config.ReadRoles(c.String("roles"))
+	if err != nil {
+		log.Error("Failed to read roles configuration", "err", err)
+		os.Exit(2)
+	}
 	err = config.Init()
 	if err != nil {
 		log.Error("Failed to initialize configuration", "err", err)
 		os.Exit(2)
 	}
-
-	metrics.Init("relayer")
-	go func() {
-		// Insert web config
-		web.BConfig.Listen.HTTPAddr = config.MetricHost
-		web.BConfig.Listen.HTTPPort = config.MetricPort
-		web.BConfig.RunMode = "prod"
-		web.BConfig.AppName = "relayer"
-		web.Run()
-	}()
 
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())

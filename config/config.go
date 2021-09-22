@@ -41,6 +41,7 @@ type Config struct {
 	MetricPort   int
 	ValidMethods []string
 	validMethods map[string]bool
+	chains       map[uint64]bool
 }
 
 func New(path string) (config *Config, err error) {
@@ -48,7 +49,7 @@ func New(path string) (config *Config, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("Read config file error %v", err)
 	}
-	config = &Config{}
+	config = &Config{chains: map[uint64]bool{}}
 	err = json.Unmarshal(data, config)
 	if err != nil {
 		return nil, fmt.Errorf("Parse config file error %v", err)
@@ -60,6 +61,10 @@ func New(path string) (config *Config, err error) {
 	methods := map[string]bool{}
 	for _, m := range config.ValidMethods {
 		methods[m] = true
+	}
+
+	if config.Chains == nil {
+		config.Chains = map[uint64]*ChainConfig{}
 	}
 	config.validMethods = methods
 	return
@@ -194,6 +199,10 @@ type PolyTxCommitConfig struct {
 	Procs            int
 	Enabled          bool
 	Bus              *BusConfig
+}
+
+func (c *Config) Active(chain uint64) bool {
+	return c.chains[chain]
 }
 
 func (c *Config) Init() (err error) {

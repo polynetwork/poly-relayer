@@ -44,13 +44,15 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Config) error
 
 func (s *Server) Start() (err error) {
 	// Create poly tx sync handler
-	if s.config.Poly != nil {
+	if s.config.Active(base.POLY) && s.config.Poly != nil {
 		s.parseHandlers(base.POLY, s.config.Poly.PolyTxSync)
 	}
 
 	// Create handlers
 	for id, chain := range s.config.Chains {
-		s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit)
+		if s.config.Active(id) {
+			s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit)
+		}
 	}
 
 	// Initialize
