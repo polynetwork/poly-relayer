@@ -51,6 +51,7 @@ func (c *Config) ReadRoles(path string) (err error) {
 
 func (c *Config) ApplyRoles(roles Roles) {
 	for id, role := range roles {
+		c.chains[id] = true
 		if id == base.POLY {
 			if c.Poly == nil {
 				c.Poly = new(PolyChainConfig)
