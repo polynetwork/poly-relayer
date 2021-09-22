@@ -19,6 +19,7 @@ package relayer
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
@@ -68,6 +69,8 @@ func recordMetrics() {
 	for range timer.C {
 		for _, chain := range base.CHAINS {
 			name := base.GetChainName(chain)
+			name = strings.ReplaceAll(name, "(", "")
+			name = strings.ReplaceAll(name, ")", "")
 			latest, _ := getHeight(chain, bus.KEY_HEIGHT_CHAIN)
 			header, _ := getHeight(chain, bus.KEY_HEIGHT_HEADER)
 			tx, _ := getHeight(chain, bus.KEY_HEIGHT_TX)
