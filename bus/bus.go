@@ -64,6 +64,8 @@ type TxBus interface {
 	Push(context.Context, *msg.Tx) error
 	PushToChain(context.Context, *msg.Tx) error
 	PushBack(context.Context, *msg.Tx) error
+	Len(context.Context) (uint64, error)
+	LenOf(context.Context, uint64, msg.TxType) (uint64, error)
 	Topic() string
 }
 
@@ -121,4 +123,21 @@ func (b *RedisTxBus) PushBack(ctx context.Context, tx *msg.Tx) error {
 		return fmt.Errorf("Failed to push message %v", err)
 	}
 	return nil
+}
+
+func (b *RedisTxBus) Len(ctx context.Context) (uint64, error) {
+	v, err := b.db.LLen(ctx, b.Key.Key()).Result()
+	if err != nil {
+		return 0, fmt.Errorf("Get chain tx queue length error %v", err)
+	}
+	return uint64(v), nil
+}
+
+func (b *RedisTxBus) LenOf(ctx context.Context, chain uint64, ty msg.TxType) (uint64, error) {
+	key := &TxQueueKey{chain, ty}
+	v, err := b.db.LLen(ctx, key.Key()).Result()
+	if err != nil {
+		return 0, fmt.Errorf("Get chain tx queue length error %v", err)
+	}
+	return uint64(v), nil
 }
