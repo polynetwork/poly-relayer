@@ -94,9 +94,10 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 	return
 }
 
-func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) (err error) {
+func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) error {
 	var ok bool
 	for {
+		var err error
 		if header != nil {
 			ok, err = s.CheckHeaderExistence(header)
 			if ok {
@@ -123,7 +124,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 		select {
 		case <-s.Done():
 			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
-			return
+			return nil
 		default:
 			time.Sleep(time.Second)
 		}
@@ -376,9 +377,7 @@ COMMIT:
 				height = header.Height
 				if hdr.Data == nil {
 					// Update header sync height
-					if len(headers) == 0 {
-						s.SubmitHeadersWithLoop(s.sync.ChainId, nil, hdr)
-					}
+					commit = true
 				} else {
 					headers = append(headers, header.Data)
 					commit = len(headers) >= s.sync.Batch
