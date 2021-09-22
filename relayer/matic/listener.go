@@ -67,7 +67,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 		Header: *hdr,
 	}
 	if (hdr.Number.Uint64()+1)%matic.SPRINT_SIZE == 0 {
-		spanId, err := l.GetBorSpanId(height)
+		spanId, err := l.GetBorSpanId(height + 1)
 		if err != nil {
 			return nil, nil, err
 		}
