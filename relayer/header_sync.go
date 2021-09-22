@@ -37,8 +37,9 @@ type HeaderSyncHandler struct {
 	wg        *sync.WaitGroup
 	listener  IChainListener
 	submitter *poly.Submitter
-	state     bus.ChainStore
-	input     bus.ChainStore
+	state     bus.ChainStore // sync state
+	input     bus.ChainStore // init state(force)
+	latest    bus.ChainStore // chain latest state
 	height    uint64
 	config    *config.HeaderSyncConfig
 	reset     chan uint64
@@ -78,6 +79,9 @@ func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 	h.input = bus.NewRedisChainStore(
 		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_HEADER_RESET}, bus.New(h.config.Bus.Redis),
 		h.config.Bus.HeightUpdateInterval,
+	)
+	h.latest = bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_CHAIN}, bus.New(h.config.Bus.Redis), 0,
 	)
 	return
 }
@@ -132,6 +136,26 @@ func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint
 		} else {
 			log.Error("RollbackToCommonAncestor error", "chain", h.config.ChainId, "height", target)
 			time.Sleep(time.Second)
+		}
+	}
+}
+
+func (h *HeaderSyncHandler) watch() {
+	h.wg.Add(1)
+	defer h.wg.Done()
+	ticker := time.NewTicker(2 * time.Second)
+	for {
+		select {
+		case <-h.Done():
+			return
+		case <-ticker.C:
+			height, err := h.listener.Nodes().Node().GetLatestHeight()
+			if err != nil {
+				log.Error("Watch chain latest height error", "chain", h.config.ChainId, "err", err)
+			} else {
+				log.Info("Latest chain height", "chain", h.config.ChainId, "height", height)
+			}
+			h.latest.UpdateHeight(context.Background(), height)
 		}
 	}
 }
@@ -202,6 +226,7 @@ func (h *HeaderSyncHandler) Start() (err error) {
 	if err != nil {
 		return
 	}
+	go h.watch()
 	go h.start(ch)
 	return
 }
