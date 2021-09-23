@@ -84,7 +84,10 @@ func (h *SrcTxSyncHandler) start() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	confirms := base.BlocksToWait(h.config.ChainId)
-	var latest uint64
+	var (
+		latest uint64
+		ok     bool
+	)
 	for {
 		select {
 		case <-h.Done():
@@ -95,7 +98,10 @@ func (h *SrcTxSyncHandler) start() (err error) {
 
 		h.height++
 		if latest < h.height+confirms {
-			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
+			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			if !ok {
+				continue
+			}
 		}
 		log.Info("Scanning txs in block", "height", h.height, "chain", h.config.ChainId)
 		txs, err := h.listener.Scan(h.height)
@@ -181,7 +187,10 @@ func (h *PolyTxSyncHandler) start() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	confirms := uint64(h.listener.Defer())
-	var latest uint64
+	var (
+		latest uint64
+		ok     bool
+	)
 	for {
 		select {
 		case <-h.Done():
@@ -192,7 +201,10 @@ func (h *PolyTxSyncHandler) start() (err error) {
 
 		h.height++
 		if latest < h.height+confirms {
-			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
+			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			if !ok {
+				continue
+			}
 		}
 		log.Info("Scanning poly txs in block", "height", h.height, "chain", h.config.ChainId)
 		txs, err := h.listener.Scan(h.height)
