@@ -153,7 +153,12 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	builder := sc.NewScriptBuilder()
 	builder.MakeInvocationScript(scriptHash, VERIFY_AND_EXECUTE_TX, args)
 	script := builder.ToArray()
-	tx.DstHash, err = s.wallet.Invoke(script, nil)
+	if tx.DstSender == nil {
+		tx.DstHash, err = s.wallet.Invoke(script, nil)
+	} else {
+		account := tx.DstSender.(*nw.Account)
+		tx.DstHash, err = s.wallet.InvokeWithAccount(account, script, nil)
+	}
 	return
 }
 
@@ -211,6 +216,7 @@ func (s *Submitter) run(account *nw.Account, bus bus.TxBus, compose msg.PolyComp
 			continue
 		}
 		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
+		tx.DstSender = account
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)

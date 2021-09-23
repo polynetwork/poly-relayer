@@ -95,7 +95,8 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	}
 	var err error
 	if tx.DstSender != nil {
-		tx.DstHash, err = s.wallet.SendWithAccount(*tx.DstSender, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+		account := tx.DstSender.(*accounts.Account)
+		tx.DstHash, err = s.wallet.SendWithAccount(*account, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	} else {
 		tx.DstHash, err = s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	}
