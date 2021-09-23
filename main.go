@@ -29,6 +29,11 @@ func main() {
 				Value: "roles.json",
 				Usage: "roles configuration file",
 			},
+			&cli.StringFlag{
+				Name:  "wallet",
+				Value: "",
+				Usage: "wallet path",
+			},
 		},
 		Before: Init,
 		Commands: []*cli.Command{
@@ -167,6 +172,10 @@ func command(method string) func(*cli.Context) error {
 }
 
 func Init(ctx *cli.Context) (err error) {
+	// Set wallet path
+	config.WALLET_PATH = ctx.String("wallet")
+	config.CONFIG_PATH = ctx.String("config")
+
 	log.Init()
 	return
 }

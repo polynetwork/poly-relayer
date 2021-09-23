@@ -170,6 +170,7 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 		err          error
 		latest       uint64
 		header, hash []byte
+		ok           bool
 	)
 LOOP:
 	for {
@@ -191,7 +192,10 @@ LOOP:
 
 		h.height++
 		if latest < h.height+confirms {
-			latest = h.listener.Nodes().WaitTillHeight(h.height+confirms, h.listener.ListenCheck())
+			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			if !ok {
+				break LOOP
+			}
 		}
 		if err == msg.ERR_NOT_READY {
 			time.Sleep(time.Second)
