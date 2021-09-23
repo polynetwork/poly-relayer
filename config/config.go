@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
@@ -29,7 +30,9 @@ import (
 )
 
 var (
-	CONFIG *Config
+	CONFIG      *Config
+	WALLET_PATH string
+	CONFIG_PATH string
 )
 
 type Config struct {
@@ -42,6 +45,14 @@ type Config struct {
 	ValidMethods []string
 	validMethods map[string]bool
 	chains       map[uint64]bool
+}
+
+// Parse file path, if path is empty, use config file directory path
+func GetConfigPath(path, file string) string {
+	if path == "" {
+		path = filepath.Dir(CONFIG_PATH)
+	}
+	return filepath.Join(path, file)
 }
 
 func New(path string) (config *Config, err error) {
@@ -108,7 +119,7 @@ type PolySubmitterConfig struct {
 	ChainId uint64
 	Nodes   []string
 	Procs   int
-	Wallet  *wallet.PolySignerConfig
+	Wallet  *wallet.Config
 }
 
 func (c *PolySubmitterConfig) Fill(o *PolySubmitterConfig) *PolySubmitterConfig {
@@ -121,6 +132,8 @@ func (c *PolySubmitterConfig) Fill(o *PolySubmitterConfig) *PolySubmitterConfig 
 	}
 	if o.Wallet == nil {
 		o.Wallet = c.Wallet
+	} else {
+		o.Wallet.Path = GetConfigPath(WALLET_PATH, o.Wallet.Path)
 	}
 	return o
 }
@@ -252,6 +265,9 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 			c.PolyTxSync.Nodes = c.Nodes
 		}
 	}
+	if c.Wallet != nil {
+		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
+	}
 	return
 }
 
@@ -265,6 +281,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		if len(c.Wallet.Nodes) == 0 {
 			c.Wallet.Nodes = c.Nodes
 		}
+		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
 	}
 
 	if c.HeaderSync != nil {
@@ -321,8 +338,11 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 	}
 	if o.Wallet == nil {
 		o.Wallet = c.Wallet
-	} else if len(o.Wallet.Nodes) == 0 {
-		o.Wallet.Nodes = c.Wallet.Nodes
+	} else {
+		o.Wallet.Path = GetConfigPath(WALLET_PATH, o.Wallet.Path)
+		if len(o.Wallet.Nodes) == 0 {
+			o.Wallet.Nodes = c.Wallet.Nodes
+		}
 	}
 
 	if o.CCMContract == "" {
