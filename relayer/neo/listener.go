@@ -278,7 +278,10 @@ func (l *Listener) ChainId() uint64 {
 }
 
 func (l *Listener) Defer() int {
-	return l.config.Defer
+	if l.config.Defer > 0 {
+		return l.config.Defer
+	}
+	return 1
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
