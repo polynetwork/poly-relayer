@@ -133,7 +133,8 @@ type PolyTxSyncHandler struct {
 	wg *sync.WaitGroup
 
 	listener IChainListener
-	bus      bus.TxBus
+	bus      bus.TxBus        // main poly tx queue
+	queue    bus.DelayedTxBus // delayed poly tx queue
 	state    bus.ChainStore
 	height   uint64
 	config   *config.PolyTxSyncConfig
@@ -163,6 +164,7 @@ func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 	)
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
+	h.queue = bus.NewRedisDelayedTxBus(bus.New(h.config.Bus.Redis))
 	ok, err := bus.NewStatusLock(bus.New(h.config.Bus.Redis), bus.POLY_SYNC).Start(ctx, h.wg)
 	if err != nil {
 		return err
@@ -180,6 +182,7 @@ func (h *PolyTxSyncHandler) Start() (err error) {
 	}
 
 	go h.start()
+	// go h.checkDelayed()
 	return
 }
 
@@ -194,7 +197,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 	for {
 		select {
 		case <-h.Done():
-			log.Info("Src tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
+			log.Info("Poly tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
 			return nil
 		default:
 		}
@@ -223,6 +226,30 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		h.height--
 	}
 	return
+}
+
+func (h *PolyTxSyncHandler) checkDelayed() (err error) {
+	h.wg.Add(1)
+	defer h.wg.Done()
+	for {
+		select {
+		case <-h.Done():
+			log.Info("Delayed poly tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
+			return nil
+		default:
+		}
+		tx, score, err := h.queue.Pop(h.Context)
+		if err != nil {
+			log.Error("Deplayed poly tx queue pop error", "err", err)
+			continue
+		}
+		if tx != nil && score > 0 {
+			if score <= uint64(time.Now().Unix()) {
+			} else {
+				h.queue.Delay(context.Background(), tx, score)
+			}
+		}
+	}
 }
 
 func (h *PolyTxSyncHandler) Stop() (err error) {

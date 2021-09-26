@@ -34,7 +34,7 @@ type Key interface {
 type String string
 
 func (s String) Key() string {
-	return fmt.Sprintf("%s:%s", base.ENV, string(s))
+	return fmt.Sprintf("%s:relayer:%s", base.ENV, string(s))
 }
 
 type TxQueueKey struct {
