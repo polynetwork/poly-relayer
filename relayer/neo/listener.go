@@ -27,6 +27,7 @@ import (
 	"github.com/joeqian10/neo-gogogo/helper"
 	"github.com/joeqian10/neo-gogogo/helper/io"
 	"github.com/joeqian10/neo-gogogo/mpt"
+	"github.com/joeqian10/neo-gogogo/rpc/models"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
@@ -225,8 +226,9 @@ func (l *Listener) scanTx(hash string, height uint64) (tx *msg.Tx, err error) {
 					err = fmt.Errorf("Invalid type desires Array, got %s", noti.State.Type)
 					return
 				}
-				states := noti.State.Value
-				method, _ := hex.DecodeString(states[0].Value)
+				noti.State.Convert()
+				states := noti.State.Value.([]models.InvokeStack)
+				method, _ := hex.DecodeString(states[0].Value.(string))
 				if string(method) != "CrossChainLockEvent" {
 					continue
 				}
@@ -237,13 +239,13 @@ func (l *Listener) scanTx(hash string, height uint64) (tx *msg.Tx, err error) {
 
 				var toChainId *big.Int
 				if states[3].Type == "Integer" {
-					toChainId, _ = new(big.Int).SetString(states[3].Value, 10)
+					toChainId, _ = new(big.Int).SetString(states[3].Value.(string), 10)
 				} else {
-					toChainId, _ = new(big.Int).SetString(util.ReverseHex(states[3].Value), 16)
+					toChainId, _ = new(big.Int).SetString(util.ReverseHex(states[3].Value.(string)), 16)
 				}
 
 				tx := &msg.Tx{
-					TxId:       states[4].Value, // hexstring for storeKey: 0102 + toChainId + toRequestId, like 01020501
+					TxId:       states[4].Value.(string), // hexstring for storeKey: 0102 + toChainId + toRequestId, like 01020501
 					SrcHash:    hash,
 					SrcHeight:  height,
 					SrcChainId: l.config.ChainId,
@@ -276,7 +278,10 @@ func (l *Listener) ChainId() uint64 {
 }
 
 func (l *Listener) Defer() int {
-	return l.config.Defer
+	if l.config.Defer > 0 {
+		return l.config.Defer
+	}
+	return 1
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {

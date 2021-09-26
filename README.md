@@ -6,7 +6,7 @@ Reimplement poly relayer
 |--|--|--|--|--|
 |Ethereum|main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Ontology|ont  |:white_check_mark:|:white_check_mark:|:white_check_mark:|
-|Neo     |main |:white_check_mark:|:white_check_mark:|:x:|
+|Neo     |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Neo3    |main |:x:|:x:|:x:|
 |BSC     |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Heco    |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
