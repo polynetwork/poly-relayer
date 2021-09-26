@@ -18,7 +18,6 @@
 package relayer
 
 import (
-	"context"
 	"strings"
 	"time"
 
@@ -54,26 +53,16 @@ func Metric(ctx *cli.Context) (err error) {
 }
 
 func recordMetrics() {
-	redis := bus.New(config.CONFIG.Bus.Redis)
-	getHeight := func(id uint64, key bus.ChainHeightType) (uint64, error) {
-		return bus.NewRedisChainStore(
-			bus.ChainHeightKey{ChainId: id, Type: key}, redis, 0,
-		).GetHeight(context.Background())
-	}
-
-	getLen := func(id uint64, ty msg.TxType) (uint64, error) {
-		return bus.NewRedisTxBus(redis, id, ty).Len(context.Background())
-	}
-
+	h := NewStatusHandler(config.CONFIG.Bus.Redis)
 	timer := time.NewTicker(2 * time.Second)
 	for range timer.C {
 		for _, chain := range base.CHAINS {
 			name := base.GetChainName(chain)
 			name = strings.ReplaceAll(name, "(", "")
 			name = strings.ReplaceAll(name, ")", "")
-			latest, _ := getHeight(chain, bus.KEY_HEIGHT_CHAIN)
-			header, _ := getHeight(chain, bus.KEY_HEIGHT_HEADER)
-			tx, _ := getHeight(chain, bus.KEY_HEIGHT_TX)
+			latest, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN)
+			header, _ := h.Height(chain, bus.KEY_HEIGHT_HEADER)
+			tx, _ := h.Height(chain, bus.KEY_HEIGHT_TX)
 			metrics.Record(header, "height.header_sync.%s", name)
 			metrics.Record(tx, "height.tx_sync.%s", name)
 			metrics.Record(latest, "height.node.%s", name)
@@ -81,8 +70,8 @@ func recordMetrics() {
 				metrics.Record(latest-header, "height_diff.header_sync.%s", name)
 				metrics.Record(latest-tx, "height_diff.tx_sync.%s", name)
 			}
-			qSrc, _ := getLen(chain, msg.SRC)
-			qPoly, _ := getLen(chain, msg.POLY)
+			qSrc, _ := h.Len(chain, msg.SRC)
+			qPoly, _ := h.Len(chain, msg.POLY)
 			metrics.Record(qSrc, "queue_size.src.%s", name)
 			metrics.Record(qPoly, "queue_size.poly.%s", name)
 		}

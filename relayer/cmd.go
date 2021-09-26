@@ -21,11 +21,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/urfave/cli/v2"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 const (
@@ -56,27 +58,50 @@ func RelayPolyTx(ctx *cli.Context) (err error) {
 	return
 }
 
+type StatusHandler struct {
+	redis *redis.Client
+}
+
+func NewStatusHandler(config *redis.Options) *StatusHandler {
+	return &StatusHandler{redis: bus.New(config)}
+}
+
+func (h *StatusHandler) Height(chain uint64, key bus.ChainHeightType) (uint64, error) {
+	return bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: chain, Type: key}, h.redis, 0,
+	).GetHeight(context.Background())
+}
+
+func (h *StatusHandler) SetHeight(chain uint64, key bus.ChainHeightType, height uint64) (err error) {
+	return bus.NewRedisChainStore(
+		bus.ChainHeightKey{ChainId: chain, Type: key}, h.redis, 0,
+	).UpdateHeight(context.Background(), height)
+}
+
+func (h *StatusHandler) Len(chain uint64, ty msg.TxType) (uint64, error) {
+	return bus.NewRedisTxBus(h.redis, chain, ty).Len(context.Background())
+}
+
 func Status(ctx *cli.Context) (err error) {
-	redis := bus.New(config.CONFIG.Bus.Redis)
-	getHeight := func(id uint64, key bus.ChainHeightType) (uint64, error) {
-		return bus.NewRedisChainStore(
-			bus.ChainHeightKey{ChainId: id, Type: key}, redis, 0,
-		).GetHeight(context.Background())
-	}
+	h := NewStatusHandler(config.CONFIG.Bus.Redis)
 	for _, chain := range base.CHAINS {
 		fmt.Printf("Status %s:\n", base.GetChainName(chain))
-		h, err := getHeight(chain, bus.KEY_HEIGHT_HEADER)
-		if err != nil {
-			fmt.Printf("  Check header sync height error %v\n", err)
-		} else {
-			fmt.Printf("  Header sync Height %d\n", h)
+
+		latest, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN)
+		header, _ := h.Height(chain, bus.KEY_HEIGHT_HEADER)
+		tx, _ := h.Height(chain, bus.KEY_HEIGHT_TX)
+
+		fmt.Printf("  Latest node height: %v\n", latest)
+		fmt.Printf("  Header sync height: %v\n", header)
+		fmt.Printf("  tx listen height  : %v\n", tx)
+		if latest > 0 {
+			fmt.Printf("  header sync height diff: %v\n", latest-header)
+			fmt.Printf("  tx listen height diff  : %v\n", latest-tx)
 		}
-		h, err = getHeight(chain, bus.KEY_HEIGHT_TX)
-		if err != nil {
-			fmt.Printf("  Check tx sync height error %v\n", err)
-		} else {
-			fmt.Printf("  Tx sync Height %d\n", h)
-		}
+		qSrc, _ := h.Len(chain, msg.SRC)
+		qPoly, _ := h.Len(chain, msg.POLY)
+		fmt.Printf("  src tx queue size : %v\n", qSrc)
+		fmt.Printf("  poly tx queue size: %v\n", qPoly)
 	}
 	return nil
 }
@@ -84,21 +109,13 @@ func Status(ctx *cli.Context) (err error) {
 func SetHeaderSyncHeight(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
-	state := bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: chain, Type: bus.KEY_HEIGHT_HEADER_RESET}, bus.New(config.CONFIG.Bus.Redis), 0,
-	)
-	err = state.UpdateHeight(context.Background(), height)
-	return
+	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(chain, bus.KEY_HEIGHT_HEADER_RESET, height)
 }
 
 func SetTxSyncHeight(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
-	state := bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: chain, Type: bus.KEY_HEIGHT_TX}, bus.New(config.CONFIG.Bus.Redis), 0,
-	)
-	err = state.UpdateHeight(context.Background(), height)
-	return
+	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(chain, bus.KEY_HEIGHT_TX, height)
 }
 
 func HandleCommand(method string, ctx *cli.Context) error {

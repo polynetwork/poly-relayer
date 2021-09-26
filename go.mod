@@ -6,6 +6,7 @@ require (
 	github.com/beego/beego/v2 v2.0.1
 	github.com/btcsuite/btcd v0.21.0-beta
 	github.com/ethereum/go-ethereum v1.10.7
+	github.com/go-redis/redis v6.14.2+incompatible
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/joeqian10/neo-gogogo v1.4.0
 	github.com/joeqian10/neo3-gogogo v1.0.0
