@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
@@ -69,16 +68,16 @@ type Tx struct {
 	AuditPath    string        `json:"-"`
 	PolySigs     []byte        `json:"-"`
 
-	DstHash                 string            `json:",omitempty"`
-	DstHeight               uint64            `json:",omitempty"`
-	DstChainId              uint64            `json:",omitempty"`
-	DstGasLimit             uint64            `json:",omitempty"`
-	DstGasPrice             string            `json:",omitempty"`
-	DstGasPriceX            string            `json:",omitempty"`
-	DstSender               *accounts.Account `json:"-"`
-	DstPolyEpochStartHeight uint32            `json:",omitempty"`
-	DstPolyKeepers          []byte            `json:"-"`
-	DstData                 []byte            `json:"-"`
+	DstHash                 string      `json:",omitempty"`
+	DstHeight               uint64      `json:",omitempty"`
+	DstChainId              uint64      `json:",omitempty"`
+	DstGasLimit             uint64      `json:",omitempty"`
+	DstGasPrice             string      `json:",omitempty"`
+	DstGasPriceX            string      `json:",omitempty"`
+	DstSender               interface{} `json:"-"`
+	DstPolyEpochStartHeight uint32      `json:",omitempty"`
+	DstPolyKeepers          []byte      `json:"-"`
+	DstData                 []byte      `json:"-"`
 }
 
 func (tx *Tx) Type() TxType {

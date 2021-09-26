@@ -34,6 +34,7 @@ type PolyTxCommitHandler struct {
 	wg *sync.WaitGroup
 
 	bus       bus.TxBus
+	queue     bus.DelayedTxBus // Delayed tx bus
 	submitter IChainSubmitter
 	composer  *poly.Submitter
 	config    *config.PolyTxCommitConfig
@@ -66,11 +67,12 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 	}
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
+	h.queue = bus.NewRedisDelayedTxBus(bus.New(h.config.Bus.Redis))
 	return
 }
 
 func (h *PolyTxCommitHandler) Start() (err error) {
-	err = h.submitter.Start(h.Context, h.wg, h.bus, h.composer.ComposeTx)
+	err = h.submitter.Start(h.Context, h.wg, h.bus, h.queue, h.composer.ComposeTx)
 	return
 }
 

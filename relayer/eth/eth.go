@@ -95,7 +95,8 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	}
 	var err error
 	if tx.DstSender != nil {
-		tx.DstHash, err = s.wallet.SendWithAccount(*tx.DstSender, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+		account := tx.DstSender.(*accounts.Account)
+		tx.DstHash, err = s.wallet.SendWithAccount(*account, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	} else {
 		tx.DstHash, err = s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	}
@@ -188,7 +189,14 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	if err != nil {
 		return
 	}
-	return s.processPolyTx(m)
+	err = s.processPolyTx(m)
+	if err != nil {
+		info := err.Error()
+		if strings.Contains(info, "business contract failed") {
+			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_FAILURE, err)
+		}
+	}
+	return
 }
 
 func (s *Submitter) Process(m msg.Message, compose msg.PolyComposer) (err error) {
@@ -199,7 +207,7 @@ func (s *Submitter) Process(m msg.Message, compose msg.PolyComposer) (err error)
 	return s.ProcessTx(tx, compose)
 }
 
-func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.PolyComposer) error {
+func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.DelayedTxBus, compose msg.PolyComposer) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
@@ -209,7 +217,7 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 			return nil
 		default:
 		}
-		tx, err := bus.Pop(s.Context)
+		tx, err := mq.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
 			continue
@@ -230,14 +238,22 @@ func (s *Submitter) run(account accounts.Account, bus bus.TxBus, compose msg.Pol
 			}
 			tx.Attempts++
 			// TODO: retry with increased gas price?
-			bus.Push(context.Background(), tx)
+			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) {
+				tsp := time.Now().Unix() + 60*3
+				bus.SafeCall(s.Context, tx, func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) {
+				tsp := time.Now().Unix() + 10
+				bus.SafeCall(s.Context, tx, func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else {
+				bus.SafeCall(s.Context, tx, func() error { return mq.Push(context.Background(), tx) })
+			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
 		}
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, compose msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, compose msg.PolyComposer) error {
 	s.Context = ctx
 	s.wg = wg
 	accounts := s.wallet.Accounts()
@@ -246,7 +262,7 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	}
 	for i, a := range accounts {
 		log.Info("Starting submitter worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
-		go s.run(a, bus, compose)
+		go s.run(a, bus, delay, compose)
 	}
 	return nil
 }

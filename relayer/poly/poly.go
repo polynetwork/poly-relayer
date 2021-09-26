@@ -51,6 +51,10 @@ type Submitter struct {
 	sync    *config.HeaderSyncConfig
 	compose msg.PolyComposer
 	state   bus.ChainStore // Header sync marking
+
+	// Check last header commit
+	lastCommit uint64
+	lastCheck  uint64
 }
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
@@ -83,11 +87,28 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 	h := uint64(0)
 	if len(headers) > 0 {
 		err = s.submitHeadersWithLoop(chainId, headers, header)
+		if err == nil && header != nil {
+			// Check last commit every 4 successful submit
+			if s.lastCommit > 0 && s.lastCheck > 3 {
+				s.lastCheck = 0
+				switch chainId {
+				case base.ONT, base.NEO, base.HEIMDALL, base.OK:
+				default:
+					height, e := s.GetSideChainHeight(chainId)
+					if e == nil && height < s.lastCommit {
+						err = msg.ERR_HEADER_MISSING
+					}
+				}
+			} else {
+				s.lastCheck++
+			}
+		}
 	}
 	if header != nil {
 		h = header.Height
 		if err == nil {
-			s.state.HeightMark(h) // Mark header sync height
+			s.state.HeightMark(h)        // Mark header sync height
+			s.lastCommit = header.Height // Mark last commit
 		}
 	}
 	log.Info("Submit headers to poly", "chain", chainId, "size", len(headers), "height", h, "elapse", time.Since(start), "err", err)
@@ -113,17 +134,18 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if err == nil {
 				return nil
 			}
-			msg := err.Error()
+			info := err.Error()
 			switch chainId {
 			case base.OK:
-				if strings.Contains(msg, "no header you commited is useful") {
-					return fmt.Errorf("Sync ok chain header to poly failed: %s", msg)
+				if strings.Contains(info, "no header you commited is useful") {
+					log.Warn("Sync ok chain header to poly not commited", "reason", info)
+					return nil
 				}
 			}
-			if strings.Contains(msg, "parent header not exist") || strings.Contains(msg, "missing required field") || strings.Contains(msg, "parent block failed") {
+			if strings.Contains(info, "parent header not exist") || strings.Contains(info, "missing required field") || strings.Contains(info, "parent block failed") {
 				//NOTE: reset header height back here
 				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
-				return err
+				return msg.ERR_HEADER_INCONSISTENT
 			}
 			log.Error("Failed to submit header to poly", "chain", chainId, "err", err)
 		}
@@ -356,14 +378,14 @@ func (s *Submitter) syncHeaderLoop(ch <-chan msg.Header, reset chan<- uint64) {
 			if !ok {
 				return
 			}
-			// NOTE err reponse here will revert header sync with delta -100
+			// NOTE err reponse here will revert header sync with delta - 2
 			headers := [][]byte{header.Data}
 			if header.Data == nil {
 				headers = nil
 			}
 			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers, &header)
 			if err != nil {
-				reset <- header.Height - 100
+				reset <- header.Height - 2
 			}
 		}
 	}
