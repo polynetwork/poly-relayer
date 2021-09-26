@@ -196,7 +196,7 @@ func (s *Submitter) processPolyHeader(tx *msg.Tx) (err error) {
 	return
 }
 
-func (s *Submitter) run(account *nw.Account, bus bus.TxBus, compose msg.PolyComposer) error {
+func (s *Submitter) run(account *nw.Account, mq bus.TxBus, delay bus.DelayedTxBus, compose msg.PolyComposer) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
@@ -206,7 +206,7 @@ func (s *Submitter) run(account *nw.Account, bus bus.TxBus, compose msg.PolyComp
 			return nil
 		default:
 		}
-		tx, err := bus.Pop(s.Context)
+		tx, err := mq.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
 			continue
@@ -226,14 +226,22 @@ func (s *Submitter) run(account *nw.Account, bus bus.TxBus, compose msg.PolyComp
 				continue
 			}
 			tx.Attempts++
-			bus.Push(context.Background(), tx)
+			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) {
+				tsp := time.Now().Unix() + 60*3
+				bus.SafeCall(s.Context, tx, func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) {
+				tsp := time.Now().Unix() + 10
+				bus.SafeCall(s.Context, tx, func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else {
+				bus.SafeCall(s.Context, tx, func() error { return mq.Push(context.Background(), tx) })
+			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
 		}
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer) error {
 	s.Context = ctx
 	s.wg = wg
 	accounts := s.wallet.Accounts
@@ -242,7 +250,7 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	}
 	for i, a := range accounts {
 		log.Info("Starting submitter worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
-		go s.run(a, bus, composer)
+		go s.run(a, bus, delay, composer)
 	}
 	return nil
 }

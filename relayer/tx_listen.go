@@ -108,7 +108,9 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		if err == nil {
 			for _, tx := range txs {
 				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId)
-				retry(func() error { return h.bus.Push(context.Background(), tx) }, time.Second)
+				bus.SafeCall(h.Context, tx, func() error {
+					return h.bus.Push(context.Background(), tx)
+				})
 			}
 			h.state.HeightMark(h.height)
 			continue
@@ -182,7 +184,7 @@ func (h *PolyTxSyncHandler) Start() (err error) {
 	}
 
 	go h.start()
-	// go h.checkDelayed()
+	go h.checkDelayed()
 	return
 }
 
@@ -214,9 +216,9 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		if err == nil {
 			for _, tx := range txs {
 				log.Info("Found poly tx", "hash", tx.PolyHash)
-				retry(func() error {
+				bus.SafeCall(h.Context, tx, func() error {
 					return h.bus.PushToChain(context.Background(), tx)
-				}, time.Second)
+				})
 			}
 			h.state.HeightMark(h.height)
 			continue
@@ -232,22 +234,29 @@ func (h *PolyTxSyncHandler) checkDelayed() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	for {
-		select {
-		case <-h.Done():
-			log.Info("Delayed poly tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
-			return nil
-		default:
-		}
 		tx, score, err := h.queue.Pop(h.Context)
 		if err != nil {
 			log.Error("Deplayed poly tx queue pop error", "err", err)
 			continue
 		}
 		if tx != nil && score > 0 {
-			if score <= uint64(time.Now().Unix()) {
+			if score <= time.Now().Unix() {
+				bus.SafeCall(h.Context, tx, func() error {
+					log.Info("Pushing back delayed tx", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
+					return h.bus.PushToChain(context.Background(), tx)
+				})
+				continue
 			} else {
-				h.queue.Delay(context.Background(), tx, score)
+				bus.SafeCall(h.Context, tx, func() error {
+					return h.queue.Delay(context.Background(), tx, score)
+				})
 			}
+		}
+		select {
+		case <-h.Done():
+			log.Info("Delayed poly tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
+			return nil
+		case <-time.After(time.Second):
 		}
 	}
 }

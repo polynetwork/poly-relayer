@@ -28,8 +28,8 @@ import (
 )
 
 type DelayedTxBus interface {
-	Delay(context.Context, *msg.Tx, uint64) error
-	Pop(context.Context) (*msg.Tx, uint64, error)
+	Delay(context.Context, *msg.Tx, int64) error
+	Pop(context.Context) (*msg.Tx, int64, error)
 	Len(context.Context) (uint64, error)
 }
 
@@ -58,7 +58,7 @@ func (b *RedisDelayedTxBus) Len(ctx context.Context) (uint64, error) {
 	return uint64(v), nil
 }
 
-func (b *RedisDelayedTxBus) Delay(ctx context.Context, msg *msg.Tx, delay uint64) (err error) {
+func (b *RedisDelayedTxBus) Delay(ctx context.Context, msg *msg.Tx, delay int64) (err error) {
 	_, err = b.db.ZAdd(ctx, b.Key.Key(),
 		&redis.Z{
 			Score:  float64(delay),
@@ -68,7 +68,7 @@ func (b *RedisDelayedTxBus) Delay(ctx context.Context, msg *msg.Tx, delay uint64
 	return
 }
 
-func (b *RedisDelayedTxBus) Pop(ctx context.Context) (tx *msg.Tx, score uint64, err error) {
+func (b *RedisDelayedTxBus) Pop(ctx context.Context) (tx *msg.Tx, score int64, err error) {
 	c, _ := context.WithCancel(ctx)
 	res, err := b.db.BZPopMin(c, 0, b.Key.Key()).Result()
 	if err != nil {
@@ -77,7 +77,7 @@ func (b *RedisDelayedTxBus) Pop(ctx context.Context) (tx *msg.Tx, score uint64, 
 	if res == nil {
 		return
 	}
-	score = uint64(res.Score)
+	score = int64(res.Score)
 	tx = new(msg.Tx)
 	err = tx.Decode(res.Member.(string))
 	return

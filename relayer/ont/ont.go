@@ -165,7 +165,7 @@ func (s *Submitter) run(account *sdk.Account, bus bus.TxBus, compose msg.PolyCom
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer) error {
 	s.Context = ctx
 	s.wg = wg
 	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address, "chain", s.name)
