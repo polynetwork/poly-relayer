@@ -143,7 +143,7 @@ func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint
 func (h *HeaderSyncHandler) watch() {
 	h.wg.Add(1)
 	defer h.wg.Done()
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	for {
 		select {
 		case <-h.Done():
@@ -164,8 +164,6 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	confirms := uint64(h.listener.Defer())
-	feedback := make(chan uint64, 1)
-	go h.monitor(feedback)
 	var (
 		err          error
 		latest       uint64
@@ -175,11 +173,6 @@ func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
 LOOP:
 	for {
 		select {
-		case height := <-feedback:
-			if height != 0 && height < h.height-uint64(2*h.config.Batch) {
-				log.Info("Detected synced height reset", "chain", h.config.ChainId, "value", height)
-				h.height = h.RollbackToCommonAncestor(h.height, height-1)
-			}
 		case reset := <-h.reset:
 			if reset < h.height && reset != 0 {
 				log.Info("Detected submit failure reset", "chain", h.config.ChainId, "value", reset)
