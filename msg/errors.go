@@ -20,6 +20,8 @@ package msg
 import "errors"
 
 var (
-	ERR_INVALID_TX        = errors.New("Invalid TX")
-	ERR_PROOF_UNAVAILABLE = errors.New("Tx proof unavailable")
+	ERR_INVALID_TX          = errors.New("Invalid TX")
+	ERR_PROOF_UNAVAILABLE   = errors.New("Tx proof unavailable")
+	ERR_HEADER_INCONSISTENT = errors.New("Header inconsistent")
+	ERR_HEADER_MISSING      = errors.New("Header missing")
 )
