@@ -91,6 +91,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 			l.lastSpanSync = spanId
 		}
 	}
+	log.Info("Fetched bor block header", "height", height, "hash_with_proof", hp.Hash().String(), "hash", hdr.Hash().String())
 	hash = hp.Hash().Bytes()
 	header, err = json.Marshal(hp)
 	return

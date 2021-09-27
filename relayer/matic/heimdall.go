@@ -27,6 +27,7 @@ import (
 	"github.com/polynetwork/bridge-common/chains/matic"
 	"github.com/polynetwork/bridge-common/chains/matic/cosmos"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
@@ -59,6 +60,7 @@ func (l *HeimdallListener) Header(height uint64) (header []byte, hash []byte, er
 	if err != nil {
 		return
 	}
+	log.Info("Fetched heimdall header", "height", height, "hash", rc.Header.Hash().String())
 	hdr := cosmos.CosmosHeader{
 		Header:  *rc.Header,
 		Commit:  rc.Commit,
