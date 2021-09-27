@@ -120,6 +120,10 @@ func (l *HeimdallListener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
 }
 
+func (l *HeimdallListener) GetTxBlock(hash string) (height uint64, err error) {
+	return
+}
+
 func (l *HeimdallListener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	return
 }

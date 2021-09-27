@@ -92,17 +92,37 @@ func main() {
 				},
 			},
 			&cli.Command{
-				Name:   relayer.METRIC,
-				Usage:  "Run metric reader",
-				Action: command(relayer.METRIC),
+				Name:   relayer.PATCH,
+				Usage:  "Patch cross chain tx",
+				Action: command(relayer.PATCH),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target block height",
+					},
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "tx chain id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "hash",
+						Usage: "target tx hash",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.HTTP,
+				Usage:  "Run http server",
+				Action: command(relayer.HTTP),
 				Flags: []cli.Flag{
 					&cli.Int64Flag{
 						Name:  "port",
-						Usage: "metric endpoint port",
+						Usage: "http endpoint port",
 					},
 					&cli.StringFlag{
 						Name:  "host",
-						Usage: "metric endpoint host",
+						Usage: "http endpoint host",
 					},
 				},
 			},
