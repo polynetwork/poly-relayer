@@ -35,7 +35,8 @@ const (
 	SET_TX_HEIGHT     = "settxblock"
 	RELAY_POLY_TX     = "submit"
 	STATUS            = "status"
-	METRIC            = "metric"
+	HTTP              = "http"
+	PATCH             = "patch"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -44,7 +45,8 @@ func init() {
 	_Handlers[SET_HEADER_HEIGHT] = SetHeaderSyncHeight
 	_Handlers[SET_TX_HEIGHT] = SetTxSyncHeight
 	_Handlers[STATUS] = Status
-	_Handlers[METRIC] = Metric
+	_Handlers[HTTP] = Http
+	_Handlers[PATCH] = Patch
 	_Handlers[RELAY_POLY_TX] = RelayPolyTx
 }
 

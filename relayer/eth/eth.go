@@ -223,6 +223,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			continue
 		}
 		if tx == nil {
+			log.Warn("Bus pop nil?", "chain", s.name)
 			time.Sleep(time.Second)
 			continue
 		}

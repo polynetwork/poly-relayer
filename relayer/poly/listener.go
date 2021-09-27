@@ -81,6 +81,12 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
+func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
+	h, err := l.sdk.Node().GetBlockHeightByTxHash(hash)
+	height = uint64(h)
+	return
+}
+
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	return
 }

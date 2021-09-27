@@ -202,6 +202,15 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
+func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
+	receipt, err := l.sdk.Node().TransactionReceipt(context.Background(), common.HexToHash(hash))
+	if err != nil {
+		return
+	}
+	height = uint64(receipt.BlockNumber.Int64())
+	return
+}
+
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	return
 }
