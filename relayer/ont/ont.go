@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,6 +117,11 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	)
 	if err == nil {
 		tx.DstHash = hash.ToHexString()
+	} else {
+		if strings.Contains(err.Error(), "tx already done") {
+			log.Info("Ont tx already submitted", "poly_hash", tx.PolyHash, "msg", err.Error())
+			return nil
+		}
 	}
 	return
 }
