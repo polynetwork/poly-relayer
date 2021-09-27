@@ -49,6 +49,7 @@ type IChainListener interface {
 	LastHeaderSync(uint64, uint64) (uint64, error)
 	Scan(uint64) ([]*msg.Tx, error)
 	ScanTx(string) (*msg.Tx, error)
+	GetTxBlock(string) (uint64, error)
 	Compose(*msg.Tx) error
 }
 

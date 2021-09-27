@@ -36,6 +36,7 @@ type SrcTxSyncHandler struct {
 
 	listener IChainListener
 	bus      bus.TxBus
+	patch    bus.TxBus
 	state    bus.ChainStore
 	height   uint64
 	config   *config.SrcTxSyncConfig
@@ -67,6 +68,7 @@ func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 	)
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
+	h.patch = bus.NewRedisPatchTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId)
 	return
 }
 
@@ -77,7 +79,61 @@ func (h *SrcTxSyncHandler) Start() (err error) {
 	}
 
 	go h.start()
+	go h.patchTxs()
 	return
+}
+
+func (h *SrcTxSyncHandler) patchTxs() {
+	h.wg.Add(1)
+	defer h.wg.Done()
+	for {
+		select {
+		case <-h.Done():
+			log.Info("Src tx patch handler is exiting...", "chain", h.config.ChainId)
+			return
+		default:
+		}
+
+		tx, err := h.bus.Pop(h.Context)
+		if err != nil {
+			log.Error("Bus pop error", "err", err, "chain", h.config.ChainId)
+			continue
+		}
+		if tx == nil {
+			log.Warn("Bus pop nil?", "chain", h.config.ChainId)
+			time.Sleep(time.Second)
+			continue
+		}
+		height := tx.SrcHeight
+		if height == 0 && tx.SrcHash != "" {
+			height, err = h.listener.GetTxBlock(tx.SrcHash)
+			if err != nil {
+				log.Error("Failed to get tx block", "hash", tx.SrcHash, "chain", h.config.ChainId)
+				continue
+			}
+		}
+
+		if height == 0 {
+			log.Error("Failed to patch tx for height is invalid", "chain", h.config.ChainId, "body", tx.Encode())
+			continue
+		}
+
+		txs, err := h.listener.Scan(height)
+		if err != nil {
+			log.Error("Fetch block txs error", "chain", h.config.ChainId, "height", height, "err", err)
+		}
+
+		for _, t := range txs {
+			if tx.SrcHash == "" || tx.SrcHash == t.SrcHash {
+				log.Info("Found patch target src tx", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
+				bus.SafeCall(h.Context, t, func() error {
+					return h.bus.Push(context.Background(), t)
+				})
+			} else {
+				log.Info("Found src tx in block", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
+			}
+		}
+	}
 }
 
 func (h *SrcTxSyncHandler) start() (err error) {
@@ -107,7 +163,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
-				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId)
+				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId, "height", h.height)
 				bus.SafeCall(h.Context, tx, func() error {
 					return h.bus.Push(context.Background(), tx)
 				})
@@ -115,7 +171,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 			h.state.HeightMark(h.height)
 			continue
 		} else {
-			log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
+			log.Error("Fetch block txs error", "chain", h.config.ChainId, "height", h.height, "err", err)
 		}
 		h.height--
 	}
@@ -257,6 +313,59 @@ func (h *PolyTxSyncHandler) checkDelayed() (err error) {
 			log.Info("Delayed poly tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
 			return nil
 		case <-time.After(time.Second):
+		}
+	}
+}
+
+func (h *PolyTxSyncHandler) patchTxs() {
+	h.wg.Add(1)
+	defer h.wg.Done()
+	for {
+		select {
+		case <-h.Done():
+			log.Info("Poly tx patch handler is exiting...", "chain", h.config.ChainId)
+			return
+		default:
+		}
+
+		tx, err := h.bus.Pop(h.Context)
+		if err != nil {
+			log.Error("Bus pop error", "err", err, "chain", h.config.ChainId)
+			continue
+		}
+		if tx == nil {
+			log.Warn("Bus pop nil?", "chain", h.config.ChainId)
+			time.Sleep(time.Second)
+			continue
+		}
+		height := uint64(tx.PolyHeight)
+		if height == 0 && tx.PolyHash != "" {
+			height, err = h.listener.GetTxBlock(tx.PolyHash)
+			if err != nil {
+				log.Error("Failed to get poly tx block", "hash", tx.PolyHash, "chain", h.config.ChainId)
+				continue
+			}
+		}
+
+		if height == 0 {
+			log.Error("Failed to patch poly tx for height is invalid", "chain", h.config.ChainId, "body", tx.Encode())
+			continue
+		}
+
+		txs, err := h.listener.Scan(height)
+		if err != nil {
+			log.Error("Fetch poly block txs error", "chain", h.config.ChainId, "height", height, "err", err)
+		}
+
+		for _, t := range txs {
+			if tx.PolyHash == "" || tx.PolyHash == t.PolyHash {
+				log.Info("Found patch target poly tx", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
+				bus.SafeCall(h.Context, t, func() error {
+					return h.bus.PushToChain(context.Background(), t)
+				})
+			} else {
+				log.Info("Found poly tx in block", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
+			}
 		}
 	}
 }
