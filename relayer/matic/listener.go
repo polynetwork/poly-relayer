@@ -63,6 +63,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 		err = fmt.Errorf("Fetch block header error %v", err)
 		return
 	}
+	log.Info("Fetched bor block header", "height", height, "hash", hdr.Hash().String())
 	hp := &cosmos.HeaderWithOptionalProof{
 		Header: *hdr,
 	}
@@ -91,8 +92,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 			l.lastSpanSync = spanId
 		}
 	}
-	log.Info("Fetched bor block header", "height", height, "hash_with_proof", hp.Hash().String(), "hash", hdr.Hash().String())
-	hash = hp.Hash().Bytes()
+	hash = hdr.Hash().Bytes()
 	header, err = json.Marshal(hp)
 	return
 }
