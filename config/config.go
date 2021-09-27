@@ -285,6 +285,9 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 			c.Wallet.Nodes = c.Nodes
 		}
 		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
+		for _, p := range c.Wallet.KeyStoreProviders {
+			p.Path = GetConfigPath(WALLET_PATH, p.Path)
+		}
 	}
 
 	if c.HeaderSync != nil {
@@ -345,6 +348,9 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 		o.Wallet.Path = GetConfigPath(WALLET_PATH, o.Wallet.Path)
 		if len(o.Wallet.Nodes) == 0 {
 			o.Wallet.Nodes = c.Wallet.Nodes
+		}
+		for _, p := range o.Wallet.KeyStoreProviders {
+			p.Path = GetConfigPath(WALLET_PATH, p.Path)
 		}
 	}
 
