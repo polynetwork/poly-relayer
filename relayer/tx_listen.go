@@ -290,6 +290,13 @@ func (h *PolyTxSyncHandler) checkDelayed() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	for {
+		select {
+		case <-h.Done():
+			log.Info("Delayed poly tx sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
+			return nil
+		default:
+		}
+
 		tx, score, err := h.queue.Pop(h.Context)
 		if err != nil {
 			log.Error("Deplayed poly tx queue pop error", "err", err)
