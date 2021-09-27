@@ -116,7 +116,7 @@ func (c *PatchController) Patch() {
 		tx.SrcHeight = uint64(height)
 	}
 	log.Info("Patching tx", "body", tx.Encode())
-	err := _PATCHER.PushToChain(context.Background(), tx)
+	err := _PATCHER.Patch(context.Background(), tx)
 	if err != nil {
 		c.Data["json"] = err.Error()
 		c.Ctx.ResponseWriter.WriteHeader(400)
@@ -138,7 +138,7 @@ func Patch(ctx *cli.Context) (err error) {
 		tx.SrcHash = hash
 		tx.SrcHeight = height
 	}
-	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).PushToChain(context.Background(), tx)
+	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).Patch(context.Background(), tx)
 	if err != nil {
 		log.Error("Patch tx failed", "err", err)
 		fmt.Println(util.Verbose(tx))

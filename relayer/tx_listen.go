@@ -94,7 +94,7 @@ func (h *SrcTxSyncHandler) patchTxs() {
 		default:
 		}
 
-		tx, err := h.bus.Pop(h.Context)
+		tx, err := h.patch.Pop(h.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err, "chain", h.config.ChainId)
 			continue
@@ -194,6 +194,7 @@ type PolyTxSyncHandler struct {
 
 	listener IChainListener
 	bus      bus.TxBus        // main poly tx queue
+	patch    bus.TxBus        // path poly tx queue
 	queue    bus.DelayedTxBus // delayed poly tx queue
 	state    bus.ChainStore
 	height   uint64
@@ -224,6 +225,7 @@ func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 	)
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
+	h.patch = bus.NewRedisPatchTxBus(bus.New(h.config.Bus.Redis), base.POLY)
 	h.queue = bus.NewRedisDelayedTxBus(bus.New(h.config.Bus.Redis))
 	ok, err := bus.NewStatusLock(bus.New(h.config.Bus.Redis), bus.POLY_SYNC).Start(ctx, h.wg)
 	if err != nil {
@@ -338,7 +340,7 @@ func (h *PolyTxSyncHandler) patchTxs() {
 		default:
 		}
 
-		tx, err := h.bus.Pop(h.Context)
+		tx, err := h.patch.Pop(h.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err, "chain", h.config.ChainId)
 			continue
