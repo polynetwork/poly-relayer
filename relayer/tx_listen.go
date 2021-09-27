@@ -104,6 +104,8 @@ func (h *SrcTxSyncHandler) patchTxs() {
 			time.Sleep(time.Second)
 			continue
 		}
+		log.Info("Received patch tx request", "tx", tx.Encode())
+
 		height := tx.SrcHeight
 		if height == 0 && tx.SrcHash != "" {
 			height, err = h.listener.GetTxBlock(tx.SrcHash)
@@ -241,6 +243,7 @@ func (h *PolyTxSyncHandler) Start() (err error) {
 
 	go h.start()
 	go h.checkDelayed()
+	go h.patchTxs()
 	return
 }
 
@@ -345,6 +348,8 @@ func (h *PolyTxSyncHandler) patchTxs() {
 			time.Sleep(time.Second)
 			continue
 		}
+
+		log.Info("Received patch tx request", "tx", tx.Encode())
 		height := uint64(tx.PolyHeight)
 		if height == 0 && tx.PolyHash != "" {
 			height, err = h.listener.GetTxBlock(tx.PolyHash)
