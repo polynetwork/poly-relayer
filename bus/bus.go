@@ -82,6 +82,10 @@ func NewRedisTxBus(db *redis.Client, chainId uint64, txType msg.TxType) *RedisTx
 	return bus
 }
 
+func NewRedisPatchTxBus(db *redis.Client, chainId uint64) *RedisTxBus {
+	return &RedisTxBus{String(fmt.Sprintf("patch:%d", chainId)), db}
+}
+
 func (b *RedisTxBus) Topic() (topic string) {
 	return b.Key.Key()
 }

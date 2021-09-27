@@ -36,12 +36,15 @@ var (
 )
 
 type Config struct {
-	Env          string
-	Bus          *BusConfig
-	Poly         *PolyChainConfig
-	Chains       map[uint64]*ChainConfig
-	MetricHost   string
-	MetricPort   int
+	Env    string
+	Bus    *BusConfig
+	Poly   *PolyChainConfig
+	Chains map[uint64]*ChainConfig
+
+	// Http
+	Host string
+	Port int
+
 	ValidMethods []string
 	validMethods map[string]bool
 	chains       map[uint64]bool
@@ -219,11 +222,11 @@ func (c *Config) Active(chain uint64) bool {
 }
 
 func (c *Config) Init() (err error) {
-	if c.MetricHost == "" {
-		c.MetricHost = "0.0.0.0"
+	if c.Host == "" {
+		c.Host = "0.0.0.0"
 	}
-	if c.MetricPort == 0 {
-		c.MetricPort = 6500
+	if c.Port == 0 {
+		c.Port = 6500
 	}
 	if c.Bus != nil {
 		c.Bus.Init()

@@ -18,6 +18,9 @@
 package relayer
 
 import (
+	"context"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,25 +28,43 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/metrics"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
-func Metric(ctx *cli.Context) (err error) {
+var (
+	_PATCHER *bus.RedisTxBus
+)
+
+func Http(ctx *cli.Context) (err error) {
 	metrics.Init("relayer")
 	// Insert web config
 	port := ctx.Int("port")
 	host := ctx.String("host")
 	if port == 0 {
-		port = config.CONFIG.MetricPort
+		port = config.CONFIG.Port
 	}
 	if host == "" {
-		host = config.CONFIG.MetricHost
+		host = config.CONFIG.Host
 	}
 
+	// Init patcher
+	_PATCHER = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0)
+
+	web.AddNamespace(
+		web.NewNamespace("/api",
+			web.NSNamespace("/",
+				web.NSRouter("patch", &PatchController{}, "get:Patch"),
+			),
+		),
+	)
+
 	go recordMetrics()
+
 	web.BConfig.Listen.HTTPAddr = host
 	web.BConfig.Listen.HTTPPort = port
 	web.BConfig.RunMode = "prod"
@@ -76,4 +97,51 @@ func recordMetrics() {
 			metrics.Record(qPoly, "queue_size.poly.%s", name)
 		}
 	}
+}
+
+type PatchController struct {
+	web.Controller
+}
+
+func (c *PatchController) Patch() {
+	height, _ := strconv.Atoi(c.Ctx.Input.Query("height"))
+	chain, _ := strconv.Atoi(c.Ctx.Input.Query("chain"))
+	hash := c.Ctx.Input.Query("hash")
+	tx := &msg.Tx{}
+	if chain == 0 {
+		tx.PolyHeight = uint32(height)
+		tx.PolyHash = hash
+	} else {
+		tx.SrcHash = hash
+		tx.SrcHeight = uint64(height)
+	}
+	log.Info("Patching tx", "body", tx.Encode())
+	err := _PATCHER.PushToChain(context.Background(), tx)
+	if err != nil {
+		c.Data["json"] = err.Error()
+		c.Ctx.ResponseWriter.WriteHeader(400)
+	} else {
+		c.Data["json"] = tx
+	}
+	c.ServeJSON()
+}
+
+func Patch(ctx *cli.Context) (err error) {
+	height := uint64(ctx.Int("height"))
+	chain := uint64(ctx.Int("chain"))
+	hash := ctx.String("hash")
+	tx := &msg.Tx{}
+	if chain == 0 {
+		tx.PolyHeight = uint32(height)
+		tx.PolyHash = hash
+	} else {
+		tx.SrcHash = hash
+		tx.SrcHeight = height
+	}
+	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).PushToChain(context.Background(), tx)
+	if err != nil {
+		log.Error("Patch tx failed", "err", err)
+		fmt.Println(util.Verbose(tx))
+	}
+	return
 }
