@@ -155,12 +155,12 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
-	log.Info("Fetching block header", "chain", l.name, "height", height)
 	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
 	if err != nil {
 		err = fmt.Errorf("Fetch block header error %v", err)
 		return nil, nil, err
 	}
+	log.Info("Fetched block header", "chain", l.name, "height", height, "hash", hdr.Hash().String())
 	hash = hdr.Hash().Bytes()
 	header, err = hdr.MarshalJSON()
 	return
