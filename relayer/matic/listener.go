@@ -135,10 +135,8 @@ func (l *Listener) FetchLatestSpan() (spandId uint64, start uint64, end uint64, 
 }
 
 func (l *Listener) GetBorSpanId(height uint64) (id uint64, err error) {
-	log.Info("GetBorSpanId", "height", height)
-	defer log.Info("GetBorSpanId got", "height", height, "id", id, "err", err)
 	span, start, end := l.GetLatestSpan()
-	log.Info("GetBorSpanId get latest span", "height", height, "span", span, "start", start, "end", end)
+	// log.Debug("GetBorSpanId get latest span", "height", height, "span", span, "start", start, "end", end)
 	for {
 		if height >= start && height <= end {
 			return span, nil
@@ -146,14 +144,14 @@ func (l *Listener) GetBorSpanId(height uint64) (id uint64, err error) {
 			// old span
 			span--
 			start, end, err = l.GetSpanRange(span)
-			log.Info("GetBorSpanId get span range", "height", height, "span", span, "start", start, "end", end, "err", err)
+			log.Debug("GetBorSpanId get span range", "height", height, "span", span, "start", start, "end", end, "err", err)
 			if err != nil {
 				return
 			}
 		} else {
 			// new span
 			span, start, end, err = l.FetchLatestSpan()
-			log.Info("GetBorSpanId get span range", "height", height, "span", span, "start", start, "end", end, "err", err)
+			log.Debug("GetBorSpanId get span range", "height", height, "span", span, "start", start, "end", end, "err", err)
 			if err != nil {
 				return
 			}
