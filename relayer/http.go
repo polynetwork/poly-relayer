@@ -57,8 +57,8 @@ func Http(ctx *cli.Context) (err error) {
 
 	web.AddNamespace(
 		web.NewNamespace("/api",
-			web.NSNamespace("/",
-				web.NSRouter("patch", &PatchController{}, "get:Patch"),
+			web.NSNamespace("/v1",
+				web.NSRouter("/patch", &PatchController{}, "get:Patch"),
 			),
 		),
 	)
