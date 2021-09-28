@@ -119,7 +119,11 @@ func (b *RedisTxBus) PushToChain(ctx context.Context, tx *msg.Tx) error {
 }
 
 func (b *RedisTxBus) Patch(ctx context.Context, tx *msg.Tx) error {
-	_, err := b.db.RPush(ctx, NewPatchKey(tx.SrcChainId).Key(), tx.Encode()).Result()
+	chain := tx.SrcChainId
+	if tx.Type() == msg.POLY {
+		chain = base.POLY
+	}
+	_, err := b.db.RPush(ctx, NewPatchKey(chain).Key(), tx.Encode()).Result()
 	if err != nil {
 		return fmt.Errorf("Failed to push message %v", err)
 	}

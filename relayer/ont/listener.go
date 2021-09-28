@@ -153,6 +153,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			}
 			tx := &msg.Tx{
 				TxId:       states[4].(string),
+				TxType:     msg.SRC,
 				SrcHeight:  height,
 				SrcChainId: base.ONT,
 				SrcHash:    event.TxHash,

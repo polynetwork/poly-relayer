@@ -19,17 +19,18 @@ package bus
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
-func SafeCall(ctx context.Context, tx *msg.Tx, f func() error) error {
+func SafeCall(ctx context.Context, tx *msg.Tx, msg string, f func() error) error {
 	return Retry(ctx, func() error {
 		err := f()
 		if err != nil {
-			log.Error("Failed to push tx", "body", tx.Encode(), "err", err)
+			log.Error(fmt.Sprintf("Failed call: %s", msg), "err", err, "body", tx.Encode())
 		}
 		return err
 	}, time.Second, 0)

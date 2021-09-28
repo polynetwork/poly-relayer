@@ -128,7 +128,7 @@ func (h *SrcTxSyncHandler) patchTxs() {
 		for _, t := range txs {
 			if tx.SrcHash == "" || tx.SrcHash == t.SrcHash {
 				log.Info("Found patch target src tx", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
-				bus.SafeCall(h.Context, t, func() error {
+				bus.SafeCall(h.Context, t, "push to tx bus", func() error {
 					return h.bus.Push(context.Background(), t)
 				})
 			} else {
@@ -166,7 +166,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		if err == nil {
 			for _, tx := range txs {
 				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId, "height", h.height)
-				bus.SafeCall(h.Context, tx, func() error {
+				bus.SafeCall(h.Context, tx, "push to tx bus", func() error {
 					return h.bus.Push(context.Background(), tx)
 				})
 			}
@@ -277,7 +277,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		if err == nil {
 			for _, tx := range txs {
 				log.Info("Found poly tx", "hash", tx.PolyHash)
-				bus.SafeCall(h.Context, tx, func() error {
+				bus.SafeCall(h.Context, tx, "push to target chain tx bus", func() error {
 					return h.bus.PushToChain(context.Background(), tx)
 				})
 			}
@@ -309,13 +309,13 @@ func (h *PolyTxSyncHandler) checkDelayed() (err error) {
 		}
 		if tx != nil && score > 0 {
 			if score <= time.Now().Unix() {
-				bus.SafeCall(h.Context, tx, func() error {
+				bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
 					log.Info("Pushing back delayed tx", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
 					return h.bus.PushToChain(context.Background(), tx)
 				})
 				continue
 			} else {
-				bus.SafeCall(h.Context, tx, func() error {
+				bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
 					return h.queue.Delay(context.Background(), tx, score)
 				})
 			}
@@ -374,7 +374,7 @@ func (h *PolyTxSyncHandler) patchTxs() {
 		for _, t := range txs {
 			if tx.PolyHash == "" || tx.PolyHash == t.PolyHash {
 				log.Info("Found patch target poly tx", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
-				bus.SafeCall(h.Context, t, func() error {
+				bus.SafeCall(h.Context, t, "push to target chain tx bus", func() error {
 					return h.bus.PushToChain(context.Background(), t)
 				})
 			} else {

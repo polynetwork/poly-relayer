@@ -189,6 +189,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			return
 		}
 		tx := &msg.Tx{
+			TxType:     msg.SRC,
 			TxId:       msg.EncodeTxId(ev.TxId),
 			SrcHash:    ev.Raw.TxHash.String(),
 			DstChainId: ev.ToChainId,

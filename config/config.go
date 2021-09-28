@@ -48,6 +48,7 @@ type Config struct {
 	ValidMethods []string
 	validMethods map[string]bool
 	chains       map[uint64]bool
+	Bridge       []string
 }
 
 // Parse file path, if path is empty, use config file directory path
@@ -97,6 +98,7 @@ type ChainConfig struct {
 	CCMContract       string
 	CCDContract       string
 	ListenCheck       int
+	CheckFee          bool
 	Defer             int
 	Wallet            *wallet.Config
 
@@ -214,6 +216,7 @@ type PolyTxCommitConfig struct {
 	Poly             *PolySubmitterConfig
 	Procs            int
 	Enabled          bool
+	CheckFee         bool
 	Bus              *BusConfig
 }
 
@@ -318,6 +321,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 
 	if c.PolyTxCommit != nil {
+		c.PolyTxCommit.CheckFee = c.CheckFee
 		c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
 		c.PolyTxCommit.ChainId = chain
 		c.PolyTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.PolyTxCommit.Poly)
