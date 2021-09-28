@@ -78,6 +78,8 @@ type Tx struct {
 	DstPolyEpochStartHeight uint32      `json:",omitempty"`
 	DstPolyKeepers          []byte      `json:"-"`
 	DstData                 []byte      `json:"-"`
+	SkipCheckFee            bool        `json:",omitempty"`
+	FeePass                 bool        `json:",omitempty"`
 }
 
 func (tx *Tx) Type() TxType {

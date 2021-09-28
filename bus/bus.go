@@ -37,6 +37,10 @@ func (s String) Key() string {
 	return fmt.Sprintf("%s:relayer:%s", base.ENV, string(s))
 }
 
+func NewPatchKey(chainId uint64) String {
+	return String(fmt.Sprintf("patch:%d", chainId))
+}
+
 type TxQueueKey struct {
 	ChainId uint64
 	TxType  msg.TxType
@@ -63,6 +67,7 @@ type TxBus interface {
 	Pop(context.Context) (*msg.Tx, error)
 	Push(context.Context, *msg.Tx) error
 	PushToChain(context.Context, *msg.Tx) error
+	Patch(context.Context, *msg.Tx) error
 	PushBack(context.Context, *msg.Tx) error
 	Len(context.Context) (uint64, error)
 	LenOf(context.Context, uint64, msg.TxType) (uint64, error)
@@ -83,7 +88,7 @@ func NewRedisTxBus(db *redis.Client, chainId uint64, txType msg.TxType) *RedisTx
 }
 
 func NewRedisPatchTxBus(db *redis.Client, chainId uint64) *RedisTxBus {
-	return &RedisTxBus{String(fmt.Sprintf("patch:%d", chainId)), db}
+	return &RedisTxBus{NewPatchKey(chainId), db}
 }
 
 func (b *RedisTxBus) Topic() (topic string) {
@@ -107,6 +112,18 @@ func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
 
 func (b *RedisTxBus) PushToChain(ctx context.Context, tx *msg.Tx) error {
 	_, err := b.db.RPush(ctx, GetQueue(tx).Key(), tx.Encode()).Result()
+	if err != nil {
+		return fmt.Errorf("Failed to push message %v", err)
+	}
+	return nil
+}
+
+func (b *RedisTxBus) Patch(ctx context.Context, tx *msg.Tx) error {
+	chain := tx.SrcChainId
+	if tx.Type() == msg.POLY {
+		chain = base.POLY
+	}
+	_, err := b.db.RPush(ctx, NewPatchKey(chain).Key(), tx.Encode()).Result()
 	if err != nil {
 		return fmt.Errorf("Failed to push message %v", err)
 	}

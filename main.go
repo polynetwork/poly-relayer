@@ -105,9 +105,25 @@ func main() {
 						Usage:    "tx chain id",
 						Required: true,
 					},
+					&cli.Int64Flag{
+						Name:  "limit",
+						Usage: "tx gas limit",
+					},
+					&cli.StringFlag{
+						Name:  "price",
+						Usage: "tx gas price",
+					},
+					&cli.StringFlag{
+						Name:  "pricex",
+						Usage: "tx gas priceX",
+					},
 					&cli.StringFlag{
 						Name:  "hash",
 						Usage: "target tx hash",
+					},
+					&cli.BoolFlag{
+						Name:  "free",
+						Usage: "skip check fee",
 					},
 				},
 			},

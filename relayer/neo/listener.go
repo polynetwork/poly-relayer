@@ -258,6 +258,7 @@ func (l *Listener) scanTx(hash string, height uint64) (tx *msg.Tx, err error) {
 
 				tx := &msg.Tx{
 					TxId:       states[4].Value.(string), // hexstring for storeKey: 0102 + toChainId + toRequestId, like 01020501
+					TxType:     msg.SRC,
 					SrcHash:    hash,
 					SrcHeight:  height,
 					SrcChainId: l.config.ChainId,
