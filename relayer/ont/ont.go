@@ -157,7 +157,7 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 			time.Sleep(time.Second)
 			continue
 		}
-		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
+		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address.ToHexString())
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
@@ -182,7 +182,7 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer) error {
 	s.Context = ctx
 	s.wg = wg
-	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address, "chain", s.name)
+	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address.ToHexString(), "chain", s.name)
 	go s.run(s.signer.Account, bus, delay, composer)
 	return nil
 }
