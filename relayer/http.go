@@ -106,8 +106,14 @@ type PatchController struct {
 func (c *PatchController) Patch() {
 	height, _ := strconv.Atoi(c.Ctx.Input.Query("height"))
 	chain, _ := strconv.Atoi(c.Ctx.Input.Query("chain"))
+	limit, _ := strconv.Atoi(c.Ctx.Input.Query("limit"))
 	hash := c.Ctx.Input.Query("hash")
-	tx := &msg.Tx{}
+	tx := &msg.Tx{
+		SkipCheckFee: c.Ctx.Input.Query("free") == "true",
+		DstGasPrice:  c.Ctx.Input.Query("price"),
+		DstGasPriceX: c.Ctx.Input.Query("pricex"),
+		DstGasLimit:  uint64(limit),
+	}
 	if chain == 0 {
 		tx.PolyHeight = uint32(height)
 		tx.PolyHash = hash
@@ -116,7 +122,7 @@ func (c *PatchController) Patch() {
 		tx.SrcHeight = uint64(height)
 	}
 	log.Info("Patching tx", "body", tx.Encode())
-	err := _PATCHER.PushToChain(context.Background(), tx)
+	err := _PATCHER.Patch(context.Background(), tx)
 	if err != nil {
 		c.Data["json"] = err.Error()
 		c.Ctx.ResponseWriter.WriteHeader(400)
@@ -130,7 +136,12 @@ func Patch(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")
-	tx := &msg.Tx{}
+	tx := &msg.Tx{
+		SkipCheckFee: ctx.Bool("free"),
+		DstGasPrice:  ctx.String("price"),
+		DstGasPriceX: ctx.String("pricex"),
+		DstGasLimit:  uint64(ctx.Int("limit")),
+	}
 	if chain == 0 {
 		tx.PolyHeight = uint32(height)
 		tx.PolyHash = hash
@@ -138,7 +149,7 @@ func Patch(ctx *cli.Context) (err error) {
 		tx.SrcHash = hash
 		tx.SrcHeight = height
 	}
-	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).PushToChain(context.Background(), tx)
+	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).Patch(context.Background(), tx)
 	if err != nil {
 		log.Error("Patch tx failed", "err", err)
 		fmt.Println(util.Verbose(tx))
