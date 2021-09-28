@@ -141,8 +141,11 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 		return
 	}
 	for _, tx := range txs {
+		if state[tx.PolyHash] != nil {
+			tx.CheckFeeStatus = state[tx.PolyHash].Status
+		}
+
 		if state[tx.PolyHash].Pass() {
-			tx.FeePass = true
 			b.ch <- tx
 			log.Info("CheckFee pass", "poly_hash", tx.PolyHash)
 		} else if state[tx.PolyHash].Skip() {
@@ -185,7 +188,10 @@ LOOP:
 				}
 
 				// Skip tx check fee
-				if tx.SkipCheckFee || tx.FeePass {
+				if tx.SkipCheckFee {
+					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
+					b.ch <- tx
+				} else if tx.CheckFeeStatus == bridge.PAID {
 					b.ch <- tx
 				} else {
 					txs = append(txs, tx)
