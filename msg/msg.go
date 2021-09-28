@@ -15,6 +15,7 @@ import (
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/sm2"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	pcom "github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/core/types"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/common"
@@ -68,18 +69,19 @@ type Tx struct {
 	AuditPath    string        `json:"-"`
 	PolySigs     []byte        `json:"-"`
 
-	DstHash                 string      `json:",omitempty"`
-	DstHeight               uint64      `json:",omitempty"`
-	DstChainId              uint64      `json:",omitempty"`
-	DstGasLimit             uint64      `json:",omitempty"`
-	DstGasPrice             string      `json:",omitempty"`
-	DstGasPriceX            string      `json:",omitempty"`
-	DstSender               interface{} `json:"-"`
-	DstPolyEpochStartHeight uint32      `json:",omitempty"`
-	DstPolyKeepers          []byte      `json:"-"`
-	DstData                 []byte      `json:"-"`
-	SkipCheckFee            bool        `json:",omitempty"`
-	FeePass                 bool        `json:",omitempty"`
+	DstHash                 string                `json:",omitempty"`
+	DstHeight               uint64                `json:",omitempty"`
+	DstChainId              uint64                `json:",omitempty"`
+	DstGasLimit             uint64                `json:",omitempty"`
+	DstGasPrice             string                `json:",omitempty"`
+	DstGasPriceX            string                `json:",omitempty"`
+	DstSender               interface{}           `json:"-"`
+	DstPolyEpochStartHeight uint32                `json:",omitempty"`
+	DstPolyKeepers          []byte                `json:"-"`
+	DstData                 []byte                `json:"-"`
+	SkipCheckFee            bool                  `json:",omitempty"`
+	Skipped                 bool                  `json:",omitempty"`
+	CheckFeeStatus          bridge.CheckFeeStatus `json:",omitempty"`
 }
 
 func (tx *Tx) Type() TxType {

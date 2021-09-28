@@ -142,6 +142,30 @@ func main() {
 					},
 				},
 			},
+			&cli.Command{
+				Name:   relayer.SKIP,
+				Usage:  "Mark tx hash to skip before sumbit to target chain",
+				Action: command(relayer.SKIP),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "hash",
+						Usage:    "tx hash",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.CHECK_SKIP,
+				Usage:  "Check tx skip status",
+				Action: command(relayer.CHECK_SKIP),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "hash",
+						Usage:    "tx hash",
+						Required: true,
+					},
+				},
+			},
 		},
 	}
 
@@ -202,8 +226,10 @@ func command(method string) func(*cli.Context) error {
 		err = relayer.HandleCommand(method, c)
 		if err != nil {
 			log.Error("Failure", "command", method, "err", err)
+		} else {
+			log.Info("Command was executed successful!")
 		}
-		return err
+		return nil
 	}
 }
 

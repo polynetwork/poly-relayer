@@ -25,6 +25,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -37,6 +38,8 @@ const (
 	STATUS            = "status"
 	HTTP              = "http"
 	PATCH             = "patch"
+	SKIP              = "skip"
+	CHECK_SKIP        = "checkskip"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -47,6 +50,8 @@ func init() {
 	_Handlers[STATUS] = Status
 	_Handlers[HTTP] = Http
 	_Handlers[PATCH] = Patch
+	_Handlers[SKIP] = Skip
+	_Handlers[CHECK_SKIP] = CheckSkip
 	_Handlers[RELAY_POLY_TX] = RelayPolyTx
 }
 
@@ -66,6 +71,14 @@ type StatusHandler struct {
 
 func NewStatusHandler(config *redis.Options) *StatusHandler {
 	return &StatusHandler{redis: bus.New(config)}
+}
+
+func (h *StatusHandler) Skip(hash string) (err error) {
+	return bus.NewRedisSkipCheck(h.redis).Skip(context.Background(), &msg.Tx{PolyHash: hash})
+}
+
+func (h *StatusHandler) CheckSkip(hash string) (skip bool, err error) {
+	return bus.NewRedisSkipCheck(h.redis).CheckSkip(context.Background(), &msg.Tx{PolyHash: hash})
 }
 
 func (h *StatusHandler) Height(chain uint64, key bus.ChainHeightType) (uint64, error) {
@@ -118,6 +131,20 @@ func SetTxSyncHeight(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(chain, bus.KEY_HEIGHT_TX, height)
+}
+
+func Skip(ctx *cli.Context) (err error) {
+	hash := ctx.String("hash")
+	return NewStatusHandler(config.CONFIG.Bus.Redis).Skip(hash)
+}
+
+func CheckSkip(ctx *cli.Context) (err error) {
+	hash := ctx.String("hash")
+	skip, err := NewStatusHandler(config.CONFIG.Bus.Redis).CheckSkip(hash)
+	if skip {
+		log.Info("Hash was marked to skip", "hash", hash)
+	}
+	return
 }
 
 func HandleCommand(method string, ctx *cli.Context) error {
