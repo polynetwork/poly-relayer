@@ -241,12 +241,12 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			// TODO: retry with increased gas price?
 			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) {
 				tsp := time.Now().Unix() + 60*3
-				bus.SafeCall(s.Context, tx, func() error { return delay.Delay(context.Background(), tx, tsp) })
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) {
 				tsp := time.Now().Unix() + 10
-				bus.SafeCall(s.Context, tx, func() error { return delay.Delay(context.Background(), tx, tsp) })
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
-				bus.SafeCall(s.Context, tx, func() error { return mq.Push(context.Background(), tx) })
+				bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)

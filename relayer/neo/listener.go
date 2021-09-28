@@ -33,6 +33,7 @@ import (
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/neo"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly/common"
 	scom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
@@ -174,6 +175,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	}
 	buf := io.NewBufBinaryWriter()
 	h.Serialize(buf.BinaryWriter)
+	log.Info("Fetched neo block header", "height", height, "hash", res.Result.Hash)
 	return buf.Bytes(), nil, nil
 }
 
@@ -256,6 +258,7 @@ func (l *Listener) scanTx(hash string, height uint64) (tx *msg.Tx, err error) {
 
 				tx := &msg.Tx{
 					TxId:       states[4].Value.(string), // hexstring for storeKey: 0102 + toChainId + toRequestId, like 01020501
+					TxType:     msg.SRC,
 					SrcHash:    hash,
 					SrcHeight:  height,
 					SrcChainId: l.config.ChainId,

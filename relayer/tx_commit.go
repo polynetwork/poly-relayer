@@ -21,8 +21,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/bridge"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -38,6 +41,8 @@ type PolyTxCommitHandler struct {
 	submitter IChainSubmitter
 	composer  *poly.Submitter
 	config    *config.PolyTxCommitConfig
+
+	bridge *bridge.SDK
 }
 
 func NewPolyTxCommitHandler(config *config.PolyTxCommitConfig) *PolyTxCommitHandler {
@@ -51,6 +56,13 @@ func NewPolyTxCommitHandler(config *config.PolyTxCommitConfig) *PolyTxCommitHand
 func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
+	if h.config.CheckFee {
+		h.bridge, err = bridge.WithOptions(0, config.CONFIG.Bridge, time.Minute, 10)
+		if err != nil {
+			return
+		}
+	}
 
 	if h.submitter == nil {
 		return fmt.Errorf("Unabled to create submitter for chain %s", base.GetChainName(h.config.ChainId))
@@ -72,7 +84,17 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 }
 
 func (h *PolyTxCommitHandler) Start() (err error) {
-	err = h.submitter.Start(h.Context, h.wg, h.bus, h.queue, h.composer.ComposeTx)
+	bus := h.bus
+	if h.config.CheckFee {
+		bus = &CommitFilter{
+			name:   base.GetChainName(h.config.ChainId),
+			TxBus:  h.bus,
+			delay:  h.queue,
+			ch:     make(chan *msg.Tx, 100),
+			bridge: h.bridge,
+		}
+	}
+	err = h.submitter.Start(h.Context, h.wg, bus, h.queue, h.composer.ComposeTx)
 	return
 }
 
@@ -82,6 +104,114 @@ func (h *PolyTxCommitHandler) Stop() (err error) {
 
 func (h *PolyTxCommitHandler) Chain() uint64 {
 	return h.config.ChainId
+}
+
+type CommitFilter struct {
+	name string
+	bus.TxBus
+	delay  bus.DelayedTxBus
+	ch     chan *msg.Tx
+	bridge *bridge.SDK
+}
+
+func (b *CommitFilter) Pop(ctx context.Context) (tx *msg.Tx, err error) {
+	select {
+	case <-ctx.Done():
+		err = fmt.Errorf("Exit signal received")
+	case tx = <-b.ch:
+	}
+	return
+}
+
+func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
+	// Check fee here:
+	// Pass -> send to submitter
+	// NotPass -> send to delay queue
+	// Missing -> send to delay queue
+	state := map[string]*bridge.CheckFeeRequest{}
+	for _, tx := range txs {
+		state[tx.PolyHash] = &bridge.CheckFeeRequest{
+			ChainId:  tx.SrcChainId,
+			TxId:     tx.TxId,
+			PolyHash: tx.PolyHash,
+		}
+	}
+	err = b.bridge.Node().CheckFee(state)
+	if err != nil {
+		return
+	}
+	for _, tx := range txs {
+		if state[tx.PolyHash].Pass() {
+			tx.FeePass = true
+			b.ch <- tx
+			log.Info("CheckFee pass", "poly_hash", tx.PolyHash)
+		} else if state[tx.PolyHash].Skip() {
+			log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
+		} else if state[tx.PolyHash].Missing() {
+			log.Info("CheckFee tx missing in bridge, delay for 2 seconds", "poly_hash", tx.PolyHash)
+			tsp := time.Now().Unix() + 2
+			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
+
+		} else {
+			log.Info("CheckFee tx not paid, delay for 10 minutes", "poly_hash", tx.PolyHash)
+			tsp := time.Now().Unix() + 600
+			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
+		}
+	}
+	return
+}
+
+func (b *CommitFilter) Pipe(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+	txs := []*msg.Tx{}
+	flush := false
+LOOP:
+	for {
+		select {
+		case <-ctx.Done():
+			break LOOP
+		default:
+		}
+
+		// Max poll size: 100
+		if !flush || len(txs) < 100 {
+			c, _ := context.WithTimeout(ctx, time.Second)
+			tx, _ := b.TxBus.Pop(c)
+			if tx != nil {
+				if tx.PolyHash == "" {
+					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
+					continue
+				}
+
+				// Skip tx check fee
+				if tx.SkipCheckFee || tx.FeePass {
+					b.ch <- tx
+				} else {
+					txs = append(txs, tx)
+					flush = len(txs) > 10
+				}
+			} else {
+				flush = len(txs) > 0
+			}
+		}
+		if flush {
+			err := b.flush(ctx, txs)
+			if err == nil {
+				flush = false
+				txs = []*msg.Tx{}
+			} else {
+				log.Error("Check fee error", "chain", b.name, "err", err)
+			}
+		}
+	}
+	// Drain the buf
+	log.Info("Pushing back check fee queue to poly tx bus", "chain", b.name, "size", len(b.ch))
+	close(b.ch)
+	for tx := range b.ch {
+		bus.SafeCall(ctx, tx, "push back to tx bus", func() error { return b.TxBus.Push(context.Background(), tx) })
+	}
+	log.Info("Check fee queu exiting now...", "chain", b.name)
 }
 
 type SrcTxCommitHandler struct {
