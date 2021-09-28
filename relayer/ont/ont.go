@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,6 +117,11 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	)
 	if err == nil {
 		tx.DstHash = hash.ToHexString()
+	} else {
+		info := err.Error()
+		if strings.Contains(info, "state fault") {
+			err = fmt.Errorf("%w ont tx submit error: %s", msg.ERR_TX_EXEC_FAILURE, info)
+		}
 	}
 	return
 }
@@ -129,7 +135,7 @@ func (s *Submitter) Stop() error {
 	return nil
 }
 
-func (s *Submitter) run(account *sdk.Account, bus bus.TxBus, compose msg.PolyComposer) error {
+func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxBus, compose msg.PolyComposer) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
@@ -139,7 +145,7 @@ func (s *Submitter) run(account *sdk.Account, bus bus.TxBus, compose msg.PolyCom
 			return nil
 		default:
 		}
-		tx, err := bus.Pop(s.Context)
+		tx, err := mq.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
 			continue
@@ -158,7 +164,12 @@ func (s *Submitter) run(account *sdk.Account, bus bus.TxBus, compose msg.PolyCom
 				continue
 			}
 			tx.Attempts++
-			bus.Push(context.Background(), tx)
+			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) {
+				tsp := time.Now().Unix() + 60*3
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+				continue
+			}
+			mq.Push(context.Background(), tx)
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
 		}
