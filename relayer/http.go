@@ -38,6 +38,7 @@ import (
 
 var (
 	_PATCHER *bus.RedisTxBus
+	_SKIP    *bus.RedisSkipCheck
 )
 
 func Http(ctx *cli.Context) (err error) {
@@ -54,11 +55,12 @@ func Http(ctx *cli.Context) (err error) {
 
 	// Init patcher
 	_PATCHER = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0)
+	_SKIP = bus.NewRedisSkipCheck(bus.New(config.CONFIG.Bus.Redis))
 
 	web.AddNamespace(
 		web.NewNamespace("/api",
-			web.NSNamespace("/",
-				web.NSRouter("patch", &PatchController{}, "get:Patch"),
+			web.NSNamespace("/v1",
+				web.NSRouter("/patch", &PatchController{}, "get:Patch"),
 			),
 		),
 	)
@@ -101,6 +103,32 @@ func recordMetrics() {
 
 type PatchController struct {
 	web.Controller
+}
+
+func (c *PatchController) Skip() {
+	hash := c.Ctx.Input.Query("hash")
+	err := _SKIP.Skip(context.Background(), &msg.Tx{PolyHash: hash})
+	if err != nil {
+		c.Data["json"] = err.Error()
+		c.Ctx.ResponseWriter.WriteHeader(400)
+	} else {
+		c.Data["json"] = hash
+	}
+	c.ServeJSON()
+}
+
+func (c *PatchController) CheckSkip() {
+	hash := c.Ctx.Input.Query("hash")
+	tx := &msg.Tx{PolyHash: hash}
+	skip, err := _SKIP.CheckSkip(context.Background(), tx)
+	if err != nil {
+		c.Data["json"] = err.Error()
+		c.Ctx.ResponseWriter.WriteHeader(400)
+	} else {
+		tx.Skipped = skip
+		c.Data["json"] = tx
+	}
+	c.ServeJSON()
 }
 
 func (c *PatchController) Patch() {
