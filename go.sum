@@ -712,10 +712,8 @@ github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6J
 github.com/pkg/term v0.0.0-20180730021639-bffc007b7fd5/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/polynetwork/bridge-common v0.0.5 h1:AfE7KbiKtRM1YxXnVrLx92Nmh/3WHYj5AqD2kEQ5mb4=
-github.com/polynetwork/bridge-common v0.0.5/go.mod h1:CWcnHG68FIIojSsxInOaCSyI6Q5Cl7v248kVEqo2q0M=
-github.com/polynetwork/bridge-common v0.0.6 h1:Ad9xO6fkP4efJna1z73LATfgp6dpEXKknnScGAikAoo=
-github.com/polynetwork/bridge-common v0.0.6/go.mod h1:CWcnHG68FIIojSsxInOaCSyI6Q5Cl7v248kVEqo2q0M=
+github.com/polynetwork/bridge-common v0.0.7 h1:aSLN8ab9nSoABp/wAX3kb5yYTFEycSN9eL7Wft7qn1o=
+github.com/polynetwork/bridge-common v0.0.7/go.mod h1:CWcnHG68FIIojSsxInOaCSyI6Q5Cl7v248kVEqo2q0M=
 github.com/polynetwork/btc-vendor-tools v0.0.0-20200813091748-3b19a5fd7666/go.mod h1:U8rR9X6vemlkBAJWfvzwSoalcJjX8B2aQjB0kPRhBUA=
 github.com/polynetwork/cosmos-poly-module v0.0.0-20200810030259-95d586518759/go.mod h1:VMBJZ8GSZeoWBntd/rWx2Rr5roRKofO7siP1qd6A6pY=
 github.com/polynetwork/eth-contracts v0.0.0-20200814062128-70f58e22b014 h1:fbVjTnsS7nZwsTtRdbv+2162e/odNN1rqfLf/gBmhAM=
