@@ -92,7 +92,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if s.lastCommit > 0 && s.lastCheck > 3 {
 				s.lastCheck = 0
 				switch chainId {
-				case base.ONT, base.NEO, base.HEIMDALL, base.OK:
+				case base.ONT, base.NEO, base.HEIMDALL, base.OK, base.PLT:
 				default:
 					height, e := s.GetSideChainHeight(chainId)
 					if e == nil && height < s.lastCommit {
