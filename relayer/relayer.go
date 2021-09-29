@@ -28,7 +28,7 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/polynetwork/poly-relayer/relayer/ont"
+	"github.com/polynetwork/poly-relayer/relayer/plt"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
 )
 
@@ -65,8 +65,8 @@ type IChainSubmitter interface {
 
 func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
-	case base.ONT:
-		listener = new(ont.Listener)
+	case base.PLT:
+		listener = new(plt.Listener)
 	case base.POLY:
 		listener = new(po.Listener)
 	default:
@@ -76,8 +76,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
-	case base.ONT:
-		submitter = new(ont.Submitter)
+	case base.PLT:
+		submitter = new(plt.Submitter)
 	default:
 	}
 	return

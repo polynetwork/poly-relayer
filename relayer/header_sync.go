@@ -94,7 +94,7 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 			return
 		case <-timer.C:
 			switch h.config.ChainId {
-			case base.ONT, base.NEO, base.HEIMDALL, base.OK:
+			case base.ONT, base.NEO, base.HEIMDALL, base.OK, base.PLT:
 			default:
 				height, err := h.submitter.GetSideChainHeight(h.config.ChainId)
 				if err == nil {

@@ -29,12 +29,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/eth-contracts/go_abi/eccm_abi"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -76,7 +76,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 
 func (l *Listener) getProofHeight() (height uint64, err error) {
 	switch l.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.PLT:
 		h, err := l.poly.Node().GetSideChainHeight(l.config.ChainId)
 		if err != nil {
 			return 0, err
@@ -242,6 +242,10 @@ func (l *Listener) Name() string {
 
 func (l *Listener) SDK() *eth.SDK {
 	return l.sdk
+}
+
+func (l *Listener) Poly() *poly.SDK {
+	return l.poly
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
