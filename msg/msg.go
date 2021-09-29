@@ -59,6 +59,7 @@ type Tx struct {
 	SrcProofHeight uint64 `json:"-"`
 	SrcParam       string `json:",omitempty"`
 	SrcStateRoot   []byte `json:"-"`
+	SrcProxy       string `json:",omitempty"`
 
 	PolyHash     string        `json:",omitempty"`
 	PolyHeight   uint32        `json:",omitempty"`
@@ -79,6 +80,7 @@ type Tx struct {
 	DstPolyEpochStartHeight uint32                `json:",omitempty"`
 	DstPolyKeepers          []byte                `json:"-"`
 	DstData                 []byte                `json:"-"`
+	DstProxy                string                `json:",omitempty"`
 	SkipCheckFee            bool                  `json:",omitempty"`
 	Skipped                 bool                  `json:",omitempty"`
 	CheckFeeStatus          bridge.CheckFeeStatus `json:",omitempty"`

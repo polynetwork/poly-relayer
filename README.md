@@ -13,8 +13,8 @@ Reimplement poly relayer
 |Okex    |ok   |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Polygon |maitc|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |O3      |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|Palette |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Switcheo|main |:x:|:x:|:x:|
-|Palette |main |:x:|:x:|:x:|
 |Arbitrum|main |:x:|:x:|:x:|
 
 ## TODOs
@@ -22,5 +22,6 @@ Reimplement poly relayer
 - [x] graceful shutdown
 - [x] state consistent across restart
 - [x] configurable roles to run
-- [] Delayed retry queue for failed transactions
-- [] Transaction listen filters: methods, lockproxy contracts
+- [x] Delayed retry queue for failed transactions
+- [x] Transaction listen filters: methods, lockproxy contracts
+- [x] Bridge check fee
