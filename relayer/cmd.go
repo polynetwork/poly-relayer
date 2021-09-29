@@ -110,8 +110,16 @@ func Status(ctx *cli.Context) (err error) {
 		fmt.Printf("  Header sync height: %v\n", header)
 		fmt.Printf("  tx listen height  : %v\n", tx)
 		if latest > 0 {
-			fmt.Printf("  header sync height diff: %v\n", latest-header)
-			fmt.Printf("  tx listen height diff  : %v\n", latest-tx)
+			headerDiff := int64(latest) - int64(header)
+			if headerDiff < 0 {
+				headerDiff = 0
+			}
+			txDiff := int64(latest) - int64(tx)
+			if txDiff < 0 {
+				txDiff = 0
+			}
+			fmt.Printf("  header sync height diff: %v\n", headerDiff)
+			fmt.Printf("  tx listen height diff  : %v\n", txDiff)
 		}
 		qSrc, _ := h.Len(chain, msg.SRC)
 		qPoly, _ := h.Len(chain, msg.POLY)
