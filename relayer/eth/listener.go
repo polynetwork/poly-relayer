@@ -201,6 +201,8 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			SrcHeight:  height,
 			SrcParam:   hex.EncodeToString(ev.Rawdata),
 			SrcChainId: l.config.ChainId,
+			SrcProxy:   ev.ProxyOrAssetContract.String(),
+			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
 		}
 		txs = append(txs, tx)
 	}

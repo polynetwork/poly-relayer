@@ -84,17 +84,20 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 }
 
 func (h *PolyTxCommitHandler) Start() (err error) {
-	bus := h.bus
+	mq := h.bus
+	if h.config.Filter != nil {
+		mq = bus.WithFilter(h.bus, h.config.Filter)
+	}
 	if h.config.CheckFee {
-		bus = &CommitFilter{
+		mq = &CommitFilter{
 			name:   base.GetChainName(h.config.ChainId),
-			TxBus:  h.bus,
+			TxBus:  mq,
 			delay:  h.queue,
 			ch:     make(chan *msg.Tx, 100),
 			bridge: h.bridge,
 		}
 	}
-	err = h.submitter.Start(h.Context, h.wg, bus, h.queue, h.composer.ComposeTx)
+	err = h.submitter.Start(h.Context, h.wg, mq, h.queue, h.composer.ComposeTx)
 	return
 }
 
@@ -258,7 +261,11 @@ func (h *SrcTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err 
 }
 
 func (h *SrcTxCommitHandler) Start() (err error) {
-	err = h.submitter.Start(h.Context, h.wg, h.bus, h.listener.Compose)
+	mq := h.bus
+	if h.config.Filter != nil {
+		mq = bus.WithFilter(h.bus, h.config.Filter)
+	}
+	err = h.submitter.Start(h.Context, h.wg, mq, h.listener.Compose)
 	return
 }
 
