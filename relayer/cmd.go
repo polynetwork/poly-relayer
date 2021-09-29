@@ -97,6 +97,10 @@ func (h *StatusHandler) Len(chain uint64, ty msg.TxType) (uint64, error) {
 	return bus.NewRedisTxBus(h.redis, chain, ty).Len(context.Background())
 }
 
+func (h *StatusHandler) LenDelayed() (uint64, error) {
+	return bus.NewRedisDelayedTxBus(h.redis).Len(context.Background())
+}
+
 func Status(ctx *cli.Context) (err error) {
 	h := NewStatusHandler(config.CONFIG.Bus.Redis)
 	for _, chain := range base.CHAINS {
@@ -110,14 +114,25 @@ func Status(ctx *cli.Context) (err error) {
 		fmt.Printf("  Header sync height: %v\n", header)
 		fmt.Printf("  tx listen height  : %v\n", tx)
 		if latest > 0 {
-			fmt.Printf("  header sync height diff: %v\n", latest-header)
-			fmt.Printf("  tx listen height diff  : %v\n", latest-tx)
+			headerDiff := int64(latest) - int64(header)
+			if headerDiff < 0 {
+				headerDiff = 0
+			}
+			txDiff := int64(latest) - int64(tx)
+			if txDiff < 0 {
+				txDiff = 0
+			}
+			fmt.Printf("  header sync height diff: %v\n", headerDiff)
+			fmt.Printf("  tx listen height diff  : %v\n", txDiff)
 		}
 		qSrc, _ := h.Len(chain, msg.SRC)
 		qPoly, _ := h.Len(chain, msg.POLY)
 		fmt.Printf("  src tx queue size : %v\n", qSrc)
 		fmt.Printf("  poly tx queue size: %v\n", qPoly)
 	}
+	qDelayed, _ := h.LenDelayed()
+	fmt.Printf("Status shared:\n")
+	fmt.Printf("  delayed tx queue size: %v\n", qDelayed)
 	return nil
 }
 

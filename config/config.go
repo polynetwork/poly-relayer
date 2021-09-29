@@ -101,6 +101,7 @@ type ChainConfig struct {
 	CheckFee          bool
 	Defer             int
 	Wallet            *wallet.Config
+	Filter            *FilterConfig
 
 	HeaderSync   *HeaderSyncConfig   // chain -> ch -> poly
 	SrcTxSync    *SrcTxSyncConfig    // chain -> mq
@@ -202,6 +203,7 @@ type SrcTxCommitConfig struct {
 	Enabled         bool
 	Bus             *BusConfig
 	Poly            *PolySubmitterConfig
+	Filter          *FilterConfig
 }
 
 type PolyTxSyncConfig struct {
@@ -218,6 +220,7 @@ type PolyTxCommitConfig struct {
 	Enabled          bool
 	CheckFee         bool
 	Bus              *BusConfig
+	Filter           *FilterConfig
 }
 
 func (c *Config) Active(chain uint64) bool {
@@ -293,6 +296,10 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		}
 	}
 
+	if c.Filter != nil {
+		c.Filter.Init()
+	}
+
 	if c.HeaderSync != nil {
 		c.HeaderSync.ListenerConfig = c.FillListener(c.HeaderSync.ListenerConfig, bus)
 		c.HeaderSync.ChainId = chain
@@ -318,6 +325,9 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 			c.SrcTxCommit.Bus = bus
 		}
 		c.SrcTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxCommit.Poly)
+		if c.SrcTxCommit.Filter == nil {
+			c.SrcTxCommit.Filter = c.Filter
+		}
 	}
 
 	if c.PolyTxCommit != nil {
@@ -327,6 +337,9 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		c.PolyTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.PolyTxCommit.Poly)
 		if c.PolyTxCommit.Bus == nil {
 			c.PolyTxCommit.Bus = bus
+		}
+		if c.PolyTxCommit.Filter == nil {
+			c.PolyTxCommit.Filter = c.Filter
 		}
 	}
 	return

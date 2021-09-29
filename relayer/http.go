@@ -90,8 +90,16 @@ func recordMetrics() {
 			metrics.Record(tx, "height.tx_sync.%s", name)
 			metrics.Record(latest, "height.node.%s", name)
 			if latest > 0 {
-				metrics.Record(latest-header, "height_diff.header_sync.%s", name)
-				metrics.Record(latest-tx, "height_diff.tx_sync.%s", name)
+				headerDiff := int64(latest) - int64(header)
+				txDiff := int64(latest) - int64(tx)
+				if headerDiff < 0 {
+					headerDiff = 0
+				}
+				if txDiff < 0 {
+					txDiff = 0
+				}
+				metrics.Record(headerDiff, "height_diff.header_sync.%s", name)
+				metrics.Record(txDiff, "height_diff.tx_sync.%s", name)
 			}
 			qSrc, _ := h.Len(chain, msg.SRC)
 			qPoly, _ := h.Len(chain, msg.POLY)
@@ -99,6 +107,8 @@ func recordMetrics() {
 			metrics.Record(qPoly, "queue_size.poly.%s", name)
 		}
 	}
+	qDelayed, _ := h.LenDelayed()
+	metrics.Record(qDelayed, "queue_size.delayed")
 }
 
 type PatchController struct {

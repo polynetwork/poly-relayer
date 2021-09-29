@@ -56,7 +56,7 @@ func main() {
 			},
 			&cli.Command{
 				Name:   relayer.SET_TX_HEIGHT,
-				Usage:  "Set side chain header sync height",
+				Usage:  "Set side chain tx sync height",
 				Action: command(relayer.SET_TX_HEIGHT),
 				Flags: []cli.Flag{
 					&cli.Int64Flag{
