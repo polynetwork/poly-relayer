@@ -3,7 +3,7 @@ module github.com/polynetwork/poly-relayer
 go 1.15
 
 require (
-	github.com/apex/log v1.9.0
+	github.com/apex/log v1.9.0 // indirect
 	github.com/beego/beego/v2 v2.0.1
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/ethereum/go-ethereum v1.9.25
