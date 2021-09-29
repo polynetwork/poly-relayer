@@ -97,6 +97,10 @@ func (h *StatusHandler) Len(chain uint64, ty msg.TxType) (uint64, error) {
 	return bus.NewRedisTxBus(h.redis, chain, ty).Len(context.Background())
 }
 
+func (h *StatusHandler) LenDelayed() (uint64, error) {
+	return bus.NewRedisDelayedTxBus(h.redis).Len(context.Background())
+}
+
 func Status(ctx *cli.Context) (err error) {
 	h := NewStatusHandler(config.CONFIG.Bus.Redis)
 	for _, chain := range base.CHAINS {
@@ -126,6 +130,9 @@ func Status(ctx *cli.Context) (err error) {
 		fmt.Printf("  src tx queue size : %v\n", qSrc)
 		fmt.Printf("  poly tx queue size: %v\n", qPoly)
 	}
+	qDelayed, _ := h.LenDelayed()
+	fmt.Printf("Status shared:\n")
+	fmt.Printf("  delayed tx queue size: %v\n", qDelayed)
 	return nil
 }
 

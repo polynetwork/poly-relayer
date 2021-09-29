@@ -107,6 +107,8 @@ func recordMetrics() {
 			metrics.Record(qPoly, "queue_size.poly.%s", name)
 		}
 	}
+	qDelayed, _ := h.LenDelayed()
+	metrics.Record(qDelayed, "queue_size.delayed")
 }
 
 type PatchController struct {

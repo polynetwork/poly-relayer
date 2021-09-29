@@ -24,6 +24,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
@@ -161,4 +162,28 @@ func (b *RedisTxBus) LenOf(ctx context.Context, chain uint64, ty msg.TxType) (ui
 		return 0, fmt.Errorf("Get chain tx queue length error %v", err)
 	}
 	return uint64(v), nil
+}
+
+type TxBusWithFilter struct {
+	TxBus
+	filter *config.FilterConfig
+}
+
+func WithFilter(bus TxBus, filter *config.FilterConfig) *TxBusWithFilter {
+	return &TxBusWithFilter{bus, filter}
+}
+
+func (b *TxBusWithFilter) Pop(ctx context.Context) (*msg.Tx, error) {
+	for {
+		tx, err := b.TxBus.Pop(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if b.filter.Check(tx.SrcProxy, tx.DstProxy) {
+			log.Debug("Filter passes tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
+			return tx, nil
+		} else {
+			log.Warn("Filter ignores tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
+		}
+	}
 }
