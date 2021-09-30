@@ -214,7 +214,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		s.signer,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to import tx to poly, %v tx %s", err, util.Verbose(tx))
+		return fmt.Errorf("Failed to import tx to poly, %v tx %s", err, util.Json(tx))
 	}
 	tx.PolyHash = t.ToHexString()
 	return nil
@@ -283,9 +283,6 @@ func (s *Submitter) run(bus bus.TxBus) error {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
-			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
-				time.Sleep(time.Second)
-			}
 		} else {
 			log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
 		}

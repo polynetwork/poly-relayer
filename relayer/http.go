@@ -190,7 +190,7 @@ func Patch(ctx *cli.Context) (err error) {
 	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).Patch(context.Background(), tx)
 	if err != nil {
 		log.Error("Patch tx failed", "err", err)
-		fmt.Println(util.Verbose(tx))
+		log.Json(log.ERROR, tx)
 	}
 	return
 }
