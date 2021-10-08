@@ -77,6 +77,7 @@ func recordMetrics() {
 	h := NewStatusHandler(config.CONFIG.Bus.Redis)
 	timer := time.NewTicker(2 * time.Second)
 	for range timer.C {
+		start := time.Now()
 		for _, chain := range base.CHAINS {
 			name := base.GetChainName(chain)
 			name = strings.ReplaceAll(name, "(", "")
@@ -104,9 +105,10 @@ func recordMetrics() {
 			metrics.Record(qSrc, "queue_size.src.%s", name)
 			metrics.Record(qPoly, "queue_size.poly.%s", name)
 		}
+		qDelayed, _ := h.LenDelayed()
+		metrics.Record(qDelayed, "queue_size.delayed")
+		log.Info("metrics tick", "elapse", time.Since(start))
 	}
-	qDelayed, _ := h.LenDelayed()
-	metrics.Record(qDelayed, "queue_size.delayed")
 }
 
 type PatchController struct {
