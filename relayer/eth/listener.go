@@ -120,10 +120,12 @@ func (l *Listener) FetchProof(txId []byte, txHeight uint64) (height uint64, proo
 		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
 		return
 	}
-	if txHeight >= height {
-		err = fmt.Errorf("%w Proof not ready tx height %v proof height %v", msg.ERR_PROOF_UNAVAILABLE, txHeight, height)
-		return
-	}
+	/*
+		if txHeight >= height {
+			err = fmt.Errorf("%w Proof not ready tx height %v proof height %v", msg.ERR_PROOF_UNAVAILABLE, txHeight, height)
+			return
+		}
+	*/
 	proof, err = l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
 	return
 }
