@@ -154,8 +154,8 @@ func (h *HeaderSyncHandler) watch() {
 				log.Error("Watch chain latest height error", "chain", h.config.ChainId, "err", err)
 			} else {
 				log.Info("Latest chain height", "chain", h.config.ChainId, "height", height)
+				h.latest.UpdateHeight(context.Background(), height)
 			}
-			h.latest.UpdateHeight(context.Background(), height)
 		}
 	}
 }
@@ -184,16 +184,15 @@ LOOP:
 		}
 
 		h.height++
+		log.Debug("Header sync processing block", "height", h.height, "chain", h.config.ChainId)
 		if latest < h.height+confirms {
 			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
 			if !ok {
 				break LOOP
 			}
 		}
-		if err == msg.ERR_NOT_READY {
-			time.Sleep(time.Second)
-		}
 		header, hash, err = h.listener.Header(h.height)
+		log.Debug("Header sync fetched block header", "height", h.height, "chain", h.config.ChainId, "err", err)
 		if err == nil {
 			select {
 			case ch <- msg.Header{Data: header, Height: h.height, Hash: hash}:

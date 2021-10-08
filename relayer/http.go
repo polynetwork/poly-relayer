@@ -19,7 +19,6 @@ package relayer
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +29,6 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/metrics"
-	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -79,6 +77,7 @@ func recordMetrics() {
 	h := NewStatusHandler(config.CONFIG.Bus.Redis)
 	timer := time.NewTicker(2 * time.Second)
 	for range timer.C {
+		start := time.Now()
 		for _, chain := range base.CHAINS {
 			name := base.GetChainName(chain)
 			name = strings.ReplaceAll(name, "(", "")
@@ -106,9 +105,10 @@ func recordMetrics() {
 			metrics.Record(qSrc, "queue_size.src.%s", name)
 			metrics.Record(qPoly, "queue_size.poly.%s", name)
 		}
+		qDelayed, _ := h.LenDelayed()
+		metrics.Record(qDelayed, "queue_size.delayed")
+		log.Info("metrics tick", "elapse", time.Since(start))
 	}
-	qDelayed, _ := h.LenDelayed()
-	metrics.Record(qDelayed, "queue_size.delayed")
 }
 
 type PatchController struct {
@@ -190,7 +190,7 @@ func Patch(ctx *cli.Context) (err error) {
 	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).Patch(context.Background(), tx)
 	if err != nil {
 		log.Error("Patch tx failed", "err", err)
-		fmt.Println(util.Verbose(tx))
+		log.Json(log.ERROR, tx)
 	}
 	return
 }
