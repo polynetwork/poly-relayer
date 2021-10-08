@@ -24,6 +24,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
@@ -108,10 +109,12 @@ func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
 	}
 	tx := new(msg.Tx)
 	err = tx.Decode(res[1])
+	log.Debug("Tx pop:", "msg", string(res[1]))
 	return tx, err
 }
 
 func (b *RedisTxBus) PushToChain(ctx context.Context, tx *msg.Tx) error {
+	log.Debug("Tx push to chain:", "msg", util.Json(tx))
 	_, err := b.db.RPush(ctx, GetQueue(tx).Key(), tx.Encode()).Result()
 	if err != nil {
 		return fmt.Errorf("Failed to push message %v", err)
@@ -120,6 +123,7 @@ func (b *RedisTxBus) PushToChain(ctx context.Context, tx *msg.Tx) error {
 }
 
 func (b *RedisTxBus) Patch(ctx context.Context, tx *msg.Tx) error {
+	log.Debug("Tx patch:", "msg", util.Json(tx))
 	chain := tx.SrcChainId
 	if tx.Type() == msg.POLY {
 		chain = base.POLY
@@ -132,6 +136,7 @@ func (b *RedisTxBus) Patch(ctx context.Context, tx *msg.Tx) error {
 }
 
 func (b *RedisTxBus) Push(ctx context.Context, tx *msg.Tx) error {
+	log.Debug("Tx push:", "msg", util.Json(tx))
 	_, err := b.db.RPush(ctx, b.Key.Key(), tx.Encode()).Result()
 	if err != nil {
 		return fmt.Errorf("Failed to push message %v", err)
@@ -140,6 +145,7 @@ func (b *RedisTxBus) Push(ctx context.Context, tx *msg.Tx) error {
 }
 
 func (b *RedisTxBus) PushBack(ctx context.Context, tx *msg.Tx) error {
+	log.Debug("Tx patch back:", "msg", util.Json(tx))
 	_, err := b.db.LPush(ctx, GetQueue(tx).Key(), tx.Encode()).Result()
 	if err != nil {
 		return fmt.Errorf("Failed to push message %v", err)
