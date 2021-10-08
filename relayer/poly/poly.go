@@ -140,6 +140,11 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
 				return msg.ERR_HEADER_INCONSISTENT
 			}
+
+			if chainId == base.HEIMDALL && strings.Contains(info, "no header you commited is useful") {
+				log.Warn("heimdall header submit error", "err", info)
+				return nil
+			}
 			log.Error("Failed to submit header to poly", "chain", chainId, "err", err)
 		}
 		select {
