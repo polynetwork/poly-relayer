@@ -33,7 +33,6 @@ import (
 	"github.com/polynetwork/bridge-common/chains/ont"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -161,7 +160,7 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
-			fmt.Println(util.Verbose(tx))
+			log.Json(log.ERROR, tx)
 			if errors.Is(err, msg.ERR_INVALID_TX) {
 				log.Error("Skipped invalid poly tx", "poly_hash", tx.PolyHash)
 				continue

@@ -13,7 +13,7 @@ Reimplement poly relayer
 |Okex    |ok   |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Polygon |maitc|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |O3      |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
-|Palette |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|Palette |plt  |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Switcheo|main |:x:|:x:|:x:|
 |Arbitrum|main |:x:|:x:|:x:|
 

@@ -603,8 +603,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6JUPA=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/polynetwork/bridge-common v0.0.7-ont h1:dzZ7qVRaergJUe56PADBagbPkuKlsIohZ8IHUTqdtY4=
-github.com/polynetwork/bridge-common v0.0.7-ont/go.mod h1:SUyfJIu5F5XsiZTqwFp8duWdqB/xPFaxWtnkFE2G6Q8=
+github.com/polynetwork/bridge-common v0.0.10-ont h1:S2BW0smesNjt9xPaHxQ9KzIlt/jjLLgIWZX42sRoU/c=
+github.com/polynetwork/bridge-common v0.0.10-ont/go.mod h1:SUyfJIu5F5XsiZTqwFp8duWdqB/xPFaxWtnkFE2G6Q8=
 github.com/polynetwork/btc-vendor-tools v0.0.0-20200813091748-3b19a5fd7666/go.mod h1:U8rR9X6vemlkBAJWfvzwSoalcJjX8B2aQjB0kPRhBUA=
 github.com/polynetwork/cosmos-poly-module v0.0.0-20200810030259-95d586518759/go.mod h1:VMBJZ8GSZeoWBntd/rWx2Rr5roRKofO7siP1qd6A6pY=
 github.com/polynetwork/eth-contracts v0.0.0-20200814062128-70f58e22b014/go.mod h1:TeePrYZfWJAwuksPlie7RPequ51Ujp5l/JY6TcutsFc=
