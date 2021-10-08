@@ -19,14 +19,12 @@ package relayer
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
 )
 
@@ -109,7 +107,7 @@ func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) 
 	}
 	if handler != nil {
 		log.Info("Creating handler", "type", reflect.TypeOf(handler))
-		log.Json(log.Debug, conf)
+		log.Json(log.DEBUG, conf)
 	}
 	return
 }

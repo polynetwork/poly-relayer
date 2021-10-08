@@ -19,7 +19,6 @@ package relayer
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +29,6 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/metrics"
-	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"

@@ -19,7 +19,6 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"

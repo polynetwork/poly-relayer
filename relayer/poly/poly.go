@@ -20,7 +20,6 @@ package poly
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
