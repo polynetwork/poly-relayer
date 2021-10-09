@@ -67,10 +67,14 @@ func RelayPolyTx(ctx *cli.Context) (err error) {
 
 type StatusHandler struct {
 	redis *redis.Client
+	store *bus.RedisChainStore
 }
 
 func NewStatusHandler(config *redis.Options) *StatusHandler {
-	return &StatusHandler{redis: bus.New(config)}
+	client := bus.New(config)
+	return &StatusHandler{redis: client, store: bus.NewRedisChainStore(
+		bus.ChainHeightKey{}, client, 0,
+	)}
 }
 
 func (h *StatusHandler) Skip(hash string) (err error) {
@@ -82,15 +86,13 @@ func (h *StatusHandler) CheckSkip(hash string) (skip bool, err error) {
 }
 
 func (h *StatusHandler) Height(chain uint64, key bus.ChainHeightType) (uint64, error) {
-	return bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: chain, Type: key}, h.redis, 0,
-	).GetHeight(context.Background())
+	h.store.Key = bus.ChainHeightKey{ChainId: chain, Type: key}
+	return h.store.GetHeight(context.Background())
 }
 
 func (h *StatusHandler) SetHeight(chain uint64, key bus.ChainHeightType, height uint64) (err error) {
-	return bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: chain, Type: key}, h.redis, 0,
-	).UpdateHeight(context.Background(), height)
+	h.store.Key = bus.ChainHeightKey{ChainId: chain, Type: key}
+	return h.store.UpdateHeight(context.Background(), height)
 }
 
 func (h *StatusHandler) Len(chain uint64, ty msg.TxType) (uint64, error) {
