@@ -107,13 +107,15 @@ func (h *PolyTxCommitHandler) Start() (err error) {
 		}
 	*/
 	if h.config.CheckFee {
-		mq = &CommitFilter{
+		bus := &CommitFilter{
 			name:   base.GetChainName(h.config.ChainId),
 			TxBus:  mq,
 			delay:  h.queue,
 			ch:     make(chan *msg.Tx, 100),
 			bridge: h.bridge,
 		}
+		go bus.Pipe(h.Context, h.wg)
+		mq = bus
 	}
 	err = h.submitter.Start(h.Context, h.wg, mq, h.queue, h.Compose)
 	return
