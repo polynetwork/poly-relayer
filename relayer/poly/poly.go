@@ -20,6 +20,7 @@ package poly
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -169,6 +170,9 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 func (s *Submitter) submit(tx *msg.Tx) error {
 	err := s.compose(tx)
 	if err != nil {
+		if strings.Contains(err.Error(), "missing trie node") {
+			return msg.ERR_PROOF_UNAVAILABLE
+		}
 		return err
 	}
 	if tx.Param == nil || tx.SrcChainId == 0 {
@@ -257,7 +261,7 @@ func (s *Submitter) CollectSigs(tx *msg.Tx) (err error) {
 	return
 }
 
-func (s *Submitter) run(bus bus.TxBus) error {
+func (s *Submitter) run(mq bus.TxBus) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
@@ -267,7 +271,7 @@ func (s *Submitter) run(bus bus.TxBus) error {
 			return nil
 		default:
 		}
-		tx, err := bus.Pop(s.Context)
+		tx, err := mq.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
 			continue
@@ -281,7 +285,10 @@ func (s *Submitter) run(bus bus.TxBus) error {
 		if err != nil {
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err)
 			tx.Attempts++
-			bus.Push(context.Background(), tx)
+			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
+				time.Sleep(2 * time.Second)
+			}
+			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
 		} else {
 			log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
 		}
