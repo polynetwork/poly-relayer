@@ -83,11 +83,29 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 	return
 }
 
+func (h *PolyTxCommitHandler) Compose(tx *msg.Tx) (err error) {
+	err = h.composer.ComposeTx(tx)
+	if err != nil {
+		return
+	}
+	if h.config.Filter != nil {
+		if !h.config.Filter.Check(tx.SrcProxy, tx.DstProxy) {
+			log.Warn("Poly tx commit skipped for not target", "from", tx.SrcProxy, "to", tx.DstProxy)
+			return msg.ERR_TX_BYPASS
+		} else {
+			log.Info("Poly tx commit proxy filter passed", "from", tx.SrcProxy, "to", tx.DstProxy)
+		}
+	}
+	return
+}
+
 func (h *PolyTxCommitHandler) Start() (err error) {
 	mq := h.bus
-	if h.config.Filter != nil {
-		mq = bus.WithFilter(h.bus, h.config.Filter)
-	}
+	/*
+		if h.config.Filter != nil {
+			mq = bus.WithFilter(h.bus, h.config.Filter)
+		}
+	*/
 	if h.config.CheckFee {
 		mq = &CommitFilter{
 			name:   base.GetChainName(h.config.ChainId),
@@ -97,7 +115,7 @@ func (h *PolyTxCommitHandler) Start() (err error) {
 			bridge: h.bridge,
 		}
 	}
-	err = h.submitter.Start(h.Context, h.wg, mq, h.queue, h.composer.ComposeTx)
+	err = h.submitter.Start(h.Context, h.wg, mq, h.queue, h.Compose)
 	return
 }
 
@@ -144,22 +162,27 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 		return
 	}
 	for _, tx := range txs {
-		if state[tx.PolyHash] != nil {
+		feeMin := float32(0)
+		feePaid := float32(0)
+		check := state[tx.PolyHash]
+		if check != nil {
 			tx.CheckFeeStatus = state[tx.PolyHash].Status
+			feeMin = float32(check.Min)
+			feePaid = float32(check.Paid)
 		}
 
-		if state[tx.PolyHash].Pass() {
+		if check.Pass() {
 			b.ch <- tx
-			log.Info("CheckFee pass", "poly_hash", tx.PolyHash)
-		} else if state[tx.PolyHash].Skip() {
+			log.Info("CheckFee pass", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+		} else if check.Skip() {
 			log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
-		} else if state[tx.PolyHash].Missing() {
+		} else if check.Missing() {
 			log.Info("CheckFee tx missing in bridge, delay for 2 seconds", "poly_hash", tx.PolyHash)
 			tsp := time.Now().Unix() + 2
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 
 		} else {
-			log.Info("CheckFee tx not paid, delay for 10 minutes", "poly_hash", tx.PolyHash)
+			log.Info("CheckFee tx not paid, delay for 10 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
 			tsp := time.Now().Unix() + 600
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 		}
@@ -191,7 +214,7 @@ LOOP:
 				}
 
 				// Skip tx check fee
-				if tx.SkipCheckFee {
+				if tx.SkipFee() {
 					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
 					b.ch <- tx
 				} else if tx.CheckFeeStatus == bridge.PAID {
