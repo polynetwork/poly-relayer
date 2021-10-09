@@ -40,24 +40,25 @@ func (k ChainHeightKey) Key() string {
 }
 
 type RedisChainStore struct {
-	height Key
-	db     *redis.Client
-	timer  *time.Ticker
+	Key
+	db    *redis.Client
+	timer *time.Ticker
 }
 
 func NewRedisChainStore(key Key, db *redis.Client, interval uint64) *RedisChainStore {
 	if interval == 0 {
 		interval = 5
 	}
+
 	return &RedisChainStore{
-		height: key,
-		db:     db,
-		timer:  time.NewTicker(time.Duration(interval) * time.Second),
+		Key:   key,
+		db:    db,
+		timer: time.NewTicker(time.Duration(interval) * time.Second),
 	}
 }
 
 func (s *RedisChainStore) UpdateHeight(ctx context.Context, height uint64) error {
-	_, err := s.db.Set(ctx, s.height.Key(), height, 0).Result()
+	_, err := s.db.Set(ctx, s.Key.Key(), height, 0).Result()
 	if err != nil {
 		return fmt.Errorf("Failed to update height %v", err)
 	}
@@ -74,7 +75,7 @@ func (s *RedisChainStore) HeightMark(height uint64) error {
 }
 
 func (s *RedisChainStore) GetHeight(ctx context.Context) (height uint64, err error) {
-	v, err := s.db.Get(ctx, s.height.Key()).Result()
+	v, err := s.db.Get(ctx, s.Key.Key()).Result()
 	if err != nil {
 		return 0, fmt.Errorf("Get chain height error %v", err)
 	}
