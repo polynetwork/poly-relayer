@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/keypair"
 	vconf "github.com/ontio/ontology/consensus/vbft/config"
@@ -125,6 +126,9 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 		}
 		return fmt.Errorf("%w Invalid poly tx, src chain(%v) tx(%s) method(%s)", msg.ERR_INVALID_TX, tx.SrcChainId, tx.PolyHash, method)
 	}
+
+	tx.SrcProxy = common.BytesToAddress(tx.MerkleValue.MakeTxParam.FromContractAddress).String()
+	tx.DstProxy = common.BytesToAddress(tx.MerkleValue.MakeTxParam.ToContractAddress).String()
 
 	if tx.DstChainId != base.ONT {
 		return s.CollectSigs(tx)
