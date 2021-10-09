@@ -108,7 +108,7 @@ func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) 
 	}
 	if handler != nil {
 		log.Info("Creating handler", "type", reflect.TypeOf(handler))
-		log.Json(log.DEBUG, conf)
+		log.Json(log.TRACE, conf)
 	}
 	return
 }

@@ -161,8 +161,8 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
 			log.Json(log.ERROR, tx)
-			if errors.Is(err, msg.ERR_INVALID_TX) {
-				log.Error("Skipped invalid poly tx", "poly_hash", tx.PolyHash)
+			if errors.Is(err, msg.ERR_INVALID_TX) || errors.Is(err, msg.ERR_TX_BYPASS) {
+				log.Error("Skipped poly tx for error", "poly_hash", tx.PolyHash, "err", err)
 				continue
 			}
 			tx.Attempts++
@@ -170,8 +170,9 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 				tsp := time.Now().Unix() + 60*3
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 				continue
+			} else {
+				bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
 			}
-			mq.Push(context.Background(), tx)
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
 		}
