@@ -221,8 +221,8 @@ func (s *Submitter) run(account *nw.Account, mq bus.TxBus, delay bus.DelayedTxBu
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
 			log.Json(log.ERROR, tx)
-			if errors.Is(err, msg.ERR_INVALID_TX) {
-				log.Error("Skipped invalid poly tx", "poly_hash", tx.PolyHash)
+			if errors.Is(err, msg.ERR_INVALID_TX) || errors.Is(err, msg.ERR_TX_BYPASS) {
+				log.Error("Skipped poly tx for error", "poly_hash", tx.PolyHash, "err", err)
 				continue
 			}
 			tx.Attempts++

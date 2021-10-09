@@ -22,6 +22,7 @@ import "errors"
 var (
 	ERR_NOT_READY           = errors.New("Resource not ready yet")
 	ERR_INVALID_TX          = errors.New("Invalid TX")
+	ERR_TX_BYPASS           = errors.New("Tx bypass")
 	ERR_PROOF_UNAVAILABLE   = errors.New("Tx proof unavailable")
 	ERR_HEADER_INCONSISTENT = errors.New("Header inconsistent")
 	ERR_HEADER_MISSING      = errors.New("Header missing")

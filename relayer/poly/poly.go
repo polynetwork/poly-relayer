@@ -284,7 +284,7 @@ func (s *Submitter) run(bus bus.TxBus) error {
 		log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
 		err = s.submit(tx)
 		if err != nil {
-			log.Error("Process poly tx error", "chain", s.name, "err", err)
+			log.Error("Submit src tx to poly error", "chain", s.name, "err", err)
 			tx.Attempts++
 			bus.Push(context.Background(), tx)
 		} else {

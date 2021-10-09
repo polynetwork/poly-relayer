@@ -15,6 +15,8 @@ import (
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/sm2"
+
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	pcom "github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/core/types"
@@ -97,6 +99,17 @@ func (tx *Tx) Encode() string {
 
 func (tx *Tx) Decode(data string) error {
 	return json.Unmarshal([]byte(data), tx)
+}
+
+func (tx *Tx) SkipFee() bool {
+	if tx.SkipCheckFee {
+		return true
+	}
+	switch tx.DstChainId {
+	case base.PLT, base.O3:
+		return true
+	}
+	return false
 }
 
 func (tx *Tx) GetTxId() (id [32]byte, err error) {
