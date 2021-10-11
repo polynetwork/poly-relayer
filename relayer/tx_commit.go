@@ -142,6 +142,7 @@ func (b *CommitFilter) Pop(ctx context.Context) (tx *msg.Tx, err error) {
 	case <-ctx.Done():
 		err = fmt.Errorf("Exit signal received")
 	case tx = <-b.ch:
+		log.Info("Check fee passed tx", "poly_hash", tx.PolyHash)
 	}
 	return
 }
