@@ -214,6 +214,7 @@ LOOP:
 					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
 					continue
 				}
+				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash)
 
 				// Skip tx check fee
 				if tx.SkipFee() {
@@ -243,6 +244,9 @@ LOOP:
 	log.Info("Pushing back check fee queue to poly tx bus", "chain", b.name, "size", len(b.ch))
 	close(b.ch)
 	for tx := range b.ch {
+		bus.SafeCall(ctx, tx, "push back to tx bus", func() error { return b.TxBus.Push(context.Background(), tx) })
+	}
+	for _, tx := range txs {
 		bus.SafeCall(ctx, tx, "push back to tx bus", func() error { return b.TxBus.Push(context.Background(), tx) })
 	}
 	log.Info("Check fee queu exiting now...", "chain", b.name)

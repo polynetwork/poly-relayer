@@ -15,11 +15,12 @@ import (
 const (
 	POLY_SYNC = String("poly_sync_running")
 
-	KEY_HEIGHT_HEADER       ChainHeightType = "header_sync"
 	KEY_HEIGHT_EXTRA_HEADER ChainHeightType = "header_extra_sync"
-	KEY_HEIGHT_HEADER_RESET ChainHeightType = "header_sync_reset"
-	KEY_HEIGHT_CHAIN        ChainHeightType = "chain_height"
-	KEY_HEIGHT_TX           ChainHeightType = "tx_sync"
+	KEY_HEIGHT_HEADER       ChainHeightType = "header_sync"       // chain sync mark
+	KEY_HEIGHT_CHAIN_HEADER ChainHeightType = "chain_header_sync" // chain sync state
+	KEY_HEIGHT_HEADER_RESET ChainHeightType = "header_sync_reset" // chain sync reset
+	KEY_HEIGHT_CHAIN        ChainHeightType = "chain_height"      // chain node height
+	KEY_HEIGHT_TX           ChainHeightType = "tx_sync"           // tx sync mark
 )
 
 type ChainHeightType string

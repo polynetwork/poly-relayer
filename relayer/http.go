@@ -83,9 +83,11 @@ func recordMetrics() {
 			name = strings.ReplaceAll(name, "(", "")
 			name = strings.ReplaceAll(name, ")", "")
 			latest, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN)
-			header, _ := h.Height(chain, bus.KEY_HEIGHT_HEADER)
+			header, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN_HEADER)
+			mark, _ := h.Height(chain, bus.KEY_HEIGHT_HEADER)
 			tx, _ := h.Height(chain, bus.KEY_HEIGHT_TX)
 			metrics.Record(header, "height.header_sync.%s", name)
+			metrics.Record(mark, "height.header_sync_mark.%s", name)
 			metrics.Record(tx, "height.tx_sync.%s", name)
 			metrics.Record(latest, "height.node.%s", name)
 			if latest > 0 {
