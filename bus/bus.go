@@ -20,6 +20,7 @@ package bus
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
@@ -66,6 +67,7 @@ type Bus interface {
 
 type TxBus interface {
 	Pop(context.Context) (*msg.Tx, error)
+	PopTimed(context.Context, time.Duration) (*msg.Tx, error)
 	Push(context.Context, *msg.Tx) error
 	PushToChain(context.Context, *msg.Tx) error
 	Patch(context.Context, *msg.Tx) error
@@ -97,8 +99,12 @@ func (b *RedisTxBus) Topic() (topic string) {
 }
 
 func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
+	return b.PopTimed(ctx, 0)
+}
+
+func (b *RedisTxBus) PopTimed(ctx context.Context, duration time.Duration) (*msg.Tx, error) {
 	c, _ := context.WithCancel(ctx)
-	res, err := b.db.BLPop(c, 0, b.Key.Key()).Result()
+	res, err := b.db.BLPop(c, duration, b.Key.Key()).Result()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to pop message %v", err)
 	}

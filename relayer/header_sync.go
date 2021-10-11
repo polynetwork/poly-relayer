@@ -99,12 +99,12 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 			return
 		case <-timer.C:
 			switch h.config.ChainId {
-			case base.ONT, base.NEO, base.HEIMDALL, base.OK, base.PLT:
-			default:
+			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3:
 				height, err := h.submitter.GetSideChainHeight(h.config.ChainId)
 				if err == nil {
 					ch <- height
 				}
+			default:
 			}
 		}
 	}
@@ -163,15 +163,15 @@ func (h *HeaderSyncHandler) watch() {
 			}
 
 			switch h.config.ChainId {
-			case base.ONT, base.NEO, base.HEIMDALL, base.OK:
-				height = 0
-			default:
+			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3:
 				height, err = h.submitter.GetSideChainHeight(h.config.ChainId)
 				if err != nil {
 					log.Error("Watch chain sync height error", "chain", h.config.ChainId, "err", err)
 				} else {
 					log.Info("Latest chain sync height", "chain", h.config.ChainId, "height", height)
 				}
+			default:
+				height = 0
 			}
 			h.sync.UpdateHeight(context.Background(), height)
 		}
