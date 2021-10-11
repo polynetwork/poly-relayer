@@ -20,11 +20,13 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/urfave/cli/v2"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -67,12 +69,19 @@ func RelayPolyTx(ctx *cli.Context) (err error) {
 
 type StatusHandler struct {
 	redis *redis.Client
+	poly  *poly.SDK
 	store *bus.RedisChainStore
 }
 
-func NewStatusHandler(config *redis.Options) *StatusHandler {
-	client := bus.New(config)
-	return &StatusHandler{redis: client, store: bus.NewRedisChainStore(
+func NewStatusHandler(opt *redis.Options) *StatusHandler {
+	client := bus.New(opt)
+	sdk, err := poly.WithOptions(base.POLY, config.CONFIG.Poly.Nodes, time.Minute, 1)
+	if err != nil {
+		log.Error("Failed to initialize poly sdk")
+		panic(err)
+	}
+
+	return &StatusHandler{redis: client, poly: sdk, store: bus.NewRedisChainStore(
 		bus.ChainHeightKey{}, client, 0,
 	)}
 }
@@ -109,12 +118,19 @@ func Status(ctx *cli.Context) (err error) {
 		fmt.Printf("Status %s:\n", base.GetChainName(chain))
 
 		latest, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN)
-		header, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN_HEADER)
+		sync, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN_HEADER)
 		mark, _ := h.Height(chain, bus.KEY_HEIGHT_HEADER)
 		tx, _ := h.Height(chain, bus.KEY_HEIGHT_TX)
+		header := uint64(0)
+		switch chain {
+		case base.ONT, base.NEO, base.HEIMDALL, base.OK:
+		default:
+			header, _ = h.poly.Node().GetSideChainHeight(chain)
+		}
 
 		fmt.Printf("  Latest node height: %v\n", latest)
-		fmt.Printf("  Header sync height: %v\n", header)
+		fmt.Printf("  Latest sync height: %v\n", header)
+		fmt.Printf("  Header sync height: %v\n", sync)
 		fmt.Printf("  Header mark height: %v\n", mark)
 		fmt.Printf("  tx listen height  : %v\n", tx)
 		if latest > 0 {
