@@ -109,11 +109,13 @@ func Status(ctx *cli.Context) (err error) {
 		fmt.Printf("Status %s:\n", base.GetChainName(chain))
 
 		latest, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN)
-		header, _ := h.Height(chain, bus.KEY_HEIGHT_HEADER)
+		header, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN_HEADER)
+		mark, _ := h.Height(chain, bus.KEY_HEIGHT_HEADER)
 		tx, _ := h.Height(chain, bus.KEY_HEIGHT_TX)
 
 		fmt.Printf("  Latest node height: %v\n", latest)
 		fmt.Printf("  Header sync height: %v\n", header)
+		fmt.Printf("  Header mark height: %v\n", mark)
 		fmt.Printf("  tx listen height  : %v\n", tx)
 		if latest > 0 {
 			headerDiff := int64(latest) - int64(header)
