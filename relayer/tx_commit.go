@@ -208,8 +208,7 @@ LOOP:
 
 		// Max poll size: 100
 		if !flush || len(txs) < 100 {
-			c, _ := context.WithTimeout(ctx, time.Second)
-			tx, _ := b.TxBus.Pop(c)
+			tx, _ := b.TxBus.PopTimed(ctx, time.Second)
 			if tx != nil {
 				if tx.PolyHash == "" {
 					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
