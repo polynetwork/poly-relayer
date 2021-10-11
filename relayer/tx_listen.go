@@ -317,12 +317,13 @@ func (h *PolyTxSyncHandler) checkDelayed() (err error) {
 			}
 			if score <= time.Now().Unix() {
 				bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
-					log.Trace("Pushing back delayed tx for not active yet", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
+					log.Info("Pushing back delayed tx", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
 					return h.bus.PushToChain(context.Background(), tx)
 				})
 				continue
 			} else {
 				bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
+					log.Trace("Pushing back delayed tx for not active yet", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
 					return h.queue.Delay(context.Background(), tx, score)
 				})
 			}
