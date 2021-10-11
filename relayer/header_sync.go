@@ -161,13 +161,19 @@ func (h *HeaderSyncHandler) watch() {
 				log.Info("Latest chain height", "chain", h.config.ChainId, "height", height)
 				h.latest.UpdateHeight(context.Background(), height)
 			}
-			height, err = h.submitter.GetSideChainHeight(h.config.ChainId)
-			if err != nil {
-				log.Error("Watch chain sync height error", "chain", h.config.ChainId, "err", err)
-			} else {
-				log.Info("Latest chain sync height", "chain", h.config.ChainId, "height", height)
-				h.sync.UpdateHeight(context.Background(), height)
+
+			switch h.config.ChainId {
+			case base.ONT, base.NEO, base.HEIMDALL, base.OK:
+				height = 0
+			default:
+				height, err = h.submitter.GetSideChainHeight(h.config.ChainId)
+				if err != nil {
+					log.Error("Watch chain sync height error", "chain", h.config.ChainId, "err", err)
+				} else {
+					log.Info("Latest chain sync height", "chain", h.config.ChainId, "height", height)
+				}
 			}
+			h.sync.UpdateHeight(context.Background(), height)
 		}
 	}
 }
