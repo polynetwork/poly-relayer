@@ -123,7 +123,7 @@ func Status(ctx *cli.Context) (err error) {
 		tx, _ := h.Height(chain, bus.KEY_HEIGHT_TX)
 		header := uint64(0)
 		switch chain {
-		case base.ONT, base.NEO, base.HEIMDALL, base.OK:
+		case base.ONT, base.NEO, base.HEIMDALL, base.OK, base.POLY:
 		default:
 			header, _ = h.poly.Node().GetSideChainHeight(chain)
 		}
