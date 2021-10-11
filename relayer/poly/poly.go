@@ -95,8 +95,13 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 				case base.ONT, base.NEO, base.HEIMDALL, base.OK:
 				default:
 					height, e := s.GetSideChainHeight(chainId)
-					if e == nil && height < s.lastCommit {
+					if e != nil {
+						log.Error("Get side chain header height failure", "err", e)
+					} else if height < s.lastCommit {
+						log.Error("Chain header submit confirm check failure", "chain", s.name, "height", height, "last_submit", s.lastCommit)
 						err = msg.ERR_HEADER_MISSING
+					} else {
+						log.Info("Chain header submit confirm check success", "chain", s.name, "height", height, "last_submit", s.lastCommit)
 					}
 				}
 			} else {

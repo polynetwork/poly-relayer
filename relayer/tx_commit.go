@@ -245,6 +245,9 @@ LOOP:
 	for tx := range b.ch {
 		bus.SafeCall(ctx, tx, "push back to tx bus", func() error { return b.TxBus.Push(context.Background(), tx) })
 	}
+	for _, tx := range txs {
+		bus.SafeCall(ctx, tx, "push back to tx bus", func() error { return b.TxBus.Push(context.Background(), tx) })
+	}
 	log.Info("Check fee queu exiting now...", "chain", b.name)
 }
 
