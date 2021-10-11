@@ -310,16 +310,16 @@ func (h *PolyTxSyncHandler) checkDelayed() (err error) {
 			continue
 		}
 		if tx != nil && score > 0 {
+			skip, _ := h.skip.CheckSkip(h.Context, tx)
+			if skip {
+				log.Warn("Skipping tx for marked to skip", "poly_hash", tx.PolyHash)
+				continue
+			}
 			if score <= time.Now().Unix() {
-				skip, _ := h.skip.CheckSkip(h.Context, tx)
-				if skip {
-					log.Warn("Skipping tx for marked to skip", "poly_hash", tx.PolyHash)
-				} else {
-					bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
-						log.Info("Pushing back delayed tx", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
-						return h.bus.PushToChain(context.Background(), tx)
-					})
-				}
+				bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
+					log.Info("Pushing back delayed tx for not active yet", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
+					return h.bus.PushToChain(context.Background(), tx)
+				})
 				continue
 			} else {
 				bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
