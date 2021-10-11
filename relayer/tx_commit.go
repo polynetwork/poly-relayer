@@ -214,6 +214,7 @@ LOOP:
 					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
 					continue
 				}
+				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash)
 
 				// Skip tx check fee
 				if tx.SkipFee() {
