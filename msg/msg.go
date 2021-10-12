@@ -101,6 +101,26 @@ func (tx *Tx) Decode(data string) error {
 	return json.Unmarshal([]byte(data), tx)
 }
 
+func (tx *Tx) CapturePatchParams(o *Tx) *Tx {
+	if o != nil {
+		if o.DstGasLimit > 0 {
+			tx.DstGasLimit = o.DstGasLimit
+		}
+		if len(o.DstGasPrice) > 0 {
+			tx.DstGasPrice = o.DstGasPrice
+		}
+
+		if len(o.DstGasPriceX) > 0 {
+			tx.DstGasPriceX = o.DstGasPriceX
+		}
+
+		if o.SkipCheckFee {
+			tx.SkipCheckFee = o.SkipCheckFee
+		}
+	}
+	return tx
+}
+
 func (tx *Tx) SkipFee() bool {
 	if tx.SkipCheckFee {
 		return true
