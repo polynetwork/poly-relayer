@@ -81,7 +81,7 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 		if err != nil {
 			return 0, err
 		}
-		height = h - base.BlocksToWait(l.config.ChainId)
+		height = h - base.BlocksToWait(l.config.ChainId) + 6 // Add 6 shim
 	case base.OK:
 		height, _ = l.state.GetHeight(context.Background())
 		if height > 0 {
