@@ -382,6 +382,7 @@ func (h *PolyTxSyncHandler) patchTxs() {
 		for _, t := range txs {
 			if tx.PolyHash == "" || tx.PolyHash == t.PolyHash {
 				log.Info("Found patch target poly tx", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
+				t.CapturePatchParams(tx)
 				bus.SafeCall(h.Context, t, "push to target chain tx bus", func() error {
 					return h.bus.PushToChain(context.Background(), t)
 				})
