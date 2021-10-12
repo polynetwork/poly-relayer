@@ -141,7 +141,7 @@ func (h *SrcTxSyncHandler) patchTxs() {
 func (h *SrcTxSyncHandler) start() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
-	confirms := base.BlocksToWait(h.config.ChainId)
+	confirms := base.BlocksToSkip(h.config.ChainId)
 	var (
 		latest uint64
 		ok     bool

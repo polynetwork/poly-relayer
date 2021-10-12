@@ -20,12 +20,12 @@ package poly
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ontio/ontology-crypto/signature"
 
@@ -53,8 +53,9 @@ type Submitter struct {
 	state   bus.ChainStore // Header sync marking
 
 	// Check last header commit
-	lastCommit uint64
-	lastCheck  uint64
+	lastCommit   uint64
+	lastCheck    uint64
+	blocksToWait uint64
 }
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
@@ -64,6 +65,8 @@ func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 		return
 	}
 	s.name = base.GetChainName(config.ChainId)
+	s.blocksToWait = base.BlocksToWait(config.ChainId)
+	logs.Info("Chain blocks to wait", "blocks", s.blocksToWait, "chain", s.name)
 	s.sdk, err = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
 	return
 }
@@ -271,9 +274,33 @@ func (s *Submitter) CollectSigs(tx *msg.Tx) (err error) {
 	return
 }
 
+func (s *Submitter) ReadyBlock() (height uint64) {
+	var err error
+	switch s.config.ChainId {
+	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
+		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
+	default:
+	}
+	if height > s.blocksToWait {
+		height -= s.blocksToWait
+	}
+	if err != nil {
+		log.Error("Failed to get ready block height", "chain", s.name, "err", err)
+	} else {
+		log.Info("Current ready block height", "chain", s.name, "height", height)
+	}
+	return
+}
+
 func (s *Submitter) run(mq bus.TxBus) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
+	ticker := time.NewTicker(800 * time.Millisecond)
+	defer ticker.Stop()
+
+	height := s.ReadyBlock()
+	refresh := true
+
 	for {
 		select {
 		case <-s.Done():
@@ -281,6 +308,16 @@ func (s *Submitter) run(mq bus.TxBus) error {
 			return nil
 		default:
 		}
+
+		if refresh {
+			select {
+			case <-ticker.C:
+				refresh = false
+				height = s.ReadyBlock()
+			default:
+			}
+		}
+
 		tx, err := mq.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
@@ -290,31 +327,41 @@ func (s *Submitter) run(mq bus.TxBus) error {
 			time.Sleep(time.Second)
 			continue
 		}
-		log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
-		err = s.submit(tx)
-		if err != nil {
-			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
-			tx.Attempts++
-			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
-				time.Sleep(2 * time.Second)
+
+		log.Debug("Poly submitter checking on src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId)
+		retry := true
+
+		if height == 0 || tx.SrcHeight <= height {
+			log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
+			err = s.submit(tx)
+			if err != nil {
+				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
+				tx.Attempts++
+			} else {
+				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
+				retry = false
 			}
-			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
 		} else {
-			log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
+			refresh = true
+		}
+
+		if retry {
+			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
 		}
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, mq bus.TxBus, composer msg.PolyComposer) error {
 	s.compose = composer
 	s.Context = ctx
 	s.wg = wg
+
 	if s.config.Procs == 0 {
 		s.config.Procs = 1
 	}
 	for i := 0; i < s.config.Procs; i++ {
-		log.Info("Starting poly submitter worker", "index", i, "procs", s.config.Procs, "chain", s.name, "topic", bus.Topic())
-		go s.run(bus)
+		log.Info("Starting poly submitter worker", "index", i, "procs", s.config.Procs, "chain", s.name, "topic", mq.Topic())
+		go s.run(mq)
 	}
 	return nil
 }

@@ -91,7 +91,7 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 		if err != nil {
 			return 0, err
 		}
-		height = height - 3
+		height = height - 2
 	default:
 		return 0, fmt.Errorf("getProofHeight unsupported chain %s", l.name)
 	}
@@ -111,12 +111,10 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
 		return
 	}
-	/*
-		if txHeight > height-1 {
-			err = fmt.Errorf("%w Proof not ready tx height %v proof height %v", msg.ERR_PROOF_UNAVAILABLE, txHeight, height)
-			return
-		}
-	*/
+	if txHeight > height {
+		err = fmt.Errorf("%w Proof not ready tx height %v proof height %v", msg.ERR_PROOF_UNAVAILABLE, txHeight, height)
+		return
+	}
 	ethProof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
 	if err != nil {
 		return height, nil, err
