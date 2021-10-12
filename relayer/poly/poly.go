@@ -293,7 +293,7 @@ func (s *Submitter) run(mq bus.TxBus) error {
 		log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
 		err = s.submit(tx)
 		if err != nil {
-			log.Error("Submit src tx to poly error", "chain", s.name, "err", err)
+			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
 			tx.Attempts++
 			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
 				time.Sleep(2 * time.Second)
