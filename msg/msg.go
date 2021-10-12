@@ -58,7 +58,7 @@ type Tx struct {
 	SrcChainId     uint64 `json:",omitempty"`
 	SrcProof       []byte `json:"-"`
 	SrcEvent       []byte `json:"-"`
-	SrcProofHeight uint64 `json:"-"`
+	SrcProofHeight uint64 `json:",omitempty"`
 	SrcParam       string `json:",omitempty"`
 	SrcStateRoot   []byte `json:"-"`
 	SrcProxy       string `json:",omitempty"`

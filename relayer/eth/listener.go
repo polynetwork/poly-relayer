@@ -119,7 +119,7 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 	*/
 	ethProof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
 	if err != nil {
-		return 0, nil, err
+		return height, nil, err
 	}
 	proof, err = json.Marshal(ethProof)
 	return
