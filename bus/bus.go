@@ -178,19 +178,17 @@ func WithFilter(bus SortedTxBus, filter *config.FilterConfig) *TxBusWithFilter {
 	return &TxBusWithFilter{bus, filter}
 }
 
-func (b *TxBusWithFilter) Pop(ctx context.Context, height uint64, count int64) ([]*msg.Tx, error) {
-	txs, err := b.SortedTxBus.Pop(ctx, height, count)
-	if err != nil {
-		return nil, err
-	}
-	rest := []*msg.Tx{}
-	for _, tx := range txs {
+func (b *TxBusWithFilter) Pop(ctx context.Context) (*msg.Tx, uint64, error) {
+	for {
+		tx, score, err := b.SortedTxBus.Pop(ctx)
+		if err != nil {
+			return nil, 0, err
+		}
 		if b.filter.Check(tx.SrcProxy, tx.DstProxy) {
 			log.Debug("Filter passes tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
-			rest = append(rest, tx)
+			return tx, score, nil
 		} else {
 			log.Warn("Filter ignores tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
 		}
 	}
-	return rest, nil
 }

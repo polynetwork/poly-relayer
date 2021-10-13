@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -216,7 +217,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		// Check done tx existence
 		data, _ := s.sdk.Node().GetDoneTx(tx.SrcChainId, tx.Param.CrossChainID)
 		if len(data) != 0 {
-			log.Error("Tx already imported", "src_hash", tx.SrcHash)
+			log.Info("Tx already imported", "src_hash", tx.SrcHash)
 			return nil
 		}
 	}
@@ -281,6 +282,7 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
 	default:
+		height = math.MaxInt32
 	}
 	if height > s.blocksToWait {
 		height -= s.blocksToWait
@@ -296,7 +298,7 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 func (s *Submitter) consume(mq bus.SortedTxBus) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
-	ticker := time.NewTicker(800 * time.Millisecond)
+	ticker := time.NewTicker(300 * time.Millisecond)
 	defer ticker.Stop()
 
 	height := s.ReadyBlock()
@@ -314,26 +316,30 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 		default:
 		}
 
-		txs, err := mq.Pop(s.Context, height, 1)
+		tx, block, err := mq.Pop(s.Context)
 		if err != nil {
 			log.Error("Bus pop error", "err", err)
 			continue
 		}
-		if len(txs) == 0 {
+		if tx == nil {
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 
-		for _, tx := range txs {
+		if block <= height {
 			log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
 			err = s.submit(tx)
-			if err != nil {
-				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", height+1)
-				tx.Attempts++
-				bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, height+1) })
-			} else {
+			if err == nil {
 				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
+				continue
 			}
+			block += 1
+			tx.Attempts++
+			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block)
+			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
+		} else {
+			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 }

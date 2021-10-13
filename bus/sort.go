@@ -35,7 +35,8 @@ func (k *SortedTxQueueKey) Key() string {
 
 type SortedTxBus interface {
 	Push(context.Context, *msg.Tx, uint64) error
-	Pop(context.Context, uint64, int64) ([]*msg.Tx, error)
+	Range(context.Context, uint64, int64) ([]*msg.Tx, error)
+	Pop(context.Context) (*msg.Tx, uint64, error)
 	Len(context.Context) (uint64, error)
 	Topic() string
 }
@@ -75,7 +76,7 @@ func (b *RedisSortedTxBus) Push(ctx context.Context, msg *msg.Tx, height uint64)
 	return
 }
 
-func (b *RedisSortedTxBus) Pop(ctx context.Context, height uint64, count int64) (txs []*msg.Tx, err error) {
+func (b *RedisSortedTxBus) Range(ctx context.Context, height uint64, count int64) (txs []*msg.Tx, err error) {
 	max := strconv.Itoa(int(height))
 	res, err := b.db.ZRangeByScore(ctx, b.Key.Key(),
 		&redis.ZRangeBy{Max: max, Count: count},
@@ -95,5 +96,19 @@ func (b *RedisSortedTxBus) Pop(ctx context.Context, height uint64, count int64) 
 		}
 		txs[i] = tx
 	}
+	return
+}
+
+func (b *RedisSortedTxBus) Pop(ctx context.Context) (tx *msg.Tx, score uint64, err error) {
+	res, err := b.db.BZPopMin(ctx, 0, b.Key.Key()).Result()
+	if err != nil {
+		return
+	}
+	if res == nil {
+		return
+	}
+	score = uint64(res.Score)
+	tx = new(msg.Tx)
+	err = tx.Decode(res.Member.(string))
 	return
 }
