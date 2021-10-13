@@ -101,22 +101,24 @@ func (tx *Tx) Encode() string {
 	return string(bytes)
 }
 
-func (tx *Tx) Decode(data string) error {
-	if len(tx.SrcParam) > 0 && tx.Param == nil {
-		event, err := hex.DecodeString(tx.SrcParam)
-		if err != nil {
-			return fmt.Errorf("Decode src param error %v event %s", err, tx.SrcParam)
+func (tx *Tx) Decode(data string) (err error) {
+	err = json.Unmarshal([]byte(data), tx)
+	if err == nil {
+		if len(tx.SrcParam) > 0 && tx.Param == nil {
+			event, err := hex.DecodeString(tx.SrcParam)
+			if err != nil {
+				return fmt.Errorf("Decode src param error %v event %s", err, tx.SrcParam)
+			}
+			param := &common.MakeTxParam{}
+			err = param.Deserialization(pcom.NewZeroCopySource(event))
+			if err != nil {
+				return fmt.Errorf("Decode src event error %v event %s", err, tx.SrcParam)
+			}
+			tx.Param = param
+			tx.SrcEvent = event
 		}
-		param := &common.MakeTxParam{}
-		err = param.Deserialization(pcom.NewZeroCopySource(event))
-		if err != nil {
-			return fmt.Errorf("Decode src event error %v event %s", err, tx.SrcParam)
-		}
-		tx.Param = param
-		tx.SrcEvent = event
 	}
-
-	return json.Unmarshal([]byte(data), tx)
+	return
 }
 
 func (tx *Tx) CapturePatchParams(o *Tx) *Tx {
