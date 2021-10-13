@@ -103,8 +103,7 @@ func (b *RedisTxBus) Pop(ctx context.Context) (*msg.Tx, error) {
 }
 
 func (b *RedisTxBus) PopTimed(ctx context.Context, duration time.Duration) (*msg.Tx, error) {
-	c, _ := context.WithCancel(ctx)
-	res, err := b.db.BLPop(c, duration, b.Key.Key()).Result()
+	res, err := b.db.BLPop(ctx, duration, b.Key.Key()).Result()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to pop message %v", err)
 	}
@@ -125,12 +124,12 @@ func (b *RedisTxBus) PushToChain(ctx context.Context, tx *msg.Tx) error {
 	return nil
 }
 
-func (b *RedisTxBus) Patch(ctx context.Context, tx *msg.Tx) error {
+func (b *RedisTxBus) Patch(ctx context.Context, tx *msg.Tx) (err error) {
 	chain := tx.SrcChainId
 	if tx.Type() == msg.POLY {
 		chain = base.POLY
 	}
-	_, err := b.db.RPush(ctx, NewPatchKey(chain).Key(), tx.Encode()).Result()
+	_, err = b.db.RPush(ctx, NewPatchKey(chain).Key(), tx.Encode()).Result()
 	if err != nil {
 		return fmt.Errorf("Failed to push message %v", err)
 	}
@@ -171,25 +170,27 @@ func (b *RedisTxBus) LenOf(ctx context.Context, chain uint64, ty msg.TxType) (ui
 }
 
 type TxBusWithFilter struct {
-	TxBus
+	SortedTxBus
 	filter *config.FilterConfig
 }
 
-func WithFilter(bus TxBus, filter *config.FilterConfig) *TxBusWithFilter {
+func WithFilter(bus SortedTxBus, filter *config.FilterConfig) *TxBusWithFilter {
 	return &TxBusWithFilter{bus, filter}
 }
 
-func (b *TxBusWithFilter) Pop(ctx context.Context) (*msg.Tx, error) {
-	for {
-		tx, err := b.TxBus.Pop(ctx)
-		if err != nil {
-			return nil, err
-		}
+func (b *TxBusWithFilter) Pop(ctx context.Context, height uint64, count int64) ([]*msg.Tx, error) {
+	txs, err := b.SortedTxBus.Pop(ctx, height, count)
+	if err != nil {
+		return nil, err
+	}
+	rest := []*msg.Tx{}
+	for _, tx := range txs {
 		if b.filter.Check(tx.SrcProxy, tx.DstProxy) {
 			log.Debug("Filter passes tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
-			return tx, nil
+			rest = append(rest, tx)
 		} else {
 			log.Warn("Filter ignores tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
 		}
 	}
+	return rest, nil
 }

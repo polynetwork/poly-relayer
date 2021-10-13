@@ -76,7 +76,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 
 func (l *Listener) getProofHeight() (height uint64, err error) {
 	switch l.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
 		h, err := l.poly.Node().GetSideChainHeight(l.config.ChainId)
 		if err != nil {
 			return 0, err
@@ -131,6 +131,12 @@ func (l *Listener) FetchProof(txId []byte, txHeight uint64) (height uint64, proo
 }
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
+	if len(tx.SrcProofHex) > 0 { // Already fetched the proof
+		log.Info("Proof already fetched for tx", "hash", tx.SrcHash)
+		tx.SrcProof, _ = hex.DecodeString(tx.SrcProofHex)
+		return
+	}
+
 	if tx.SrcHeight == 0 || len(tx.TxId) == 0 {
 		return fmt.Errorf("tx missing attributes src height %v, txid %s", tx.SrcHeight, tx.TxId)
 	}
@@ -206,6 +212,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			SrcProxy:   ev.ProxyOrAssetContract.String(),
 			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
 		}
+		l.Compose(tx)
 		txs = append(txs, tx)
 	}
 
