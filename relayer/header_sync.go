@@ -178,7 +178,7 @@ func (h *HeaderSyncHandler) watch() {
 	}
 }
 
-func (h *HeaderSyncHandler) start(ch chan<- msg.Header) {
+func (h *HeaderSyncHandler) start(ch chan msg.Header) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	confirms := uint64(h.listener.Defer())
@@ -191,6 +191,16 @@ LOOP:
 		select {
 		case reset := <-h.reset:
 			if reset < h.height && reset != 0 {
+				// Drain the headers buf
+			DRAIN:
+				for {
+					select {
+					case <-ch:
+					default:
+						break DRAIN
+					}
+				}
+
 				log.Info("Detected submit failure reset", "chain", h.config.ChainId, "value", reset)
 				h.height = h.RollbackToCommonAncestor(h.height, reset-1)
 			}

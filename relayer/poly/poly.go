@@ -95,8 +95,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if s.lastCommit > 0 && s.lastCheck > 3 {
 				s.lastCheck = 0
 				switch chainId {
-				case base.ONT, base.NEO, base.HEIMDALL, base.OK:
-				default:
+				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3:
 					height, e := s.GetSideChainHeight(chainId)
 					if e != nil {
 						log.Error("Get side chain header height failure", "err", e)
@@ -143,7 +142,10 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 				return nil
 			}
 			info := err.Error()
-			if strings.Contains(info, "parent header not exist") || strings.Contains(info, "missing required field") || strings.Contains(info, "parent block failed") {
+			if strings.Contains(info, "parent header not exist") ||
+				strings.Contains(info, "missing required field") ||
+				strings.Contains(info, "parent block failed") ||
+				strings.Contains(info, "VerifySpan err") {
 				//NOTE: reset header height back here
 				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
 				return msg.ERR_HEADER_INCONSISTENT
