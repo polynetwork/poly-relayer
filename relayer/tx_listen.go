@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -57,7 +58,8 @@ func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
-	err = h.listener.Init(h.config.ListenerConfig, nil)
+	poly, _ := poly.WithOptions(base.POLY, h.config.Poly.Nodes, time.Minute, 1)
+	err = h.listener.Init(h.config.ListenerConfig, poly)
 	if err != nil {
 		return
 	}
