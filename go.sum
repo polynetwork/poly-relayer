@@ -656,10 +656,10 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6JUPA=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/polynetwork/bridge-common v0.0.10-plt h1:HjmHDg7HP/D8VIVW9VhsVgTiUmrQY28NHvtVTsPxX7w=
-github.com/polynetwork/bridge-common v0.0.10-plt/go.mod h1:Ly6GthGRZ0jMHm7w+/92DZOa+ycy4Nq/wZOiEoixYpE=
-github.com/polynetwork/bridge-common v0.0.11-plt h1:FHOWdtvrEbOTecXHhQ9glmzm1CSLUtBB79VwgKVgH8M=
-github.com/polynetwork/bridge-common v0.0.11-plt/go.mod h1:Ly6GthGRZ0jMHm7w+/92DZOa+ycy4Nq/wZOiEoixYpE=
+github.com/polynetwork/bridge-common v0.0.12-plt h1:gmHDJ3A3T7FR4MDMepofd6nfXAPp4Yimgq4B5QYy4uU=
+github.com/polynetwork/bridge-common v0.0.12-plt/go.mod h1:Ly6GthGRZ0jMHm7w+/92DZOa+ycy4Nq/wZOiEoixYpE=
+github.com/polynetwork/bridge-common v0.0.13-plt h1:wNWcnadPTHQP7u0/CAc8/o6ETa3yd0la0nDRG0tK0Yk=
+github.com/polynetwork/bridge-common v0.0.13-plt/go.mod h1:Ly6GthGRZ0jMHm7w+/92DZOa+ycy4Nq/wZOiEoixYpE=
 github.com/polynetwork/btc-vendor-tools v0.0.0-20200813091748-3b19a5fd7666/go.mod h1:U8rR9X6vemlkBAJWfvzwSoalcJjX8B2aQjB0kPRhBUA=
 github.com/polynetwork/cosmos-poly-module v0.0.0-20200810030259-95d586518759/go.mod h1:VMBJZ8GSZeoWBntd/rWx2Rr5roRKofO7siP1qd6A6pY=
 github.com/polynetwork/eth-contracts v0.0.0-20200814062128-70f58e22b014 h1:fbVjTnsS7nZwsTtRdbv+2162e/odNN1rqfLf/gBmhAM=

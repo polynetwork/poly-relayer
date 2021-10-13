@@ -69,8 +69,7 @@ func (b *RedisDelayedTxBus) Delay(ctx context.Context, msg *msg.Tx, delay int64)
 }
 
 func (b *RedisDelayedTxBus) Pop(ctx context.Context) (tx *msg.Tx, score int64, err error) {
-	c, _ := context.WithCancel(ctx)
-	res, err := b.db.BZPopMin(c, 0, b.Key.Key()).Result()
+	res, err := b.db.BZPopMin(ctx, 0, b.Key.Key()).Result()
 	if err != nil {
 		return
 	}
