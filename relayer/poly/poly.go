@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -276,6 +277,7 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
 	default:
+		height = math.MaxInt32
 	}
 	if height > s.blocksToWait {
 		height -= s.blocksToWait
