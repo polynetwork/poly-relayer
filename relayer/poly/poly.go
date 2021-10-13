@@ -289,8 +289,6 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	}
 	if err != nil {
 		log.Error("Failed to get ready block height", "chain", s.name, "err", err)
-	} else {
-		log.Info("Current ready block height", "chain", s.name, "height", height)
 	}
 	return
 }
@@ -312,7 +310,11 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 
 		select {
 		case <-ticker.C:
-			height = s.ReadyBlock()
+			h := s.ReadyBlock()
+			if h > 0 && height != h {
+				height = h
+				log.Info("Current ready block height", "chain", s.name, "height", height)
+			}
 		default:
 		}
 
