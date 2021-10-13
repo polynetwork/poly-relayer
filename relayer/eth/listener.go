@@ -131,7 +131,7 @@ func (l *Listener) FetchProof(txId []byte, txHeight uint64) (height uint64, proo
 }
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
-	if len(tx.SrcProofHex) > 0 { // Already fetched the proof
+	if len(tx.SrcProofHex) > 0 && tx.Param != nil { // Already fetched the proof
 		log.Info("Proof already fetched for tx", "hash", tx.SrcHash)
 		tx.SrcProof, _ = hex.DecodeString(tx.SrcProofHex)
 		return
