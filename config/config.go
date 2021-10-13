@@ -195,6 +195,7 @@ type SrcTxSyncConfig struct {
 	Procs           int
 	Enabled         bool
 	Bus             *BusConfig
+	Poly            *PolySubmitterConfig
 }
 
 type SrcTxCommitConfig struct {
@@ -316,6 +317,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 			c.SrcTxSync.Bus = bus
 		}
 		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig, bus)
+		c.SrcTxSync.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxSync.Poly)
 	}
 
 	if c.SrcTxCommit != nil {
