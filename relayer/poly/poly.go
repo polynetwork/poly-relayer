@@ -95,8 +95,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if s.lastCommit > 0 && s.lastCheck > 3 {
 				s.lastCheck = 0
 				switch chainId {
-				case base.ONT, base.NEO, base.HEIMDALL, base.OK:
-				default:
+				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3:
 					height, e := s.GetSideChainHeight(chainId)
 					if e != nil {
 						log.Error("Get side chain header height failure", "err", e)
@@ -143,7 +142,10 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 				return nil
 			}
 			info := err.Error()
-			if strings.Contains(info, "parent header not exist") || strings.Contains(info, "missing required field") || strings.Contains(info, "parent block failed") {
+			if strings.Contains(info, "parent header not exist") ||
+				strings.Contains(info, "missing required field") ||
+				strings.Contains(info, "parent block failed") ||
+				strings.Contains(info, "VerifySpan err") {
 				//NOTE: reset header height back here
 				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
 				return msg.ERR_HEADER_INCONSISTENT
@@ -186,7 +188,6 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		if strings.Contains(err.Error(), "missing trie node") {
 			return msg.ERR_PROOF_UNAVAILABLE
 		}
-		return err
 	}
 	if tx.Param == nil || tx.SrcChainId == 0 {
 		return fmt.Errorf("%s submitter src tx %s param is missing or src chain id not specified", s.name, tx.SrcHash)
@@ -292,6 +293,51 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	return
 }
 
+func (s *Submitter) consume(mq bus.SortedTxBus) error {
+	s.wg.Add(1)
+	defer s.wg.Done()
+	ticker := time.NewTicker(800 * time.Millisecond)
+	defer ticker.Stop()
+
+	height := s.ReadyBlock()
+	for {
+		select {
+		case <-s.Done():
+			log.Info("Submitter is exiting now", "chain", s.name)
+			return nil
+		default:
+		}
+
+		select {
+		case <-ticker.C:
+			height = s.ReadyBlock()
+		default:
+		}
+
+		txs, err := mq.Pop(s.Context, height, 1)
+		if err != nil {
+			log.Error("Bus pop error", "err", err)
+			continue
+		}
+		if len(txs) == 0 {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+
+		for _, tx := range txs {
+			log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
+			err = s.submit(tx)
+			if err != nil {
+				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", height+1)
+				tx.Attempts++
+				bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, height+1) })
+			} else {
+				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
+			}
+		}
+	}
+}
+
 func (s *Submitter) run(mq bus.TxBus) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
@@ -341,6 +387,9 @@ func (s *Submitter) run(mq bus.TxBus) error {
 				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
 				retry = false
 			}
+			if height == 0 {
+				refresh = true
+			}
 		} else {
 			refresh = true
 		}
@@ -351,7 +400,7 @@ func (s *Submitter) run(mq bus.TxBus) error {
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, mq bus.TxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.PolyComposer) error {
 	s.compose = composer
 	s.Context = ctx
 	s.wg = wg
@@ -361,7 +410,7 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, mq bus.TxBus,
 	}
 	for i := 0; i < s.config.Procs; i++ {
 		log.Info("Starting poly submitter worker", "index", i, "procs", s.config.Procs, "chain", s.name, "topic", mq.Topic())
-		go s.run(mq)
+		go s.consume(mq)
 	}
 	return nil
 }

@@ -57,6 +57,7 @@ type Tx struct {
 	SrcHeight      uint64 `json:",omitempty"`
 	SrcChainId     uint64 `json:",omitempty"`
 	SrcProof       []byte `json:"-"`
+	SrcProofHex    string `json:",omitempty"`
 	SrcEvent       []byte `json:"-"`
 	SrcProofHeight uint64 `json:",omitempty"`
 	SrcParam       string `json:",omitempty"`
@@ -93,11 +94,28 @@ func (tx *Tx) Type() TxType {
 }
 
 func (tx *Tx) Encode() string {
+	if len(tx.SrcProof) > 0 && len(tx.SrcProofHex) == 0 {
+		tx.SrcProofHex = hex.EncodeToString(tx.SrcProof)
+	}
 	bytes, _ := json.Marshal(*tx)
 	return string(bytes)
 }
 
 func (tx *Tx) Decode(data string) error {
+	if len(tx.SrcParam) > 0 && tx.Param == nil {
+		event, err := hex.DecodeString(tx.SrcParam)
+		if err != nil {
+			return fmt.Errorf("Decode src param error %v event %s", err, tx.SrcParam)
+		}
+		param := &common.MakeTxParam{}
+		err = param.Deserialization(pcom.NewZeroCopySource(event))
+		if err != nil {
+			return fmt.Errorf("Decode src event error %v event %s", err, tx.SrcParam)
+		}
+		tx.Param = param
+		tx.SrcEvent = event
+	}
+
 	return json.Unmarshal([]byte(data), tx)
 }
 

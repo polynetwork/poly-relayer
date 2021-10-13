@@ -35,7 +35,7 @@ type SrcTxSyncHandler struct {
 	wg *sync.WaitGroup
 
 	listener IChainListener
-	bus      bus.TxBus
+	bus      bus.SortedTxBus
 	patch    bus.TxBus
 	state    bus.ChainStore
 	height   uint64
@@ -67,7 +67,7 @@ func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 		h.config.Bus.HeightUpdateInterval,
 	)
 
-	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
+	h.bus = bus.NewRedisSortedTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
 	h.patch = bus.NewRedisPatchTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId)
 	return
 }
@@ -129,7 +129,7 @@ func (h *SrcTxSyncHandler) patchTxs() {
 			if tx.SrcHash == "" || tx.SrcHash == t.SrcHash {
 				log.Info("Found patch target src tx", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
 				bus.SafeCall(h.Context, t, "push to tx bus", func() error {
-					return h.bus.Push(context.Background(), t)
+					return h.bus.Push(context.Background(), t, 0)
 				})
 			} else {
 				log.Info("Found src tx in block", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
@@ -167,7 +167,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 			for _, tx := range txs {
 				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId, "height", h.height)
 				bus.SafeCall(h.Context, tx, "push to tx bus", func() error {
-					return h.bus.Push(context.Background(), tx)
+					return h.bus.Push(context.Background(), tx, tx.SrcProofHeight)
 				})
 			}
 			h.state.HeightMark(h.height)

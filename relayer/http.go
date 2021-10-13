@@ -102,7 +102,7 @@ func recordMetrics() {
 				metrics.Record(headerDiff, "height_diff.header_sync.%s", name)
 				metrics.Record(txDiff, "height_diff.tx_sync.%s", name)
 			}
-			qSrc, _ := h.Len(chain, msg.SRC)
+			qSrc, _ := h.LenSorted(chain, msg.SRC)
 			qPoly, _ := h.Len(chain, msg.POLY)
 			metrics.Record(qSrc, "queue_size.src.%s", name)
 			metrics.Record(qPoly, "queue_size.poly.%s", name)
@@ -157,7 +157,9 @@ func (c *PatchController) Patch() {
 	if chain == 0 {
 		tx.PolyHeight = uint32(height)
 		tx.PolyHash = hash
+		tx.TxType = msg.POLY
 	} else {
+		tx.TxType = msg.SRC
 		tx.SrcHash = hash
 		tx.SrcHeight = uint64(height)
 	}
@@ -185,8 +187,10 @@ func Patch(ctx *cli.Context) (err error) {
 	if chain == 0 {
 		tx.PolyHeight = uint32(height)
 		tx.PolyHash = hash
+		tx.TxType = msg.POLY
 	} else {
 		tx.SrcHash = hash
+		tx.TxType = msg.SRC
 		tx.SrcHeight = height
 	}
 	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).Patch(context.Background(), tx)

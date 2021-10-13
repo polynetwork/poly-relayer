@@ -112,6 +112,10 @@ func (h *StatusHandler) LenDelayed() (uint64, error) {
 	return bus.NewRedisDelayedTxBus(h.redis).Len(context.Background())
 }
 
+func (h *StatusHandler) LenSorted(chain uint64, ty msg.TxType) (uint64, error) {
+	return bus.NewRedisSortedTxBus(h.redis, chain, ty).Len(context.Background())
+}
+
 func Status(ctx *cli.Context) (err error) {
 	h := NewStatusHandler(config.CONFIG.Bus.Redis)
 	for _, chain := range base.CHAINS {
@@ -145,7 +149,7 @@ func Status(ctx *cli.Context) (err error) {
 			fmt.Printf("  header sync height diff: %v\n", headerDiff)
 			fmt.Printf("  tx listen height diff  : %v\n", txDiff)
 		}
-		qSrc, _ := h.Len(chain, msg.SRC)
+		qSrc, _ := h.LenSorted(chain, msg.SRC)
 		qPoly, _ := h.Len(chain, msg.POLY)
 		fmt.Printf("  src tx queue size : %v\n", qSrc)
 		fmt.Printf("  poly tx queue size: %v\n", qPoly)
