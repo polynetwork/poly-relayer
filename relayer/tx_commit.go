@@ -256,7 +256,7 @@ type SrcTxCommitHandler struct {
 	context.Context
 	wg *sync.WaitGroup
 
-	bus       bus.TxBus
+	bus       bus.SortedTxBus
 	submitter *poly.Submitter
 	listener  IChainListener
 	config    *config.SrcTxCommitConfig
@@ -284,7 +284,7 @@ func (h *SrcTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err 
 		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
-	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
+	h.bus = bus.NewRedisSortedTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.SRC)
 	err = h.listener.Init(h.config.ListenerConfig, h.submitter.Poly())
 	return
 }
