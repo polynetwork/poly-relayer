@@ -17,6 +17,7 @@ require (
 	github.com/polynetwork/eth-contracts v0.0.0-20200814062128-70f58e22b014
 	github.com/polynetwork/poly v1.3.1
 	github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4
+	github.com/tendermint/tendermint v0.33.9
 	github.com/urfave/cli/v2 v2.3.0
 
 )
