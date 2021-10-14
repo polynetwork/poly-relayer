@@ -193,6 +193,8 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 		info := err.Error()
 		if strings.Contains(info, "business contract failed") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_FAILURE, err)
+		} else if strings.Contains(info, "always failing") {
+			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_ALWAYS_FAIL, err)
 		}
 	}
 	return
@@ -230,7 +232,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
-			log.Error("Process poly tx error", "chain", s.name, "err", err)
+			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash, "err", err)
 			log.Json(log.ERROR, tx)
 			if errors.Is(err, msg.ERR_INVALID_TX) || errors.Is(err, msg.ERR_TX_BYPASS) {
 				log.Error("Skipped poly tx for error", "poly_hash", tx.PolyHash, "err", err)
@@ -238,7 +240,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			}
 			tx.Attempts++
 			// TODO: retry with increased gas price?
-			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) {
+			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) || errors.Is(err, msg.ERR_TX_EXEC_ALWAYS_FAIL) {
 				tsp := time.Now().Unix() + 60*3
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) {

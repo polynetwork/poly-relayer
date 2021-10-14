@@ -33,7 +33,6 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	sdk "github.com/polynetwork/poly-go-sdk"
 
@@ -124,6 +123,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 }
 
 func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) error {
+	attempt := 0
 	var ok bool
 	for {
 		var err error
@@ -138,6 +138,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 		}
 
 		if err == nil {
+			attempt += 1
 			_, err = s.SubmitHeaders(chainId, headers)
 			if err == nil {
 				return nil
@@ -158,6 +159,10 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
 			return nil
 		default:
+			if attempt > 30 {
+				log.Error("Header submit too many failed attempts", "chain", chainId, "attempts", attempt)
+				return msg.ERR_HEADER_SUBMIT_FAILURE
+			}
 			time.Sleep(time.Second)
 		}
 	}
@@ -171,7 +176,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return "", err
 	}
 	hash = tx.ToHexString()
-	_, err = s.sdk.Node().Confirm(hash, 0, 10)
+	_, err = s.sdk.Node().Confirm(hash, 0, 80)
 	if err == nil {
 		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
 	}
@@ -184,6 +189,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		if strings.Contains(err.Error(), "missing trie node") {
 			return msg.ERR_PROOF_UNAVAILABLE
 		}
+		return err
 	}
 	if tx.Param == nil || tx.SrcChainId == 0 {
 		return fmt.Errorf("%s submitter src tx %s param is missing or src chain id not specified", s.name, tx.SrcHash)
@@ -227,7 +233,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		s.signer,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to import tx to poly, %v tx %s", err, util.Json(tx))
+		if strings.Contains(err.Error(), "tx already done") {
+			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
+			return nil
+		}
+		return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
 	}
 	tx.PolyHash = t.ToHexString()
 	return nil
