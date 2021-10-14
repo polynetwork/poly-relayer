@@ -28,6 +28,7 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/arb"
 	"github.com/polynetwork/poly-relayer/relayer/bsc"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/heco"
@@ -109,6 +110,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(neo.Submitter)
 	case base.ONT:
 		submitter = new(ont.Submitter)
+	case base.ARBITRUM:
+		submitter = new(arb.Submitter)
 	default:
 	}
 	return
