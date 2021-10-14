@@ -7,15 +7,13 @@ Reimplement poly relayer
 |Ethereum|main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Ontology|ont  |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Neo     |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
-|Neo3    |main |:x:|:x:|:x:|
 |BSC     |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Heco    |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Okex    |ok   |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Polygon |maitc|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |O3      |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Palette |plt  |:white_check_mark:|:white_check_mark:|:white_check_mark:|
-|Switcheo|main |:x:|:x:|:x:|
-|Arbitrum|main |:x:|:x:|:x:|
+|Arbitrum|main |:x:|:x:|:white_check_mark:|
 
 ## TODOs
 - [x] metrics, height, height_diff, queue length
