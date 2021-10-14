@@ -59,10 +59,6 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		return
 	}
 	s.polyId = poly.ReadChainID()
-	if s.polyId == 0 {
-		err = fmt.Errorf("Poly chain id not set for neo submitter")
-	}
-
 	return
 }
 

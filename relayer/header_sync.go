@@ -113,7 +113,7 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint64 {
 	log.Warn("Rolling header sync back to common ancestor", "current", height, "goal", target, "chain", h.config.ChainId)
 	switch h.config.ChainId {
-	case base.ETH, base.HECO, base.BSC, base.MATIC:
+	case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3:
 	default:
 		return target
 	}
