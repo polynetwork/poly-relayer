@@ -49,7 +49,7 @@ type Listener struct {
 	ccm            common.Address
 	ccd            common.Address
 	config         *config.ListenerConfig
-	GetProofHeight func() (uint64, error)
+	GetProofHeight func(uint64) (uint64, error)
 	GetProof       func([]byte, uint64) (uint64, []byte, error)
 	name           string
 	state          bus.ChainStore // Header sync state
@@ -74,7 +74,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	return
 }
 
-func (l *Listener) getProofHeight() (height uint64, err error) {
+func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	switch l.config.ChainId {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
 		h, err := l.poly.Node().GetSideChainHeight(l.config.ChainId)
@@ -92,6 +92,8 @@ func (l *Listener) getProofHeight() (height uint64, err error) {
 			height = h
 		}
 		height = height - base.BlocksToWait(l.config.ChainId)
+	case base.PLT:
+		return txHeight, nil
 	default:
 		return 0, fmt.Errorf("getProofHeight unsupported chain %s", l.name)
 	}
@@ -115,7 +117,7 @@ func (l *Listener) FetchProof(txId []byte, txHeight uint64) (height uint64, proo
 		return
 	}
 	proofKey := hexutil.Encode(bytes)
-	height, err = l.GetProofHeight()
+	height, err = l.GetProofHeight(txHeight)
 	if err != nil {
 		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
 		return

@@ -33,7 +33,6 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	sdk "github.com/polynetwork/poly-go-sdk"
 
@@ -184,7 +183,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return "", err
 	}
 	hash = tx.ToHexString()
-	_, err = s.sdk.Node().Confirm(hash, 0, 10)
+	_, err = s.sdk.Node().Confirm(hash, 0, 80)
 	if err == nil {
 		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
 	}
@@ -197,6 +196,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		if strings.Contains(err.Error(), "missing trie node") {
 			return msg.ERR_PROOF_UNAVAILABLE
 		}
+		return err
 	}
 	if tx.Param == nil || tx.SrcChainId == 0 {
 		return fmt.Errorf("%s submitter src tx %s param is missing or src chain id not specified", s.name, tx.SrcHash)
@@ -242,7 +242,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		s.signer,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to import tx to poly, %v tx %s", err, util.Json(tx))
+		if strings.Contains(err.Error(), "tx already done") {
+			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
+			return nil
+		}
+		return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
 	}
 	tx.PolyHash = t.ToHexString()
 	return nil
