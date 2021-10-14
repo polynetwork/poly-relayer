@@ -124,6 +124,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 }
 
 func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) error {
+	attempt := 0
 	var ok bool
 	for {
 		var err error
@@ -138,6 +139,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 		}
 
 		if err == nil {
+			attempt += 1
 			_, err = s.SubmitHeaders(chainId, headers)
 			if err == nil {
 				return nil
@@ -163,6 +165,10 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
 			return nil
 		default:
+			if attempt > 30 {
+				log.Error("Header submit too many failed attempts", "chain", chainId, "attempts", attempt)
+				return msg.ERR_HEADER_SUBMIT_FAILURE
+			}
 			time.Sleep(time.Second)
 		}
 	}
