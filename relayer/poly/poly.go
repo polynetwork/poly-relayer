@@ -33,7 +33,6 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	sdk "github.com/polynetwork/poly-go-sdk"
 
@@ -233,7 +232,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		s.signer,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to import tx to poly, %v tx %s", err, util.Json(tx))
+		if strings.Contains(err.Error(), "tx already done") {
+			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
+			return nil
+		}
+		return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
 	}
 	tx.PolyHash = t.ToHexString()
 	return nil
