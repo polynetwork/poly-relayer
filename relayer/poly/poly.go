@@ -189,6 +189,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		if strings.Contains(err.Error(), "missing trie node") {
 			return msg.ERR_PROOF_UNAVAILABLE
 		}
+		return err
 	}
 	if tx.Param == nil || tx.SrcChainId == 0 {
 		return fmt.Errorf("%s submitter src tx %s param is missing or src chain id not specified", s.name, tx.SrcHash)
