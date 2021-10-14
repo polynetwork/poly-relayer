@@ -82,9 +82,6 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.ccd = util.LowerHex(config.CCDContract)
 	s.name = base.GetChainName(config.ChainId)
 	s.polyId = poly.ReadChainID()
-	if s.polyId == 0 {
-		err = fmt.Errorf("Poly chain id not set for neo submitter")
-	}
 	return
 }
 
