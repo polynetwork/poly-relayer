@@ -251,6 +251,9 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
+			// OK, delayed retry to verify a successful submit
+			tsp := time.Now().Unix() + 60*2
+			bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 		}
 	}
 }
