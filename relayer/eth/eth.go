@@ -238,9 +238,13 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				log.Error("Skipped poly tx for error", "poly_hash", tx.PolyHash, "err", err)
 				continue
 			}
+			if errors.Is(err, msg.ERR_TX_EXEC_ALWAYS_FAIL) {
+				// PLT, ignore these tx for already submitted
+				continue
+			}
 			tx.Attempts++
 			// TODO: retry with increased gas price?
-			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) || errors.Is(err, msg.ERR_TX_EXEC_ALWAYS_FAIL) {
+			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) {
 				tsp := time.Now().Unix() + 60*3
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) {
@@ -251,6 +255,10 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
+
+			// PLT, retry to verify a successful submit
+			tsp := time.Now().Unix() + 60*2
+			bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 		}
 	}
 }
