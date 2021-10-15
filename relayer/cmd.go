@@ -58,12 +58,51 @@ func init() {
 }
 
 func RelayPolyTx(ctx *cli.Context) (err error) {
-	// height := uint64(ctx.Int("height"))
-	hash := ctx.String("tx")
-	if len(hash) == 0 {
-		return fmt.Errorf("Invalid tx hash")
+	listener, err := PolyListener()
+	if err != nil {
+		return
+	}
+	composer, err := PolySubmitter()
+	if err != nil {
+		return
+	}
+	height := uint64(ctx.Int("height"))
+	hash := ctx.String("hash")
+	if height == 0 && hash != "" {
+		height, err = listener.GetTxBlock(hash)
+		if err != nil {
+			log.Error("Failed to get poly tx block", "hash", hash)
+			return
+		}
 	}
 
+	if height == 0 {
+		log.Error("Failed to patch poly tx for height is invalid")
+		return
+	}
+
+	txs, err := listener.Scan(height)
+	if err != nil {
+		log.Error("Fetch poly block txs error", "height", height, "err", err)
+	}
+
+	count := 0
+	for _, t := range txs {
+		if hash == "" || hash == t.PolyHash {
+			log.Info("Found patch target poly tx", "hash", t.PolyHash, "height", height)
+			sub, err := ChainSubmitter(t.DstChainId)
+			if err != nil {
+				log.Error("Failed to init chain submitter", "chain", t.DstChainId, "err", err)
+				continue
+			}
+			err = sub.ProcessTx(t, composer.ComposeTx)
+			log.Info("Submtter processs tx", "hash", t.PolyHash, "err", err)
+			count++
+		} else {
+			log.Info("Found poly tx in block not targeted", "hash", t.PolyHash, "height", height)
+		}
+	}
+	log.Info("Patched poly txs per request", "count", count)
 	return
 }
 
