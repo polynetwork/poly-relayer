@@ -286,6 +286,10 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	switch s.config.ChainId {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
+	case base.NEO:
+		tx := new(msg.Tx)
+		s.compose(tx)
+		return tx.SrcProofHeight
 	default:
 		height = math.MaxInt32
 	}

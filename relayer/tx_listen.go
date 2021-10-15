@@ -168,8 +168,12 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		if err == nil {
 			for _, tx := range txs {
 				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId, "height", h.height)
+				proofHeight := tx.SrcProofHeight
+				if h.config.ChainId == base.NEO {
+					proofHeight = tx.SrcHeight
+				}
 				bus.SafeCall(h.Context, tx, "push to tx bus", func() error {
-					return h.bus.Push(context.Background(), tx, tx.SrcProofHeight)
+					return h.bus.Push(context.Background(), tx, proofHeight)
 				})
 			}
 			h.state.HeightMark(h.height)

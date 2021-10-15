@@ -127,7 +127,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	}
 	tx.SrcProofHeight = uint64(res.Result.StateHeight)
 	if tx.SrcProofHeight < tx.SrcHeight || tx.SrcHeight == 0 || tx.SrcProofHeight == 0 {
-		err = fmt.Errorf("Proof not available yet %d tx height %d", tx.SrcProofHeight, tx.SrcHeight)
+		err = fmt.Errorf("%w %d tx height %d", msg.ERR_PROOF_UNAVAILABLE, tx.SrcProofHeight, tx.SrcHeight)
 		return
 	}
 	sr := l.sdk.Node().GetStateRootByIndex(uint32(tx.SrcProofHeight))
