@@ -127,16 +127,19 @@ func (h *SrcTxSyncHandler) patchTxs() {
 			log.Error("Fetch block txs error", "chain", h.config.ChainId, "height", height, "err", err)
 		}
 
+		count := 0
 		for _, t := range txs {
 			if tx.SrcHash == "" || tx.SrcHash == t.SrcHash {
+				count++
 				log.Info("Found patch target src tx", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
 				bus.SafeCall(h.Context, t, "push to tx bus", func() error {
 					return h.bus.Push(context.Background(), t, 0)
 				})
 			} else {
-				log.Info("Found src tx in block", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
+				log.Info("Found src tx in block not targeted", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
 			}
 		}
+		log.Info("Patching src txs per request", "count", count)
 	}
 }
 
@@ -385,17 +388,20 @@ func (h *PolyTxSyncHandler) patchTxs() {
 			log.Error("Fetch poly block txs error", "chain", h.config.ChainId, "height", height, "err", err)
 		}
 
+		count := 0
 		for _, t := range txs {
 			if tx.PolyHash == "" || tx.PolyHash == t.PolyHash {
+				count++
 				log.Info("Found patch target poly tx", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
 				t.CapturePatchParams(tx)
 				bus.SafeCall(h.Context, t, "push to target chain tx bus", func() error {
 					return h.bus.PushToChain(context.Background(), t)
 				})
 			} else {
-				log.Info("Found poly tx in block", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
+				log.Info("Found poly tx in block not targeted", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
 			}
 		}
+		log.Info("Patching poly txs per request", "count", count)
 	}
 }
 

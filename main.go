@@ -86,7 +86,7 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.StringFlag{
-						Name:  "tx",
+						Name:  "hash",
 						Usage: "target tx hash",
 					},
 				},
@@ -101,9 +101,8 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:     "chain",
-						Usage:    "tx chain id",
-						Required: true,
+						Name:  "chain",
+						Usage: "tx chain id",
 					},
 					&cli.Int64Flag{
 						Name:  "limit",

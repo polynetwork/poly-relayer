@@ -192,6 +192,7 @@ func Patch(ctx *cli.Context) (err error) {
 		tx.SrcHash = hash
 		tx.TxType = msg.SRC
 		tx.SrcHeight = height
+		tx.SrcChainId = chain
 	}
 	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).Patch(context.Background(), tx)
 	if err != nil {
