@@ -140,6 +140,7 @@ func (l *Listener) GetBorSpanId(height uint64) (id uint64, err error) {
 	// log.Debug("GetBorSpanId get latest span", "height", height, "span", span, "start", start, "end", end)
 	for {
 		if height >= start && height <= end {
+			log.Info("Found bor span id", "height", height, "span", span, "start", start, "end", end)
 			return span, nil
 		} else if height < start {
 			// old span
