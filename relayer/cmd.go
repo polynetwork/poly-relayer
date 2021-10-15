@@ -92,7 +92,7 @@ func RelayPolyTx(ctx *cli.Context) (err error) {
 			log.Info("Found patch target poly tx", "hash", t.PolyHash, "height", height)
 			sub, err := ChainSubmitter(t.DstChainId)
 			if err != nil {
-				log.Error("Failed to init chain submitter for chain %d", t.DstChainId)
+				log.Error("Failed to init chain submitter", "chain", t.DstChainId, "err", err)
 				continue
 			}
 			err = sub.ProcessTx(t, composer.ComposeTx)

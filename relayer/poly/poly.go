@@ -147,6 +147,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if strings.Contains(info, "parent header not exist") ||
 				strings.Contains(info, "missing required field") ||
 				strings.Contains(info, "parent block failed") ||
+				strings.Contains(info, "span not correct") ||
 				strings.Contains(info, "VerifySpan err") {
 				//NOTE: reset header height back here
 				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
