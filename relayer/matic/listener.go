@@ -43,6 +43,7 @@ type Listener struct {
 
 	tc           *matic.SDK
 	lastSpanSync uint64
+	lastBlock    uint64
 	*eth.Listener
 }
 
@@ -58,6 +59,10 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
+	if height < l.lastBlock {
+		log.Info("Reset last bor span sync mark", "last_span", l.lastSpanSync)
+		l.lastSpanSync = 0
+	}
 	hdr, err := l.SDK().Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
 	if err != nil {
 		err = fmt.Errorf("Fetch block header error %v", err)
@@ -74,6 +79,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 		}
 
 		if spanId > l.lastSpanSync {
+			log.Info("Packing new span", "span", spanId, "height", height)
 			hmHeight, err := l.tc.Node().GetLatestHeight()
 			hmHeight -= 20 // Allowed heimdall sync lag?
 			if err != nil {
@@ -94,6 +100,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	}
 	hash = hdr.Hash().Bytes()
 	header, err = json.Marshal(hp)
+	l.lastBlock = height
 	return
 }
 
