@@ -244,11 +244,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	return nil
 }
 
-func (s *Submitter) ProcessTx(m *msg.Tx, _ msg.PolyComposer) (err error) {
+func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.PolyComposer) (err error) {
 	if m.Type() != msg.SRC {
 		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
 	}
-
+	s.compose = composer
 	return s.submit(m)
 }
 

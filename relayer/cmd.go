@@ -28,6 +28,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -105,7 +106,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 		if chain == base.POLY {
 			txHash = tx.PolyHash
 		}
-		if hash == "" || hash == txHash {
+		if hash == "" || util.LowerHex(hash) == util.LowerHex(txHash) {
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
