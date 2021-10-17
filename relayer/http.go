@@ -19,11 +19,13 @@ package relayer
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/server/web"
 	"github.com/urfave/cli/v2"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -55,21 +57,11 @@ func Http(ctx *cli.Context) (err error) {
 	_PATCHER = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0)
 	_SKIP = bus.NewRedisSkipCheck(bus.New(config.CONFIG.Bus.Redis))
 
-	web.AddNamespace(
-		web.NewNamespace("/api",
-			web.NSNamespace("/v1",
-				web.NSRouter("/patch", &PatchController{}, "get:Patch"),
-			),
-		),
-	)
-
 	go recordMetrics()
-
-	web.BConfig.Listen.HTTPAddr = host
-	web.BConfig.Listen.HTTPPort = port
-	web.BConfig.RunMode = "prod"
-	web.BConfig.AppName = "relayer"
-	web.Run()
+	http.HandleFunc("/api/v1/patch", PatchTx)
+	http.HandleFunc("/api/v1/skip", SkipTx)
+	http.HandleFunc("/api/v1/skipcheck", SkipCheckTx)
+	http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil)
 	return
 }
 
@@ -113,45 +105,37 @@ func recordMetrics() {
 	}
 }
 
-type PatchController struct {
-	web.Controller
-}
-
-func (c *PatchController) Skip() {
-	hash := c.Ctx.Input.Query("hash")
+func SkipTx(w http.ResponseWriter, r *http.Request) {
+	hash := r.FormValue("hash")
 	err := _SKIP.Skip(context.Background(), &msg.Tx{PolyHash: hash})
 	if err != nil {
-		c.Data["json"] = err.Error()
-		c.Ctx.ResponseWriter.WriteHeader(400)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
-		c.Data["json"] = hash
+		Json(w, &msg.Tx{PolyHash: hash})
 	}
-	c.ServeJSON()
 }
 
-func (c *PatchController) CheckSkip() {
-	hash := c.Ctx.Input.Query("hash")
+func SkipCheckTx(w http.ResponseWriter, r *http.Request) {
+	hash := r.FormValue("hash")
 	tx := &msg.Tx{PolyHash: hash}
 	skip, err := _SKIP.CheckSkip(context.Background(), tx)
 	if err != nil {
-		c.Data["json"] = err.Error()
-		c.Ctx.ResponseWriter.WriteHeader(400)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
 		tx.Skipped = skip
-		c.Data["json"] = tx
+		Json(w, tx)
 	}
-	c.ServeJSON()
 }
 
-func (c *PatchController) Patch() {
-	height, _ := strconv.Atoi(c.Ctx.Input.Query("height"))
-	chain, _ := strconv.Atoi(c.Ctx.Input.Query("chain"))
-	limit, _ := strconv.Atoi(c.Ctx.Input.Query("limit"))
-	hash := c.Ctx.Input.Query("hash")
+func PatchTx(w http.ResponseWriter, r *http.Request) {
+	height, _ := strconv.Atoi(r.FormValue("height"))
+	chain, _ := strconv.Atoi(r.FormValue("chain"))
+	limit, _ := strconv.Atoi(r.FormValue("limit"))
+	hash := r.FormValue("hash")
 	tx := &msg.Tx{
-		SkipCheckFee: c.Ctx.Input.Query("free") == "true",
-		DstGasPrice:  c.Ctx.Input.Query("price"),
-		DstGasPriceX: c.Ctx.Input.Query("pricex"),
+		SkipCheckFee: r.FormValue("free") == "true",
+		DstGasPrice:  r.FormValue("price"),
+		DstGasPriceX: r.FormValue("pricex"),
 		DstGasLimit:  uint64(limit),
 	}
 	if chain == 0 {
@@ -166,12 +150,10 @@ func (c *PatchController) Patch() {
 	log.Info("Patching tx", "body", tx.Encode())
 	err := _PATCHER.Patch(context.Background(), tx)
 	if err != nil {
-		c.Data["json"] = err.Error()
-		c.Ctx.ResponseWriter.WriteHeader(400)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
-		c.Data["json"] = tx
+		Json(w, tx)
 	}
-	c.ServeJSON()
 }
 
 func Patch(ctx *cli.Context) (err error) {
@@ -192,6 +174,7 @@ func Patch(ctx *cli.Context) (err error) {
 		tx.SrcHash = hash
 		tx.TxType = msg.SRC
 		tx.SrcHeight = height
+		tx.SrcChainId = chain
 	}
 	err = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0).Patch(context.Background(), tx)
 	if err != nil {
@@ -199,4 +182,14 @@ func Patch(ctx *cli.Context) (err error) {
 		log.Json(log.ERROR, tx)
 	}
 	return
+}
+
+func Json(w http.ResponseWriter, data interface{}) {
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(bytes)
 }
