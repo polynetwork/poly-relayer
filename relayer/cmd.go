@@ -68,16 +68,16 @@ func RelayTx(ctx *cli.Context) (err error) {
 		DstGasLimit:  uint64(ctx.Int("limit")),
 	}
 
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
 	var listener IChainListener
 	if chain == 0 {
 		listener, err = PolyListener()
 	} else {
-		listener, err = ChainListener(chain)
+		listener, err = ChainListener(chain, ps.SDK())
 	}
-	if err != nil {
-		return
-	}
-	ps, err := PolySubmitter()
 	if err != nil {
 		return
 	}

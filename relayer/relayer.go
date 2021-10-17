@@ -144,7 +144,7 @@ func ChainSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	return
 }
 
-func ChainListener(chain uint64) (l IChainListener, err error) {
+func ChainListener(chain uint64, poly *poly.SDK) (l IChainListener, err error) {
 	l = GetListener(chain)
 	if l == nil {
 		err = fmt.Errorf("No listener for chain %d available", chain)
@@ -155,6 +155,6 @@ func ChainListener(chain uint64) (l IChainListener, err error) {
 		return nil, fmt.Errorf("No config available for listener of chain %d", chain)
 	}
 
-	err = l.Init(conf.SrcTxSync.ListenerConfig, nil)
+	err = l.Init(conf.SrcTxSync.ListenerConfig, poly)
 	return
 }
