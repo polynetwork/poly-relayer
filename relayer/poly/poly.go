@@ -26,7 +26,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ontio/ontology-crypto/signature"
 
@@ -66,7 +65,7 @@ func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	}
 	s.name = base.GetChainName(config.ChainId)
 	s.blocksToWait = base.BlocksToWait(config.ChainId)
-	logs.Info("Chain blocks to wait", "blocks", s.blocksToWait, "chain", s.name)
+	log.Info("Chain blocks to wait", "blocks", s.blocksToWait, "chain", s.name)
 	s.sdk, err = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
 	return
 }
@@ -147,6 +146,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if strings.Contains(info, "parent header not exist") ||
 				strings.Contains(info, "missing required field") ||
 				strings.Contains(info, "parent block failed") ||
+				strings.Contains(info, "span not correct") ||
 				strings.Contains(info, "VerifySpan err") {
 				//NOTE: reset header height back here
 				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
@@ -243,11 +243,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	return nil
 }
 
-func (s *Submitter) ProcessTx(m *msg.Tx, _ msg.PolyComposer) (err error) {
+func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.PolyComposer) (err error) {
 	if m.Type() != msg.SRC {
 		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
 	}
-
+	s.compose = composer
 	return s.submit(m)
 }
 
@@ -286,6 +286,10 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	switch s.config.ChainId {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
+	case base.NEO:
+		tx := new(msg.Tx)
+		s.compose(tx)
+		return tx.SrcProofHeight
 	default:
 		height = math.MaxInt32
 	}

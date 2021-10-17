@@ -310,39 +310,42 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		c.HeaderSync.Poly = poly.PolySubmitterConfig.Fill(c.HeaderSync.Poly)
 	}
 
-	if c.SrcTxSync != nil {
-		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig, bus)
-		c.SrcTxSync.ChainId = chain
-		if c.SrcTxSync.Bus == nil {
-			c.SrcTxSync.Bus = bus
-		}
-		c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig, bus)
-		c.SrcTxSync.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxSync.Poly)
+	if c.SrcTxSync == nil {
+		c.SrcTxSync = new(SrcTxSyncConfig)
+	}
+	c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig, bus)
+	c.SrcTxSync.ChainId = chain
+	if c.SrcTxSync.Bus == nil {
+		c.SrcTxSync.Bus = bus
+	}
+	c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig, bus)
+	c.SrcTxSync.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxSync.Poly)
+
+	if c.SrcTxCommit == nil {
+		c.SrcTxCommit = new(SrcTxCommitConfig)
+	}
+	c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig, bus)
+	c.SrcTxCommit.ChainId = chain
+	if c.SrcTxCommit.Bus == nil {
+		c.SrcTxCommit.Bus = bus
+	}
+	c.SrcTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxCommit.Poly)
+	if c.SrcTxCommit.Filter == nil {
+		c.SrcTxCommit.Filter = c.Filter
 	}
 
-	if c.SrcTxCommit != nil {
-		c.SrcTxCommit.ListenerConfig = c.FillListener(c.SrcTxCommit.ListenerConfig, bus)
-		c.SrcTxCommit.ChainId = chain
-		if c.SrcTxCommit.Bus == nil {
-			c.SrcTxCommit.Bus = bus
-		}
-		c.SrcTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxCommit.Poly)
-		if c.SrcTxCommit.Filter == nil {
-			c.SrcTxCommit.Filter = c.Filter
-		}
+	if c.PolyTxCommit == nil {
+		c.PolyTxCommit = new(PolyTxCommitConfig)
 	}
-
-	if c.PolyTxCommit != nil {
-		c.PolyTxCommit.CheckFee = c.CheckFee
-		c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
-		c.PolyTxCommit.ChainId = chain
-		c.PolyTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.PolyTxCommit.Poly)
-		if c.PolyTxCommit.Bus == nil {
-			c.PolyTxCommit.Bus = bus
-		}
-		if c.PolyTxCommit.Filter == nil {
-			c.PolyTxCommit.Filter = c.Filter
-		}
+	c.PolyTxCommit.CheckFee = c.CheckFee
+	c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
+	c.PolyTxCommit.ChainId = chain
+	c.PolyTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.PolyTxCommit.Poly)
+	if c.PolyTxCommit.Bus == nil {
+		c.PolyTxCommit.Bus = bus
+	}
+	if c.PolyTxCommit.Filter == nil {
+		c.PolyTxCommit.Filter = c.Filter
 	}
 	return
 }
