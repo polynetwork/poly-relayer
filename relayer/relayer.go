@@ -19,6 +19,7 @@ package relayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -80,5 +81,46 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(plt.Submitter)
 	default:
 	}
+	return
+}
+
+func PolySubmitter() (sub *po.Submitter, err error) {
+	sub = new(po.Submitter)
+	err = sub.Init(&config.CONFIG.Poly.PolySubmitterConfig)
+	return
+}
+
+func PolyListener() (l *po.Listener, err error) {
+	l = new(po.Listener)
+	err = l.Init(config.CONFIG.Poly.PolyTxSync.ListenerConfig, nil)
+	return
+}
+
+func ChainSubmitter(chain uint64) (sub IChainSubmitter, err error) {
+	sub = GetSubmitter(chain)
+	if sub == nil {
+		err = fmt.Errorf("No submitter for chain %d available", chain)
+		return
+	}
+	conf := config.CONFIG.Chains[chain]
+	if conf == nil || conf.PolyTxCommit == nil {
+		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
+	}
+	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
+	return
+}
+
+func ChainListener(chain uint64, poly *poly.SDK) (l IChainListener, err error) {
+	l = GetListener(chain)
+	if l == nil {
+		err = fmt.Errorf("No listener for chain %d available", chain)
+		return
+	}
+	conf := config.CONFIG.Chains[chain]
+	if conf == nil || conf.SrcTxSync == nil {
+		return nil, fmt.Errorf("No config available for listener of chain %d", chain)
+	}
+
+	err = l.Init(conf.SrcTxSync.ListenerConfig, poly)
 	return
 }

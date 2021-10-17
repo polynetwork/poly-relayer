@@ -149,6 +149,7 @@ func (h *HeaderSyncHandler) watch() {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	ticker := time.NewTicker(3 * time.Second)
+	last := uint64(0)
 	for {
 		select {
 		case <-h.Done():
@@ -157,9 +158,10 @@ func (h *HeaderSyncHandler) watch() {
 			height, err := h.listener.Nodes().Node().GetLatestHeight()
 			if err != nil {
 				log.Error("Watch chain latest height error", "chain", h.config.ChainId, "err", err)
-			} else {
+			} else if height > last {
 				log.Info("Latest chain height", "chain", h.config.ChainId, "height", height)
 				h.latest.UpdateHeight(context.Background(), height)
+				last = height
 			}
 
 			switch h.config.ChainId {

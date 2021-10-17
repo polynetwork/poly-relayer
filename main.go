@@ -77,17 +77,37 @@ func main() {
 				Action: command(relayer.STATUS),
 			},
 			&cli.Command{
-				Name:   relayer.RELAY_POLY_TX,
-				Usage:  "Submit poly tx to dest chain",
-				Action: command(relayer.RELAY_POLY_TX),
+				Name:   relayer.RELAY_TX,
+				Usage:  "Submit cross chain tx",
+				Action: command(relayer.RELAY_TX),
 				Flags: []cli.Flag{
 					&cli.Int64Flag{
 						Name:  "height",
 						Usage: "target block height",
 					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "target tx chain",
+					},
 					&cli.StringFlag{
-						Name:  "tx",
+						Name:  "hash",
 						Usage: "target tx hash",
+					},
+					&cli.Int64Flag{
+						Name:  "limit",
+						Usage: "tx gas limit",
+					},
+					&cli.StringFlag{
+						Name:  "price",
+						Usage: "tx gas price",
+					},
+					&cli.StringFlag{
+						Name:  "pricex",
+						Usage: "tx gas priceX",
+					},
+					&cli.BoolFlag{
+						Name:  "free",
+						Usage: "skip check fee",
 					},
 				},
 			},
@@ -101,9 +121,8 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:     "chain",
-						Usage:    "tx chain id",
-						Required: true,
+						Name:  "chain",
+						Usage: "tx chain id",
 					},
 					&cli.Int64Flag{
 						Name:  "limit",
@@ -171,7 +190,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal("Start error", err)
+		log.Fatal("Start error", "err", err)
 	}
 }
 
