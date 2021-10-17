@@ -26,7 +26,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ontio/ontology-crypto/signature"
 
@@ -66,7 +65,7 @@ func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	}
 	s.name = base.GetChainName(config.ChainId)
 	s.blocksToWait = base.BlocksToWait(config.ChainId)
-	logs.Info("Chain blocks to wait", "blocks", s.blocksToWait, "chain", s.name)
+	log.Info("Chain blocks to wait", "blocks", s.blocksToWait, "chain", s.name)
 	s.sdk, err = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
 	return
 }

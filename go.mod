@@ -3,7 +3,6 @@ module github.com/polynetwork/poly-relayer
 go 1.15
 
 require (
-	github.com/beego/beego/v2 v2.0.1
 	github.com/btcsuite/btcd v0.21.0-beta
 	github.com/ethereum/go-ethereum v1.10.7
 	github.com/go-redis/redis/v8 v8.11.3
@@ -14,6 +13,5 @@ require (
 	github.com/polynetwork/bridge-common v0.0.14
 	github.com/polynetwork/poly v1.3.1
 	github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4
-	github.com/tendermint/tendermint v0.33.9
 	github.com/urfave/cli/v2 v2.3.0
 )
