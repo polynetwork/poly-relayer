@@ -36,7 +36,7 @@ import (
 const (
 	SET_HEADER_HEIGHT = "setheaderblock"
 	SET_TX_HEIGHT     = "settxblock"
-	RELAY_POLY_TX     = "submit"
+	RELAY_TX          = "submit"
 	STATUS            = "status"
 	HTTP              = "http"
 	PATCH             = "patch"
@@ -54,55 +54,78 @@ func init() {
 	_Handlers[PATCH] = Patch
 	_Handlers[SKIP] = Skip
 	_Handlers[CHECK_SKIP] = CheckSkip
-	_Handlers[RELAY_POLY_TX] = RelayPolyTx
+	_Handlers[RELAY_TX] = RelayTx
 }
 
-func RelayPolyTx(ctx *cli.Context) (err error) {
-	listener, err := PolyListener()
-	if err != nil {
-		return
-	}
-	composer, err := PolySubmitter()
-	if err != nil {
-		return
-	}
+func RelayTx(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
+	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")
+	params := &msg.Tx{
+		SkipCheckFee: ctx.Bool("free"),
+		DstGasPrice:  ctx.String("price"),
+		DstGasPriceX: ctx.String("pricex"),
+		DstGasLimit:  uint64(ctx.Int("limit")),
+	}
+
+	var listener IChainListener
+	if chain == 0 {
+		listener, err = PolyListener()
+	} else {
+		listener, err = ChainListener(chain)
+	}
+	if err != nil {
+		return
+	}
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
 	if height == 0 && hash != "" {
 		height, err = listener.GetTxBlock(hash)
 		if err != nil {
-			log.Error("Failed to get poly tx block", "hash", hash)
+			log.Error("Failed to get tx block", "hash", hash)
 			return
 		}
 	}
 
 	if height == 0 {
-		log.Error("Failed to patch poly tx for height is invalid")
+		log.Error("Failed to patch tx for height is invalid")
 		return
 	}
 
 	txs, err := listener.Scan(height)
 	if err != nil {
-		log.Error("Fetch poly block txs error", "height", height, "err", err)
+		log.Error("Fetch block txs error", "height", height, "err", err)
 	}
 
 	count := 0
-	for _, t := range txs {
-		if hash == "" || hash == t.PolyHash {
-			log.Info("Found patch target poly tx", "hash", t.PolyHash, "height", height)
-			sub, err := ChainSubmitter(t.DstChainId)
-			if err != nil {
-				log.Error("Failed to init chain submitter", "chain", t.DstChainId, "err", err)
-				continue
+	for _, tx := range txs {
+		txHash := tx.SrcHash
+		if chain == base.POLY {
+			txHash = tx.PolyHash
+		}
+		if hash == "" || hash == txHash {
+			log.Info("Found patch target tx", "hash", txHash, "height", height)
+			if chain == base.POLY {
+				tx.CapturePatchParams(params)
+				sub, err := ChainSubmitter(tx.DstChainId)
+				if err != nil {
+					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
+					continue
+				}
+				err = sub.ProcessTx(tx, ps.ComposeTx)
+				log.Info("Submtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
+			} else {
+				err = ps.ProcessTx(tx, listener.Compose)
+				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
-			err = sub.ProcessTx(t, composer.ComposeTx)
-			log.Info("Submtter processs tx", "hash", t.PolyHash, "err", err)
 			count++
 		} else {
-			log.Info("Found poly tx in block not targeted", "hash", t.PolyHash, "height", height)
+			log.Info("Found tx in block not targeted", "hash", txHash, "height", height)
 		}
 	}
-	log.Info("Patched poly txs per request", "count", count)
+	log.Info("Patched txs per request", "count", count)
 	return
 }
 
