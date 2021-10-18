@@ -26,6 +26,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -129,7 +130,7 @@ func (h *SrcTxSyncHandler) patchTxs() {
 
 		count := 0
 		for _, t := range txs {
-			if tx.SrcHash == "" || tx.SrcHash == t.SrcHash {
+			if tx.SrcHash == "" || util.LowerHex(tx.SrcHash) == util.LowerHex(t.SrcHash) {
 				count++
 				log.Info("Found patch target src tx", "hash", t.SrcHash, "chain", h.config.ChainId, "height", height)
 				bus.SafeCall(h.Context, t, "push to tx bus", func() error {
@@ -390,7 +391,7 @@ func (h *PolyTxSyncHandler) patchTxs() {
 
 		count := 0
 		for _, t := range txs {
-			if tx.PolyHash == "" || tx.PolyHash == t.PolyHash {
+			if tx.PolyHash == "" || util.LowerHex(tx.PolyHash) == util.LowerHex(t.PolyHash) {
 				count++
 				log.Info("Found patch target poly tx", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
 				t.CapturePatchParams(tx)
