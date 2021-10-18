@@ -131,6 +131,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 				err = ps.ProcessTx(tx, listener.Compose)
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
+			log.Json(log.INFO, tx)
 			count++
 		} else {
 			log.Info("Found tx in block not targeted", "hash", txHash, "height", height)
