@@ -71,7 +71,13 @@ func Relay(tx *msg.Tx) {
 		log.Error("Failed to find relayer bin", "chain", chain, "hash", hash)
 		return
 	}
+	config := os.Getenv("RELAYER_CONFIG")
+	if len(config) == 0 {
+		config = "config.json"
+	}
 	args := []string{
+		"-config", config,
+		"submit",
 		"-hash", hash, "-chain", strconv.Itoa(int(chain)),
 		"-price", tx.DstGasPrice, "-pricex", tx.DstGasPriceX, "-limit", strconv.Itoa(int(tx.DstGasLimit)),
 	}
