@@ -109,11 +109,16 @@ func main() {
 						Name:  "free",
 						Usage: "skip check fee",
 					},
+					&cli.BoolFlag{
+						Name:  "auto",
+						Usage: "submit will try to find the proper bin",
+						Value: false,
+					},
 				},
 			},
 			&cli.Command{
 				Name:   relayer.PATCH,
-				Usage:  "Patch cross chain tx",
+				Usage:  "Patch cross chain tx, will do auto patching if auto is set",
 				Action: command(relayer.PATCH),
 				Flags: []cli.Flag{
 					&cli.Int64Flag{
@@ -143,6 +148,11 @@ func main() {
 					&cli.BoolFlag{
 						Name:  "free",
 						Usage: "skip check fee",
+					},
+					&cli.BoolFlag{
+						Name:  "auto",
+						Usage: "auto patch",
+						Value: false,
 					},
 				},
 			},

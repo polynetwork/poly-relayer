@@ -68,6 +68,16 @@ func RelayTx(ctx *cli.Context) (err error) {
 		DstGasPriceX: ctx.String("pricex"),
 		DstGasLimit:  uint64(ctx.Int("limit")),
 	}
+	if ctx.Bool("auto") {
+		params.SrcChainId = chain
+		if chain == base.POLY {
+			params.PolyHash = hash
+		} else {
+			params.SrcHash = hash
+		}
+		Relay(params)
+		return
+	}
 
 	ps, err := PolySubmitter()
 	if err != nil {
