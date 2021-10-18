@@ -28,6 +28,7 @@ import (
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
@@ -43,9 +44,32 @@ func init() {
 	BIN_DIR, _ = filepath.Abs(dir)
 }
 
-func Bin(chainId uint64) (bin string) {
+func Bin(chainId uint64, hash string) (bin string, err error) {
+	if chainId == base.POLY {
+		listener, err := PolyListener()
+		if err != nil {
+			return "", err
+		}
+		height, err := listener.GetTxBlock(hash)
+		if err != nil {
+			return "", err
+		}
+		txs, err := listener.Scan(height)
+		if err != nil {
+			log.Error("Fetch block txs error", "height", height, "err", err)
+			return "", err
+		}
+
+		for _, tx := range txs {
+			if util.LowerHex(hash) == util.LowerHex(tx.PolyHash) {
+				log.Info("Found patch target tx", "hash", hash, "height", height)
+				chainId = tx.DstChainId
+			}
+		}
+	}
+
 	switch chainId {
-	case base.POLY, base.O3, base.ETH, base.HECO, base.BSC, base.ARBITRUM, base.NEO:
+	case base.O3, base.ETH, base.HECO, base.BSC, base.ARBITRUM:
 		bin = "relayer_main"
 	case base.MATIC:
 		bin = "relayer_matic"
@@ -66,9 +90,9 @@ func Relay(tx *msg.Tx) {
 	if len(tx.PolyHash) > 0 {
 		hash = tx.PolyHash
 	}
-	bin := Bin(chain)
+	bin, err := Bin(chain, hash)
 	if len(bin) == 0 {
-		log.Error("Failed to find relayer bin", "chain", chain, "hash", hash)
+		log.Error("Failed to find relayer bin", "chain", chain, "hash", hash, "err", err)
 		return
 	}
 	config := os.Getenv("RELAYER_CONFIG")
@@ -89,8 +113,13 @@ func Relay(tx *msg.Tx) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
 	cmd.Start()
+	done := make(chan bool)
+	go func() {
+		log.Error("Command executed", "err", cmd.Wait())
+		close(done)
+	}()
 	select {
-	case done <- cmd.Wait():
+	case <-done:
 		log.Error("Relay tx executed", "chain", chain, "hash", hash)
 	case <-time.After(40 * time.Second):
 		log.Error("Failed to relay tx for a timeout", "chain", chain, "hash", hash)
