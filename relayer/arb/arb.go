@@ -26,5 +26,5 @@ import (
 type Submitter = eth.Submitter
 
 func init() {
-	wallet.SetGasLimit(base.ARBITRUM, 3500000)
+	wallet.SetGasLimit(base.ARBITRUM, 4000000)
 }

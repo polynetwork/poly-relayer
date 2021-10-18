@@ -251,6 +251,20 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
+
+			// Retry to verify a successful submit
+			tsp := int64(0)
+			switch s.config.ChainId {
+			case base.MATIC, base.PLT:
+				tsp = time.Now().Unix() + 60*3
+			case base.ARBITRUM:
+				tsp = time.Now().Unix() + 60*25
+			case base.BSC, base.HECO, base.OK:
+				tsp = time.Now().Unix() + 60*4
+			}
+			if tsp > 0 {
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+			}
 		}
 	}
 }
