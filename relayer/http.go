@@ -131,7 +131,6 @@ func PatchTx(w http.ResponseWriter, r *http.Request) {
 	height, _ := strconv.Atoi(r.FormValue("height"))
 	chain, _ := strconv.Atoi(r.FormValue("chain"))
 	limit, _ := strconv.Atoi(r.FormValue("limit"))
-	submit := r.FormValue("submit") == "true"
 	hash := r.FormValue("hash")
 	tx := &msg.Tx{
 		SkipCheckFee: r.FormValue("free") == "true",
