@@ -89,13 +89,13 @@ func Relay(tx *msg.Tx) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
 	cmd.Start()
-	done := make(chan error)
 	select {
 	case done <- cmd.Wait():
 		log.Error("Relay tx executed", "chain", chain, "hash", hash)
 	case <-time.After(40 * time.Second):
 		log.Error("Failed to relay tx for a timeout", "chain", chain, "hash", hash)
 	}
+	cmd.Process.Kill()
 	return
 }
 
