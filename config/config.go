@@ -130,7 +130,7 @@ type PolySubmitterConfig struct {
 
 func (c *PolySubmitterConfig) Fill(o *PolySubmitterConfig) *PolySubmitterConfig {
 	if o == nil {
-		return c
+		o = new(PolySubmitterConfig)
 	}
 	o.ChainId = base.POLY
 	if len(o.Nodes) == 0 {
