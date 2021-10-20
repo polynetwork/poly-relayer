@@ -26,6 +26,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
@@ -62,8 +63,9 @@ func RelayTx(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")
+	free := ctx.Bool("free")
 	params := &msg.Tx{
-		SkipCheckFee: ctx.Bool("free"),
+		SkipCheckFee: free,
 		DstGasPrice:  ctx.String("price"),
 		DstGasPriceX: ctx.String("pricex"),
 		DstGasLimit:  uint64(ctx.Int("limit")),
@@ -111,6 +113,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 	}
 
 	count := 0
+	var bridge *bridge.SDK
 	for _, tx := range txs {
 		txHash := tx.SrcHash
 		if chain == base.POLY {
@@ -120,6 +123,28 @@ func RelayTx(ctx *cli.Context) (err error) {
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
+				if !free {
+					if bridge == nil {
+						bridge, err = Bridge()
+						if err != nil {
+							log.Error("Failed to init bridge sdk")
+							continue
+						}
+					}
+					res, err := CheckFee(bridge, tx)
+					if err != nil {
+						log.Error("Failed to call check fee", "poly_hash", tx.PolyHash)
+						continue
+					}
+					if res.Pass() {
+						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
+					} else {
+						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
+						fmt.Println(util.Verbose(tx))
+						fmt.Println(res)
+						continue
+					}
+				}
 				sub, err := ChainSubmitter(tx.DstChainId)
 				if err != nil {
 					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
@@ -131,7 +156,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 				err = ps.ProcessTx(tx, listener.Compose)
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
-			log.Json(log.INFO, tx)
+			fmt.Println(util.Verbose(tx))
 			count++
 		} else {
 			log.Info("Found tx in block not targeted", "hash", txHash, "height", height)

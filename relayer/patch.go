@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -139,4 +140,21 @@ func AutoPatch() (err error) {
 		}
 	}
 	return
+}
+
+func CheckFee(sdk *bridge.SDK, tx *msg.Tx) (res *bridge.CheckFeeRequest, err error) {
+	state := map[string]*bridge.CheckFeeRequest{}
+	state[tx.PolyHash] = &bridge.CheckFeeRequest{
+		ChainId:  tx.SrcChainId,
+		TxId:     tx.TxId,
+		PolyHash: tx.PolyHash,
+	}
+	err = sdk.Node().CheckFee(state)
+	if err != nil {
+		return
+	}
+	if state[tx.PolyHash] == nil {
+		state[tx.PolyHash] = new(bridge.CheckFeeRequest)
+	}
+	return state[tx.PolyHash], nil
 }

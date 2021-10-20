@@ -181,7 +181,7 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 			log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
 		} else if check.Missing() {
 			log.Info("CheckFee tx missing in bridge, delay for 2 seconds", "poly_hash", tx.PolyHash)
-			tsp := time.Now().Unix() + 2
+			tsp := time.Now().Unix() + 5
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 
 		} else {

@@ -25,6 +25,7 @@ import (
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -160,4 +161,8 @@ func ChainListener(chain uint64, poly *poly.SDK) (l IChainListener, err error) {
 
 	err = l.Init(conf.SrcTxSync.ListenerConfig, poly)
 	return
+}
+
+func Bridge() (sdk *bridge.SDK, err error) {
+	return bridge.WithOptions(0, config.CONFIG.Bridge, time.Minute, 100)
 }
