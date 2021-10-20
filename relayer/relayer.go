@@ -39,6 +39,7 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/ok"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
+	"github.com/polynetwork/poly-relayer/relayer/xdai"
 )
 
 type IChainListener interface {
@@ -113,6 +114,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(ont.Submitter)
 	case base.ARBITRUM:
 		submitter = new(arb.Submitter)
+	case base.XDAI:
+		submitter = new(xdai.Submitter)
 	default:
 	}
 	return
