@@ -129,21 +129,19 @@ func (s *Submitter) GetPolyEpochStartHeight() (height uint32, err error) {
 }
 
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
-	txId, err := tx.GetTxId()
-	if err != nil {
-		return
-	}
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
 		return
 	}
+	txId := [32]byte{}
+	copy(txId[:], tx.MerkleValue.TxHash[:32])
 	exist, err := ccd.CheckIfFromChainTxExist(nil, tx.SrcChainId, txId)
 	if err != nil {
 		return err
 	}
 
 	if exist {
-		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "txid", tx.TxId)
+		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "poly_hash", tx.PolyHash)
 		return nil
 	}
 
