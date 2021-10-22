@@ -27,7 +27,7 @@ import (
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -73,7 +73,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 	if ctx.Bool("auto") {
 		params.SrcChainId = chain
 		if chain == base.POLY {
-			params.PolyHash = hash
+			params.PolyHash = msg.Hash(hash)
 		} else {
 			params.SrcHash = hash
 		}
@@ -117,7 +117,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 	for _, tx := range txs {
 		txHash := tx.SrcHash
 		if chain == base.POLY {
-			txHash = tx.PolyHash
+			txHash = tx.PolyHash.Hex()
 		}
 		if hash == "" || util.LowerHex(hash) == util.LowerHex(txHash) {
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
@@ -168,13 +168,13 @@ func RelayTx(ctx *cli.Context) (err error) {
 
 type StatusHandler struct {
 	redis *redis.Client
-	poly  *poly.SDK
+	poly  *zion.SDK
 	store *bus.RedisChainStore
 }
 
 func NewStatusHandler(opt *redis.Options) *StatusHandler {
 	client := bus.New(opt)
-	sdk, err := poly.WithOptions(base.POLY, config.CONFIG.Poly.Nodes, time.Minute, 1)
+	sdk, err := zion.WithOptions(base.POLY, config.CONFIG.Poly.Nodes, time.Minute, 1)
 	if err != nil {
 		log.Error("Failed to initialize poly sdk")
 		panic(err)
@@ -186,11 +186,11 @@ func NewStatusHandler(opt *redis.Options) *StatusHandler {
 }
 
 func (h *StatusHandler) Skip(hash string) (err error) {
-	return bus.NewRedisSkipCheck(h.redis).Skip(context.Background(), &msg.Tx{PolyHash: hash})
+	return bus.NewRedisSkipCheck(h.redis).Skip(context.Background(), &msg.Tx{PolyHash: msg.Hash(hash)})
 }
 
 func (h *StatusHandler) CheckSkip(hash string) (skip bool, err error) {
-	return bus.NewRedisSkipCheck(h.redis).CheckSkip(context.Background(), &msg.Tx{PolyHash: hash})
+	return bus.NewRedisSkipCheck(h.redis).CheckSkip(context.Background(), &msg.Tx{PolyHash: msg.Hash(hash)})
 }
 
 func (h *StatusHandler) Height(chain uint64, key bus.ChainHeightType) (uint64, error) {

@@ -62,7 +62,7 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 		}
 
 		for _, tx := range txs {
-			if util.LowerHex(hash) == util.LowerHex(tx.PolyHash) {
+			if util.LowerHex(hash) == util.LowerHex(tx.PolyHash.Hex()) {
 				log.Info("Found patch target tx", "hash", hash, "height", height)
 				chainId = tx.DstChainId
 			}
@@ -89,7 +89,7 @@ func Relay(tx *msg.Tx) {
 	chain := tx.SrcChainId
 	hash := tx.SrcHash
 	if len(tx.PolyHash) > 0 {
-		hash = tx.PolyHash
+		hash = tx.PolyHash.Hex()
 	}
 	bin, err := Bin(chain, hash)
 	if len(bin) == 0 {
@@ -144,17 +144,17 @@ func AutoPatch() (err error) {
 
 func CheckFee(sdk *bridge.SDK, tx *msg.Tx) (res *bridge.CheckFeeRequest, err error) {
 	state := map[string]*bridge.CheckFeeRequest{}
-	state[tx.PolyHash] = &bridge.CheckFeeRequest{
+	state[tx.PolyHash.Hex()] = &bridge.CheckFeeRequest{
 		ChainId:  tx.SrcChainId,
 		TxId:     tx.TxId,
-		PolyHash: tx.PolyHash,
+		PolyHash: tx.PolyHash.Hex(),
 	}
 	err = sdk.Node().CheckFee(state)
 	if err != nil {
 		return
 	}
-	if state[tx.PolyHash] == nil {
-		state[tx.PolyHash] = new(bridge.CheckFeeRequest)
+	if state[tx.PolyHash.Hex()] == nil {
+		state[tx.PolyHash.Hex()] = new(bridge.CheckFeeRequest)
 	}
-	return state[tx.PolyHash], nil
+	return state[tx.PolyHash.Hex()], nil
 }

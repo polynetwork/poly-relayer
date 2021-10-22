@@ -11,16 +11,17 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/sm2"
 
+	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	pcom "github.com/polynetwork/poly/common"
-	"github.com/polynetwork/poly/core/types"
-	"github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 )
 
 type Message interface {
@@ -49,9 +50,9 @@ type Tx struct {
 	TxType   TxType
 	Attempts int
 
-	TxId        string                `json:",omitempty"`
-	MerkleValue *common.ToMerkleValue `json:"-"`
-	Param       *common.MakeTxParam   `json:"-"`
+	TxId        string              `json:",omitempty"`
+	MerkleValue *ccom.ToMerkleValue `json:"-"`
+	Param       *ccom.MakeTxParam   `json:"-"`
 
 	SrcHash        string `json:",omitempty"`
 	SrcHeight      uint64 `json:",omitempty"`
@@ -64,14 +65,15 @@ type Tx struct {
 	SrcStateRoot   []byte `json:"-"`
 	SrcProxy       string `json:",omitempty"`
 
-	PolyHash     string        `json:",omitempty"`
-	PolyHeight   uint32        `json:",omitempty"`
+	PolyHash     common.Hash   `json:",omitempty"`
+	PolyHeight   uint64        `json:",omitempty"`
 	PolyKey      string        `json:",omitempty"`
 	PolyHeader   *types.Header `json:"-"`
 	AnchorHeader *types.Header `json:"-"`
 	AnchorProof  string        `json:",omitempty"`
 	AuditPath    string        `json:"-"`
 	PolySigs     []byte        `json:"-"`
+	PolyData     []byte        `json:"-"`
 
 	DstHash                 string                `json:",omitempty"`
 	DstHeight               uint64                `json:",omitempty"`
@@ -80,7 +82,7 @@ type Tx struct {
 	DstGasPrice             string                `json:",omitempty"`
 	DstGasPriceX            string                `json:",omitempty"`
 	DstSender               interface{}           `json:"-"`
-	DstPolyEpochStartHeight uint32                `json:",omitempty"`
+	DstPolyEpochStartHeight uint64                `json:",omitempty"`
 	DstPolyKeepers          []byte                `json:"-"`
 	DstData                 []byte                `json:"-"`
 	DstProxy                string                `json:",omitempty"`
@@ -91,6 +93,14 @@ type Tx struct {
 
 func (tx *Tx) Type() TxType {
 	return tx.TxType
+}
+
+func Hash(str string) common.Hash {
+	return common.HexToHash(str)
+}
+
+func Empty(hash common.Hash) bool {
+	return hash == common.Hash{}
 }
 
 func (tx *Tx) Encode() string {
@@ -109,7 +119,7 @@ func (tx *Tx) Decode(data string) (err error) {
 			if err != nil {
 				return fmt.Errorf("Decode src param error %v event %s", err, tx.SrcParam)
 			}
-			param := &common.MakeTxParam{}
+			param := &ccom.MakeTxParam{}
 			err = param.Deserialization(pcom.NewZeroCopySource(event))
 			if err != nil {
 				return fmt.Errorf("Decode src event error %v event %s", err, tx.SrcParam)

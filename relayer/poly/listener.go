@@ -18,78 +18,95 @@
 package poly
 
 import (
+	"context"
+	"encoding/hex"
+	"fmt"
 	"time"
 
+	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
+	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
-	"github.com/polynetwork/bridge-common/chains/poly"
-	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/util"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	pcom "github.com/polynetwork/poly/common"
 )
 
 type Listener struct {
-	sdk    *poly.SDK
+	sdk    *zion.SDK
 	config *config.ListenerConfig
 }
 
-func (l *Listener) Init(config *config.ListenerConfig, sdk *poly.SDK) (err error) {
+func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error) {
 	l.config = config
 	if sdk != nil {
 		l.sdk = sdk
 	} else {
-		l.sdk, err = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+		l.sdk, err = zion.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
 	}
 	return
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	events, err := l.sdk.Node().GetSmartContractEventByBlock(uint32(height))
+	ccm, err := ccm.NewCrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
+	if err != nil {
+		return nil, err
+	}
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+	events, err := ccm.FilterMakeProof(opt)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, event := range events {
-		for _, notify := range event.Notify {
-			if notify.ContractAddress == poly.CCM_ADDRESS {
-				states := notify.States.([]interface{})
-				if len(states) < 6 {
-					continue
-				}
-				method, _ := states[0].(string)
-				if method != "makeProof" {
-					continue
-				}
+	if events == nil {
+		return
+	}
 
-				dstChain := uint64(states[2].(float64))
-				if dstChain == 0 {
-					log.Error("Invalid dst chain id in poly tx", "hash", event.TxHash)
-					continue
-				}
-
-				tx := new(msg.Tx)
-				tx.DstChainId = dstChain
-				tx.PolyKey = states[5].(string)
-				tx.PolyHeight = uint32(height)
-				tx.PolyHash = event.TxHash
-				tx.TxType = msg.POLY
-				tx.TxId = states[3].(string)
-				tx.SrcChainId = uint64(states[1].(float64))
-				switch tx.SrcChainId {
-				case base.NEO, base.ONT:
-					tx.TxId = util.ReverseHex(tx.TxId)
-				}
-				txs = append(txs, tx)
-			}
+	txs = []*msg.Tx{}
+	for events.Next() {
+		ev := events.Event
+		param := new(zcom.ToMerkleValue)
+		value, err := hex.DecodeString(ev.MerkleValueHex)
+		if err != nil {
+			return nil, err
 		}
+		err = param.Deserialization(pcom.NewZeroCopySource(value))
+		if err != nil {
+			err = fmt.Errorf("GetPolyParams: param.Deserialization error %v", err)
+			return nil, err
+		}
+
+		tx := new(msg.Tx)
+		tx.MerkleValue = param
+		tx.DstChainId = param.MakeTxParam.ToChainID
+		tx.SrcProxy = hex.EncodeToString(param.MakeTxParam.FromContractAddress)
+		tx.DstProxy = hex.EncodeToString(param.MakeTxParam.ToContractAddress)
+		tx.PolyKey = ev.Key
+		tx.PolyHeight = height
+		tx.PolyHash = ev.Raw.TxHash
+		tx.TxType = msg.POLY
+		tx.TxId = hex.EncodeToString(param.MakeTxParam.CrossChainID)
+		tx.SrcChainId = param.FromChainID
+		/*
+			switch tx.SrcChainId {
+			case base.NEO, base.ONT:
+				tx.TxId = util.ReverseHex(tx.TxId)
+			}
+		*/
+		txs = append(txs, tx)
 	}
 
 	return
 }
 
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
-	h, err := l.sdk.Node().GetBlockHeightByTxHash(hash)
+	h, err := l.sdk.Node().GetBlockHeightByTxHash(msg.Hash(hash))
 	height = uint64(h)
 	return
 }

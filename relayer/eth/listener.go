@@ -29,23 +29,23 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
+	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
+	ceth "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/eth"
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/eth"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	pcom "github.com/polynetwork/poly/common"
-	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
-	ceth "github.com/polynetwork/poly/native/service/cross_chain_manager/eth"
 )
 
 type Listener struct {
 	sdk            *eth.SDK
-	poly           *poly.SDK
+	poly           *zion.SDK
 	ccm            common.Address
 	ccd            common.Address
 	config         *config.ListenerConfig
@@ -55,7 +55,7 @@ type Listener struct {
 	state          bus.ChainStore // Header sync state
 }
 
-func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	l.config = config
 	l.name = base.GetChainName(config.ChainId)
 	l.ccm = common.HexToAddress(config.CCMContract)

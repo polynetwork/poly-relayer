@@ -22,18 +22,19 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/big"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ontio/ontology-crypto/signature"
-
+	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
+	hs "github.com/devfans/zion-sdk/contracts/native/go_abi/header_sync_abi"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/eth"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/wallet"
-	sdk "github.com/polynetwork/poly-go-sdk"
 
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -44,33 +45,51 @@ type Submitter struct {
 	context.Context
 	wg      *sync.WaitGroup
 	config  *config.PolySubmitterConfig
-	sdk     *poly.SDK
-	signer  *sdk.Account
+	sdk     *zion.SDK
 	name    string
 	sync    *config.HeaderSyncConfig
 	compose msg.PolyComposer
 	state   bus.ChainStore // Header sync marking
+	wallet  wallet.IWallet
 
 	// Check last header commit
 	lastCommit   uint64
 	lastCheck    uint64
 	blocksToWait uint64
+	hsabi        abi.ABI
+	txabi        abi.ABI
 }
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	s.config = config
-	s.signer, err = wallet.NewPolySigner(config.Wallet)
-	if err != nil {
-		return
-	}
 	s.name = base.GetChainName(config.ChainId)
 	s.blocksToWait = base.BlocksToWait(config.ChainId)
 	log.Info("Chain blocks to wait", "blocks", s.blocksToWait, "chain", s.name)
-	s.sdk, err = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+	s.sdk, err = zion.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+	if err != nil {
+		return
+	}
+	if config.Wallet != nil {
+		sdk, err := eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1)
+		if err != nil {
+			return err
+		}
+		s.wallet = wallet.New(config.Wallet, sdk)
+		err = s.wallet.Init()
+		if err != nil {
+			return err
+		}
+	}
+
+	s.hsabi, err = abi.JSON(strings.NewReader(hs.HeaderSyncABI))
+	if err != nil {
+		return
+	}
+	s.txabi, err = abi.JSON(strings.NewReader(ccm.CrossChainManagerABI))
 	return
 }
 
-func (s *Submitter) SDK() *poly.SDK {
+func (s *Submitter) SDK() *zion.SDK {
 	return s.sdk
 }
 
@@ -169,17 +188,11 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 }
 
 func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string, err error) {
-	tx, err := s.sdk.Node().Native.Hs.SyncBlockHeader(
-		chainId, s.signer.Address, headers, s.signer,
-	)
+	data, err := s.hsabi.Pack("syncBlockHeader", s.config.ChainId, zion.CCM_ADDRESS, headers)
 	if err != nil {
-		return "", err
+		return
 	}
-	hash = tx.ToHexString()
-	_, err = s.sdk.Node().Confirm(hash, 0, 10)
-	if err == nil {
-		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
-	}
+	hash, err = s.wallet.Send(zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 	return
 }
 
@@ -204,16 +217,16 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		tx.SrcStateRoot = []byte{}
 	}
 
-	var account []byte
+	// var account []byte
 	switch tx.SrcChainId {
 	case base.NEO, base.ONT:
-		account = s.signer.Address[:]
+		// account = s.signer.Address[:]
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
 			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
 		}
 	default:
 		// For other chains, reversed?
-		account = common.Hex2Bytes(s.signer.Address.ToHexString())
+		// account = common.Hex2Bytes(s.signer.Address.ToHexString())
 
 		// Check done tx existence
 		data, _ := s.sdk.Node().GetDoneTx(tx.SrcChainId, tx.Param.CrossChainID)
@@ -223,23 +236,25 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		}
 	}
 
-	t, err := s.sdk.Node().Native.Ccm.ImportOuterTransfer(
-		tx.SrcChainId,
-		tx.SrcEvent,
-		uint32(tx.SrcProofHeight),
-		tx.SrcProof,
-		account,
-		tx.SrcStateRoot,
-		s.signer,
-	)
-	if err != nil {
-		if strings.Contains(err.Error(), "tx already done") {
-			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
-			return nil
+	/*
+		t, err := s.sdk.Node().Native.Ccm.ImportOuterTransfer(
+			tx.SrcChainId,
+			tx.SrcEvent,
+			uint32(tx.SrcProofHeight),
+			tx.SrcProof,
+			account,
+			tx.SrcStateRoot,
+			s.signer,
+		)
+		if err != nil {
+			if strings.Contains(err.Error(), "tx already done") {
+				log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
+				return nil
+			}
+			return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
 		}
-		return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
-	}
-	tx.PolyHash = t.ToHexString()
+		tx.PolyHash = t.ToHexString()
+	*/
 	return nil
 }
 
@@ -261,23 +276,25 @@ func (s *Submitter) Stop() error {
 }
 
 func (s *Submitter) CollectSigs(tx *msg.Tx) (err error) {
-	var (
-		sigs []byte
-	)
-	sigHeader := tx.PolyHeader
-	if tx.AnchorHeader != nil && tx.AnchorProof != "" {
-		sigHeader = tx.AnchorHeader
-	}
-	for _, sig := range sigHeader.SigData {
-		temp := make([]byte, len(sig))
-		copy(temp, sig)
-		s, err := signature.ConvertToEthCompatible(temp)
-		if err != nil {
-			return fmt.Errorf("MakeTx signature.ConvertToEthCompatible %v", err)
+	/*
+		var (
+			sigs []byte
+		)
+		sigHeader := tx.PolyHeader
+		if tx.AnchorHeader != nil && tx.AnchorProof != "" {
+			sigHeader = tx.AnchorHeader
 		}
-		sigs = append(sigs, s...)
-	}
-	tx.PolySigs = sigs
+		for _, sig := range sigHeader.SigData {
+			temp := make([]byte, len(sig))
+			copy(temp, sig)
+			s, err := signature.ConvertToEthCompatible(temp)
+			if err != nil {
+				return fmt.Errorf("MakeTx signature.ConvertToEthCompatible %v", err)
+			}
+			sigs = append(sigs, s...)
+		}
+		tx.PolySigs = sigs
+	*/
 	return
 }
 
@@ -560,6 +577,6 @@ func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 	log.Info("Header sync exiting loop now")
 }
 
-func (s *Submitter) Poly() *poly.SDK {
+func (s *Submitter) Poly() *zion.SDK {
 	return s.sdk
 }

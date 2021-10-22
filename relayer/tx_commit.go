@@ -154,10 +154,10 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	// Missing -> send to delay queue
 	state := map[string]*bridge.CheckFeeRequest{}
 	for _, tx := range txs {
-		state[tx.PolyHash] = &bridge.CheckFeeRequest{
+		state[tx.PolyHash.Hex()] = &bridge.CheckFeeRequest{
 			ChainId:  tx.SrcChainId,
 			TxId:     tx.TxId,
-			PolyHash: tx.PolyHash,
+			PolyHash: tx.PolyHash.Hex(),
 		}
 	}
 	err = b.bridge.Node().CheckFee(state)
@@ -167,9 +167,9 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	for _, tx := range txs {
 		feeMin := float32(0)
 		feePaid := float32(0)
-		check := state[tx.PolyHash]
+		check := state[tx.PolyHash.Hex()]
 		if check != nil {
-			tx.CheckFeeStatus = state[tx.PolyHash].Status
+			tx.CheckFeeStatus = state[tx.PolyHash.Hex()].Status
 			feeMin = float32(check.Min)
 			feePaid = float32(check.Paid)
 		}
@@ -210,7 +210,7 @@ LOOP:
 		if !flush || len(txs) < 100 {
 			tx, _ := b.TxBus.PopTimed(ctx, time.Second)
 			if tx != nil {
-				if tx.PolyHash == "" {
+				if msg.Empty(tx.PolyHash) {
 					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
 					continue
 				}

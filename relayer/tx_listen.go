@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -59,7 +59,7 @@ func (h *SrcTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
-	poly, _ := poly.WithOptions(base.POLY, h.config.Poly.Nodes, time.Minute, 1)
+	poly, _ := zion.WithOptions(base.POLY, h.config.Poly.Nodes, time.Minute, 1)
 	err = h.listener.Init(h.config.ListenerConfig, poly)
 	if err != nil {
 		return
@@ -371,8 +371,8 @@ func (h *PolyTxSyncHandler) patchTxs() {
 
 		log.Info("Received patch tx request", "tx", tx.Encode())
 		height := uint64(tx.PolyHeight)
-		if height == 0 && tx.PolyHash != "" {
-			height, err = h.listener.GetTxBlock(tx.PolyHash)
+		if height == 0 && !msg.Empty(tx.PolyHash) {
+			height, err = h.listener.GetTxBlock(tx.PolyHash.Hex())
 			if err != nil {
 				log.Error("Failed to get poly tx block", "hash", tx.PolyHash, "chain", h.config.ChainId)
 				continue
@@ -391,7 +391,7 @@ func (h *PolyTxSyncHandler) patchTxs() {
 
 		count := 0
 		for _, t := range txs {
-			if tx.PolyHash == "" || util.LowerHex(tx.PolyHash) == util.LowerHex(t.PolyHash) {
+			if msg.Empty(tx.PolyHash) || util.LowerHex(tx.PolyHash.Hex()) == util.LowerHex(t.PolyHash.Hex()) {
 				count++
 				log.Info("Found patch target poly tx", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
 				t.CapturePatchParams(tx)

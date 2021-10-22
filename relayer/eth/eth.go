@@ -99,6 +99,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	} else {
 		tx.DstHash, err = s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	}
+
 	return err
 }
 
@@ -120,12 +121,13 @@ func (s *Submitter) GetPolyKeepers() (keepers []byte, err error) {
 	return ccd.GetCurEpochConPubKeyBytes(nil)
 }
 
-func (s *Submitter) GetPolyEpochStartHeight() (height uint32, err error) {
+func (s *Submitter) GetPolyEpochStartHeight() (height uint64, err error) {
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
 		return
 	}
-	return ccd.GetCurEpochStartHeight(nil)
+	h, err := ccd.GetCurEpochStartHeight(nil)
+	return uint64(h), err
 }
 
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
@@ -154,13 +156,14 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 
 	var anchor []byte
 	if tx.AnchorHeader != nil {
-		anchor = tx.AnchorHeader.GetMessage()
+		anchor, _ = tx.AnchorHeader.MarshalJSON()
 	}
 	path, err := hex.DecodeString(tx.AuditPath)
 	if err != nil {
 		return fmt.Errorf("%s failed to decode audit path %v", s.name, err)
 	}
-	tx.DstData, err = s.abi.Pack("verifyHeaderAndExecuteTx", path, tx.PolyHeader.GetMessage(), proof, anchor, tx.PolySigs)
+	header, _ := tx.PolyHeader.MarshalJSON()
+	tx.DstData, err = s.abi.Pack("verifyHeaderAndExecuteTx", path, header, proof, anchor, tx.PolySigs)
 	if err != nil {
 		err = fmt.Errorf("%s processPolyTx pack tx error %v", s.name, err)
 		return err

@@ -26,7 +26,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/bridge"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -35,7 +35,6 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/heco"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
-	"github.com/polynetwork/poly-relayer/relayer/neo"
 	"github.com/polynetwork/poly-relayer/relayer/o3"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
@@ -44,7 +43,7 @@ import (
 )
 
 type IChainListener interface {
-	Init(*config.ListenerConfig, *poly.SDK) error
+	Init(*config.ListenerConfig, *zion.SDK) error
 	Defer() int
 	ListenCheck() time.Duration
 	ChainId() uint64
@@ -88,8 +87,6 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(heco.Listener)
 	case base.O3:
 		listener = new(o3.Listener)
-	case base.NEO:
-		listener = new(neo.Listener)
 	case base.ONT:
 		listener = new(ont.Listener)
 	case base.POLY:
@@ -109,8 +106,6 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(heco.Submitter)
 	case base.O3:
 		submitter = new(o3.Submitter)
-	case base.NEO:
-		submitter = new(neo.Submitter)
 	case base.ONT:
 		submitter = new(ont.Submitter)
 	case base.ARBITRUM:
@@ -148,7 +143,7 @@ func ChainSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	return
 }
 
-func ChainListener(chain uint64, poly *poly.SDK) (l IChainListener, err error) {
+func ChainListener(chain uint64, poly *zion.SDK) (l IChainListener, err error) {
 	l = GetListener(chain)
 	if l == nil {
 		err = fmt.Errorf("No listener for chain %d available", chain)

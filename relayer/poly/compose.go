@@ -2,49 +2,52 @@ package poly
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/ontology-crypto/keypair"
 	vconf "github.com/ontio/ontology/consensus/vbft/config"
 
 	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/chains/poly"
-	"github.com/polynetwork/bridge-common/log"
+	// "github.com/polynetwork/bridge-common/log"
+	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	scom "github.com/polynetwork/poly-go-sdk/common"
 	pcom "github.com/polynetwork/poly/common"
-	"github.com/polynetwork/poly/core/types"
-	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
-func (s *Submitter) GetProof(height uint32, key string) (param *ccom.ToMerkleValue, auditPath string, evt *scom.SmartContactEvent, err error) {
-	proof, err := s.sdk.Node().GetCrossStatesProof(height, key)
-	if err != nil {
-		err = fmt.Errorf("GetProof: GetCrossStatesProof error %v", err)
-		return
-	}
-	auditPath = proof.AuditPath
-	path, err := hex.DecodeString(proof.AuditPath)
-	if err != nil {
-		return
-	}
-	value, _, _, _ := msg.ParseAuditPath(path)
-	param = new(ccom.ToMerkleValue)
-	err = param.Deserialization(pcom.NewZeroCopySource(value))
-	if err != nil {
-		err = fmt.Errorf("GetPolyParams: param.Deserialization error %v", err)
-	}
+func (s *Submitter) GetProof(height uint64, key string) (param *ccom.ToMerkleValue, auditPath string, evt *scom.SmartContactEvent, err error) {
+	//TODO:
+	/*
+			proof, err := s.sdk.Node().GetCrossStatesProof(height, key)
+			if err != nil {
+				err = fmt.Errorf("GetProof: GetCrossStatesProof error %v", err)
+				return
+			}
+		auditPath = proof.AuditPath
+		path, err := hex.DecodeString(proof.AuditPath)
+		if err != nil {
+			return
+		}
+		value, _, _, _ := msg.ParseAuditPath(path)
+		param = new(ccom.ToMerkleValue)
+		err = param.Deserialization(pcom.NewZeroCopySource(value))
+		if err != nil {
+			err = fmt.Errorf("GetPolyParams: param.Deserialization error %v", err)
+		}
+	*/
 	return
 }
 
 func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path string, evt *scom.SmartContactEvent, err error) {
-	if tx.PolyHash == "" {
+	if msg.Empty(tx.PolyHash) {
 		err = fmt.Errorf("ComposeTx: Invalid poly hash")
 		return
 	}
@@ -60,6 +63,7 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path s
 		return s.GetProof(tx.PolyHeight, tx.PolyKey)
 	}
 
+	/* TODO:
 	evt, err = s.sdk.Node().GetSmartContractEvent(tx.PolyHash)
 	if err != nil {
 		return
@@ -81,12 +85,13 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path s
 			}
 		}
 	}
+	*/
 	err = fmt.Errorf("Valid ToMerkleValue not found")
 	return
 }
 
 func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
-	if tx.PolyHash == "" {
+	if msg.Empty(tx.PolyHash) {
 		return fmt.Errorf("ComposeTx: Invalid poly hash")
 	}
 	if tx.DstPolyEpochStartHeight == 0 {
@@ -99,7 +104,7 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 			return
 		}
 	}
-	tx.PolyHeader, err = s.sdk.Node().GetHeaderByHeight(tx.PolyHeight + 1)
+	tx.PolyHeader, err = s.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(tx.PolyHeight+1)))
 	if err != nil {
 		return err
 	}
@@ -134,7 +139,7 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 }
 
 func (s *Submitter) ComposePolyHeaderProof(tx *msg.Tx) (err error) {
-	var anchorHeight uint32
+	var anchorHeight uint64
 	if tx.PolyHeight < tx.DstPolyEpochStartHeight {
 		anchorHeight = tx.DstPolyEpochStartHeight + 1
 	} else {
@@ -148,15 +153,18 @@ func (s *Submitter) ComposePolyHeaderProof(tx *msg.Tx) (err error) {
 	}
 
 	if anchorHeight > 0 {
-		tx.AnchorHeader, err = s.sdk.Node().GetHeaderByHeight(anchorHeight)
+		tx.AnchorHeader, err = s.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(anchorHeight)))
 		if err != nil {
 			return err
 		}
-		proof, err := s.sdk.Node().GetMerkleProof(tx.PolyHeight+1, anchorHeight)
-		if err != nil {
-			return err
-		}
-		tx.AnchorProof = proof.AuditPath
+		// TODO:
+		/*
+			proof, err := s.sdk.Node().GetMerkleProof(tx.PolyHeight+1, anchorHeight)
+			if err != nil {
+				return err
+			}
+			tx.AnchorProof = proof.AuditPath
+		*/
 	}
 	return
 }
@@ -169,15 +177,20 @@ func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKe
 		err = fmt.Errorf("Dst chain poly keeper not provided")
 		return
 	}
-	if hdr.NextBookkeeper == pcom.ADDRESS_EMPTY {
-		return
-	}
+	// TODO:
+	/*
+		if hdr.NextBookkeeper == pcom.ADDRESS_EMPTY {
+			return
+		}
+	*/
 	info := &vconf.VbftBlockInfo{}
-	err = json.Unmarshal(hdr.ConsensusPayload, info)
-	if err != nil {
-		err = fmt.Errorf("CheckEpoch consensus payload unmarshal error %v", err)
-		return
-	}
+	/*
+		err = json.Unmarshal(hdr.ConsensusPayload, info)
+		if err != nil {
+			err = fmt.Errorf("CheckEpoch consensus payload unmarshal error %v", err)
+			return
+		}
+	*/
 	var bks []keypair.PublicKey
 	for _, peer := range info.NewChainConfig.Peers {
 		keyStr, _ := hex.DecodeString(peer.ID)
