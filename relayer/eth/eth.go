@@ -133,20 +133,19 @@ func (s *Submitter) GetPolyEpochStartHeight() (height uint64, err error) {
 }
 
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
-	txId := [32]byte{}
-	copy(txId[:], tx.MerkleValue.TxHash[:32])
-
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
 		return
 	}
+	txId := [32]byte{}
+	copy(txId[:], tx.MerkleValue.TxHash[:32])
 	exist, err := ccd.CheckIfFromChainTxExist(nil, tx.SrcChainId, txId)
 	if err != nil {
 		return err
 	}
 
 	if exist {
-		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "txid", tx.TxId)
+		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "poly_hash", tx.PolyHash)
 		return nil
 	}
 
@@ -321,9 +320,13 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp = time.Now().Unix() + 60*25
 			case base.BSC, base.HECO, base.OK:
 				tsp = time.Now().Unix() + 60*4
+			case base.ETH:
+				tsp = time.Now().Unix() + 60*10
 			}
 			if tsp > 0 && tx.DstHash != "" {
-				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+				t := *tx
+				t.DstHash = ""
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), &t, tsp) })
 			}
 		}
 	}
