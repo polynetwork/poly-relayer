@@ -94,6 +94,8 @@ func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) 
 	switch c := conf.(type) {
 	case *config.HeaderSyncConfig:
 		handler = NewHeaderSyncHandler(c)
+	case *config.PolyEpochSyncConfig:
+		handler = NewPolyEpochSyncHandler(c)
 	case *config.SrcTxSyncConfig:
 		handler = NewSrcTxSyncHandler(c)
 	case *config.SrcTxCommitConfig:

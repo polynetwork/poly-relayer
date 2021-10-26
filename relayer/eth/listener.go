@@ -29,9 +29,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
+	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
 	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ceth "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/eth"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
+
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/eth"
@@ -174,7 +175,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
+	ccm, err := eccm_abi.NewEthCrossChainManagerImplemetation(l.ccm, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}

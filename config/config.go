@@ -88,6 +88,7 @@ func New(path string) (config *Config, err error) {
 type PolyChainConfig struct {
 	PolySubmitterConfig `json:",inline"`
 	PolyTxSync          *PolyTxSyncConfig
+	PolyEpochSync       *PolyEpochSyncConfig
 }
 
 type ChainConfig struct {
@@ -214,6 +215,8 @@ type PolyTxSyncConfig struct {
 	Bus             *BusConfig
 }
 
+type PolyEpochSyncConfig PolyTxSyncConfig
+
 type PolyTxCommitConfig struct {
 	*SubmitterConfig `json:",inline"`
 	Poly             *PolySubmitterConfig
@@ -273,6 +276,18 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 		}
 		if len(c.PolyTxSync.Nodes) == 0 {
 			c.PolyTxSync.Nodes = c.Nodes
+		}
+	}
+	if c.PolyEpochSync != nil {
+		if c.PolyEpochSync.ListenerConfig == nil {
+			c.PolyEpochSync.ListenerConfig = new(ListenerConfig)
+		}
+		c.PolyEpochSync.ChainId = base.POLY
+		if c.PolyEpochSync.Bus == nil {
+			c.PolyEpochSync.Bus = bus
+		}
+		if len(c.PolyEpochSync.Nodes) == 0 {
+			c.PolyEpochSync.Nodes = c.Nodes
 		}
 	}
 	if c.Wallet != nil {

@@ -1,92 +1,63 @@
+/*
+ * Copyright (C) 2021 The poly network Authors
+ * This file is part of The poly network library.
+ *
+ * The  poly network  is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * The  poly network  is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package poly
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ontio/ontology-crypto/keypair"
-	vconf "github.com/ontio/ontology/consensus/vbft/config"
-
-	"github.com/polynetwork/bridge-common/base"
-	// "github.com/polynetwork/bridge-common/log"
-	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
-	scom "github.com/polynetwork/poly-go-sdk/common"
-	pcom "github.com/polynetwork/poly/common"
-
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
-func (s *Submitter) GetProof(height uint64, key string) (param *ccom.ToMerkleValue, auditPath string, evt *scom.SmartContactEvent, err error) {
-	//TODO:
-	/*
-			proof, err := s.sdk.Node().GetCrossStatesProof(height, key)
-			if err != nil {
-				err = fmt.Errorf("GetProof: GetCrossStatesProof error %v", err)
-				return
-			}
-		auditPath = proof.AuditPath
-		path, err := hex.DecodeString(proof.AuditPath)
-		if err != nil {
-			return
-		}
-		value, _, _, _ := msg.ParseAuditPath(path)
-		param = new(ccom.ToMerkleValue)
-		err = param.Deserialization(pcom.NewZeroCopySource(value))
-		if err != nil {
-			err = fmt.Errorf("GetPolyParams: param.Deserialization error %v", err)
-		}
-	*/
-	return
-}
-
-func (s *Submitter) GetPolyParams(tx *msg.Tx) (param *ccom.ToMerkleValue, path string, evt *scom.SmartContactEvent, err error) {
-	if msg.Empty(tx.PolyHash) {
-		err = fmt.Errorf("ComposeTx: Invalid poly hash")
+func (s *Submitter) GetPolyParams(tx *msg.Tx) (err error) {
+	if tx.PolyKey == "" {
+		err = fmt.Errorf("Poly key not specified")
 		return
 	}
 
-	if tx.PolyHeight == 0 {
-		tx.PolyHeight, err = s.sdk.Node().GetBlockHeightByTxHash(tx.PolyHash)
-		if err != nil {
-			return
-		}
+	if tx.AnchorHeight == 0 {
+		return fmt.Errorf("Poly tx anchor height not provided", "poly_hash", tx.PolyHash)
 	}
 
-	if tx.PolyKey != "" {
-		return s.GetProof(tx.PolyHeight, tx.PolyKey)
+	tx.AnchorHeader, err = s.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(tx.AnchorHeight)))
+	if err != nil {
+		return err
 	}
-
-	/* TODO:
-	evt, err = s.sdk.Node().GetSmartContractEvent(tx.PolyHash)
+	proof, err := s.sdk.Node().GetProof(zion.CCM_ADDRESS.Hex(), tx.PolyKey, tx.AnchorHeight)
 	if err != nil {
 		return
 	}
-
-	for _, notify := range evt.Notify {
-		if notify.ContractAddress == poly.CCM_ADDRESS {
-			states := notify.States.([]interface{})
-			if len(states) > 5 {
-				method, _ := states[0].(string)
-				if method == "makeProof" {
-					param, path, evt, err = s.GetProof(tx.PolyHeight, states[5].(string))
-					if err != nil {
-						log.Error("GetPolyParams: param.Deserialization error", "err", err)
-					} else {
-						return
-					}
-				}
-			}
-		}
+	tx.PolyAccountProof, err = msg.RlpEncodeStrings(proof.AccountProof)
+	if err != nil {
+		err = fmt.Errorf("rlp encode poly account proof failed", "poly_hash", tx.PolyHash, "err", err)
+		return
 	}
-	*/
-	err = fmt.Errorf("Valid ToMerkleValue not found")
+	if len(proof.StorageProofs) == 0 {
+		err = fmt.Errorf("Failed to fetch poly storage proof, got empty", "poly_hash", tx.PolyHash)
+		return
+	}
+	tx.PolyStorageProof, err = msg.RlpEncodeStrings(proof.StorageProofs[0].Proof)
+	if err != nil {
+		err = fmt.Errorf("rlp encode poly storage proof failed", "poly_hash", tx.PolyHash, "err", err)
+	}
 	return
 }
 
@@ -94,33 +65,12 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 	if msg.Empty(tx.PolyHash) {
 		return fmt.Errorf("ComposeTx: Invalid poly hash")
 	}
-	if tx.DstPolyEpochStartHeight == 0 {
-		return fmt.Errorf("ComposeTx: Dst chain poly height not specified")
-	}
-
 	if tx.PolyHeight == 0 {
 		tx.PolyHeight, err = s.sdk.Node().GetBlockHeightByTxHash(tx.PolyHash)
 		if err != nil {
 			return
 		}
 	}
-	tx.PolyHeader, err = s.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(tx.PolyHeight+1)))
-	if err != nil {
-		return err
-	}
-
-	if tx.DstChainId != base.ONT {
-		err = s.ComposePolyHeaderProof(tx)
-		if err != nil {
-			return
-		}
-	}
-
-	tx.MerkleValue, tx.AuditPath, _, err = s.GetPolyParams(tx)
-	if err != nil {
-		return err
-	}
-
 	if tx.MerkleValue.MakeTxParam == nil || !config.CONFIG.AllowMethod(tx.MerkleValue.MakeTxParam.Method) {
 		method := "missing param"
 		if tx.MerkleValue.MakeTxParam != nil {
@@ -128,92 +78,5 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 		}
 		return fmt.Errorf("%w Invalid poly tx, src chain(%v) tx(%s) method(%s)", msg.ERR_INVALID_TX, tx.SrcChainId, tx.PolyHash, method)
 	}
-
-	tx.SrcProxy = common.BytesToAddress(tx.MerkleValue.MakeTxParam.FromContractAddress).String()
-	tx.DstProxy = common.BytesToAddress(tx.MerkleValue.MakeTxParam.ToContractAddress).String()
-
-	if tx.DstChainId != base.ONT {
-		return s.CollectSigs(tx)
-	}
-	return
-}
-
-func (s *Submitter) ComposePolyHeaderProof(tx *msg.Tx) (err error) {
-	var anchorHeight uint64
-	if tx.PolyHeight < tx.DstPolyEpochStartHeight {
-		anchorHeight = tx.DstPolyEpochStartHeight + 1
-	} else {
-		isEpoch, _, err := s.CheckEpoch(tx, tx.PolyHeader)
-		if err != nil {
-			return err
-		}
-		if isEpoch {
-			anchorHeight = tx.PolyHeight + 2
-		}
-	}
-
-	if anchorHeight > 0 {
-		tx.AnchorHeader, err = s.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(anchorHeight)))
-		if err != nil {
-			return err
-		}
-		// TODO:
-		/*
-			proof, err := s.sdk.Node().GetMerkleProof(tx.PolyHeight+1, anchorHeight)
-			if err != nil {
-				return err
-			}
-			tx.AnchorProof = proof.AuditPath
-		*/
-	}
-	return
-}
-
-func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKeys []byte, err error) {
-	if tx.DstChainId == base.NEO {
-		return
-	}
-	if len(tx.DstPolyKeepers) == 0 {
-		err = fmt.Errorf("Dst chain poly keeper not provided")
-		return
-	}
-	// TODO:
-	/*
-		if hdr.NextBookkeeper == pcom.ADDRESS_EMPTY {
-			return
-		}
-	*/
-	info := &vconf.VbftBlockInfo{}
-	/*
-		err = json.Unmarshal(hdr.ConsensusPayload, info)
-		if err != nil {
-			err = fmt.Errorf("CheckEpoch consensus payload unmarshal error %v", err)
-			return
-		}
-	*/
-	var bks []keypair.PublicKey
-	for _, peer := range info.NewChainConfig.Peers {
-		keyStr, _ := hex.DecodeString(peer.ID)
-		key, _ := keypair.DeserializePublicKey(keyStr)
-		bks = append(bks, key)
-	}
-	bks = keypair.SortPublicKeys(bks)
-	pubKeys = []byte{}
-	sink := pcom.NewZeroCopySink(nil)
-	sink.WriteUint64(uint64(len(bks)))
-	for _, key := range bks {
-		var bytes []byte
-		bytes, err = msg.EncodePubKey(key)
-		if err != nil {
-			return
-		}
-		pubKeys = append(pubKeys, bytes...)
-		bytes, err = msg.EncodeEthPubKey(key)
-		if err != nil {
-			return
-		}
-		sink.WriteVarBytes(crypto.Keccak256(bytes[1:])[12:])
-	}
-	epoch = !bytes.Equal(tx.DstPolyKeepers, sink.Bytes())
-	return
+	return s.GetPolyParams(tx)
 }

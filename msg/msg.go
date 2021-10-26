@@ -14,11 +14,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-crypto/sm2"
 
 	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
+	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	pcom "github.com/polynetwork/poly/common"
@@ -33,15 +35,61 @@ type Message interface {
 type TxType int
 
 const (
-	SRC    TxType = 1
-	POLY   TxType = 2
-	HEADER TxType = 3
+	SRC        TxType = 1
+	POLY       TxType = 2
+	HEADER     TxType = 3
+	POLY_EPOCH TxType = 4
 )
 
 type Header struct {
 	Height uint64
 	Hash   []byte
 	Data   []byte
+}
+
+type PolyEpoch struct {
+	Height          uint64
+	EpochId         uint64
+	HeaderHex       string `json:",omitempty"`
+	SealHex         string `json:",omitempty"`
+	AccountProofHex string `json:",omitempty"`
+	StorageProofHex string `json:",omitempty"`
+	EpochHex        string `json:",omitempty"`
+	Header          []byte `json:"-"`
+	Seal            []byte `json:"-"`
+	AccountProof    []byte `json:"-"`
+	StorageProof    []byte `json:"-"`
+	Epoch           []byte `json:"-"`
+}
+
+func RlpEncodeEpoch(id, startHeight uint64, peers *node_manager.Peers) (bytes []byte, err error) {
+	return rlp.EncodeToBytes(
+		struct {
+			ID          uint64
+			Peers       *node_manager.Peers
+			StartHeight uint64
+		}{
+			ID:          id,
+			Peers:       peers,
+			StartHeight: startHeight,
+		},
+	)
+}
+
+func (m *PolyEpoch) Encode() {
+	m.HeaderHex = hex.EncodeToString(m.Header)
+	m.SealHex = hex.EncodeToString(m.Seal)
+	m.AccountProofHex = hex.EncodeToString(m.AccountProof)
+	m.StorageProofHex = hex.EncodeToString(m.StorageProof)
+	m.EpochHex = hex.EncodeToString(m.Epoch)
+}
+
+func (m *PolyEpoch) Decode() {
+	m.Header, _ = hex.DecodeString(m.HeaderHex)
+	m.Seal, _ = hex.DecodeString(m.SealHex)
+	m.AccountProof, _ = hex.DecodeString(m.AccountProofHex)
+	m.StorageProof, _ = hex.DecodeString(m.StorageProofHex)
+	m.Epoch, _ = hex.DecodeString(m.EpochHex)
 }
 
 type PolyComposer func(*Tx) error
@@ -65,15 +113,19 @@ type Tx struct {
 	SrcStateRoot   []byte `json:"-"`
 	SrcProxy       string `json:",omitempty"`
 
-	PolyHash     common.Hash   `json:",omitempty"`
-	PolyHeight   uint64        `json:",omitempty"`
-	PolyKey      string        `json:",omitempty"`
-	PolyHeader   *types.Header `json:"-"`
-	AnchorHeader *types.Header `json:"-"`
-	AnchorProof  string        `json:",omitempty"`
-	AuditPath    string        `json:"-"`
-	PolySigs     []byte        `json:"-"`
-	PolyData     []byte        `json:"-"`
+	PolyHash         common.Hash   `json:",omitempty"`
+	PolyHeight       uint64        `json:",omitempty"`
+	PolyKey          string        `json:",omitempty"`
+	PolyHeader       *types.Header `json:"-"`
+	AnchorHeader     *types.Header `json:"-"`
+	AnchorHeight     uint64        `json:",omitempty"`
+	PolySigs         []byte        `json:"-"`
+	PolySender       interface{}   `json:"-"`
+	PolyData         []byte        `json:"-"`
+	PolyParam        string        `json:",omitempty"`
+	PolyAccountProof []byte        `json:"-"`
+	PolyStorageProof []byte        `json:"-"`
+	PolyEpoch        *PolyEpoch    `json:",omitempty"`
 
 	DstHash                 string                `json:",omitempty"`
 	DstHeight               uint64                `json:",omitempty"`
@@ -126,6 +178,19 @@ func (tx *Tx) Decode(data string) (err error) {
 			}
 			tx.Param = param
 			tx.SrcEvent = event
+		}
+		if len(tx.PolyParam) > 0 && tx.Param == nil {
+			param := new(ccom.ToMerkleValue)
+			value, err := hex.DecodeString(tx.PolyParam)
+			if err != nil {
+				return fmt.Errorf("Decode poly param error %v event %s", err, tx.PolyParam)
+			}
+			tx.MerkleValue = param
+			err = param.Deserialization(pcom.NewZeroCopySource(value))
+			if err != nil {
+				return fmt.Errorf("Decode poly merkle value error %v", err)
+			}
+			tx.Param = tx.MerkleValue.MakeTxParam
 		}
 	}
 	return
@@ -264,4 +329,12 @@ func EncodeTxId(id []byte) string {
 		return "00"
 	}
 	return hex.EncodeToString(index.Bytes())
+}
+
+func RlpEncodeStrings(strs []string) ([]byte, error) {
+	var bytes []byte
+	for _, str := range strs {
+		bytes = append(bytes, common.Hex2Bytes(str[2:])...)
+	}
+	return rlp.EncodeToBytes(bytes)
 }

@@ -37,7 +37,6 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/matic"
 	"github.com/polynetwork/poly-relayer/relayer/o3"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
-	"github.com/polynetwork/poly-relayer/relayer/ont"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
 	"github.com/polynetwork/poly-relayer/relayer/xdai"
 )
@@ -69,7 +68,8 @@ type IChainSubmitter interface {
 	Hook(context.Context, *sync.WaitGroup, <-chan msg.Message) error
 	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
 	Process(msg.Message, msg.PolyComposer) error
-	ProcessTx(*msg.Tx, msg.PolyComposer) error
+	ProcessTx(*msg.Tx, msg.PolyComposer) error // Process poly tx
+	ProcessEpoch(*msg.Tx) error                // Process poly epoch sync
 	Stop() error
 }
 
@@ -87,8 +87,6 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(heco.Listener)
 	case base.O3:
 		listener = new(o3.Listener)
-	case base.ONT:
-		listener = new(ont.Listener)
 	case base.POLY:
 		listener = new(po.Listener)
 	default:
@@ -106,8 +104,6 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(heco.Submitter)
 	case base.O3:
 		submitter = new(o3.Submitter)
-	case base.ONT:
-		submitter = new(ont.Submitter)
 	case base.ARBITRUM:
 		submitter = new(arb.Submitter)
 	case base.XDAI:

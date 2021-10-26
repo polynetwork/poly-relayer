@@ -37,6 +37,7 @@ import (
 
 const (
 	SET_HEADER_HEIGHT = "setheaderblock"
+	SET_EPOCH_HEIGHT  = "setepochblock"
 	SET_TX_HEIGHT     = "settxblock"
 	RELAY_TX          = "submit"
 	STATUS            = "status"
@@ -50,6 +51,7 @@ var _Handlers = map[string]func(*cli.Context) error{}
 
 func init() {
 	_Handlers[SET_HEADER_HEIGHT] = SetHeaderSyncHeight
+	_Handlers[SET_EPOCH_HEIGHT] = SetEpochSyncHeight
 	_Handlers[SET_TX_HEIGHT] = SetTxSyncHeight
 	_Handlers[STATUS] = Status
 	_Handlers[HTTP] = Http
@@ -269,6 +271,11 @@ func SetTxSyncHeight(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(chain, bus.KEY_HEIGHT_TX, height)
+}
+
+func SetEpochSyncHeight(ctx *cli.Context) (err error) {
+	height := uint64(ctx.Int("height"))
+	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(base.POLY, bus.KEY_HEIGHT_EPOCH_RESET, height)
 }
 
 func Skip(ctx *cli.Context) (err error) {

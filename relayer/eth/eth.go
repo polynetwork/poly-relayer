@@ -2,7 +2,6 @@ package eth
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -13,9 +12,12 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/polynetwork/bridge-common/abi/eccd_abi"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
+	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
+	eccd_abi "github.com/KSlashh/poly-abi/abi_1.10.7/eccd"
+	"github.com/devfans/zion-sdk/core/types"
+
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
@@ -63,7 +65,7 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.name = base.GetChainName(config.ChainId)
 	s.ccd = common.HexToAddress(config.CCDContract)
 	s.ccm = common.HexToAddress(config.CCMContract)
-	s.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
+	s.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplemetationABI))
 	return
 }
 
@@ -113,12 +115,12 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
-func (s *Submitter) GetPolyKeepers() (keepers []byte, err error) {
+func (s *Submitter) GetPolyEpochId() (id uint64, err error) {
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
 		return
 	}
-	return ccd.GetCurEpochConPubKeyBytes(nil)
+	return ccd.GetCurEpochId(nil)
 }
 
 func (s *Submitter) GetPolyEpochStartHeight() (height uint64, err error) {
@@ -131,10 +133,9 @@ func (s *Submitter) GetPolyEpochStartHeight() (height uint64, err error) {
 }
 
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
-	txId, err := tx.GetTxId()
-	if err != nil {
-		return
-	}
+	txId := [32]byte{}
+	copy(txId[:], tx.MerkleValue.TxHash[:32])
+
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
 		return
@@ -149,26 +150,66 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		return nil
 	}
 
-	proof, err := hex.DecodeString(tx.AnchorProof)
+	hsHeader, err := rlp.EncodeToBytes(types.HotstuffFilteredHeader(tx.AnchorHeader, false))
 	if err != nil {
-		return fmt.Errorf("%s processPolyTx decode anchor proof hex error %v", s.name, err)
+		return err
+	}
+	extra, err := types.ExtractHotstuffExtra(tx.AnchorHeader)
+	if err != nil {
+		return
+	}
+	rawSeals, err := rlp.EncodeToBytes(extra.CommittedSeal)
+	if err != nil {
+		return
 	}
 
-	var anchor []byte
-	if tx.AnchorHeader != nil {
-		anchor, _ = tx.AnchorHeader.MarshalJSON()
-	}
-	path, err := hex.DecodeString(tx.AuditPath)
+	cctx, err := rlp.EncodeToBytes(tx.MerkleValue)
 	if err != nil {
-		return fmt.Errorf("%s failed to decode audit path %v", s.name, err)
+		return fmt.Errorf("Encode poly merkle value failed %v", err)
 	}
-	header, _ := tx.PolyHeader.MarshalJSON()
-	tx.DstData, err = s.abi.Pack("verifyHeaderAndExecuteTx", path, header, proof, anchor, tx.PolySigs)
+
+	tx.DstData, err = s.abi.Pack(
+		"verifyHeaderAndExecuteTx",
+		hsHeader, rawSeals, tx.PolyAccountProof, tx.PolyStorageProof, cctx,
+	)
 	if err != nil {
 		err = fmt.Errorf("%s processPolyTx pack tx error %v", s.name, err)
 		return err
 	}
 	return s.submit(tx)
+}
+
+func (s *Submitter) ProcessEpoch(m *msg.Tx) (err error) {
+	if m.Type() != msg.POLY_EPOCH || m.PolyEpoch == nil {
+		err = fmt.Errorf("Invalid Poly epoch message %s", m.Encode())
+		return
+	}
+	epoch := m.PolyEpoch
+	id, err := s.GetPolyEpochId()
+	if err != nil {
+		err = fmt.Errorf("Failed to fetch poly cur epoch id %v", err)
+		return
+	}
+	if epoch.EpochId <= id {
+		log.Info("Poly epoch id already synced", "chain", s.name, "dst_epoch", id, "epoch", epoch.EpochId)
+		return nil
+	} else if epoch.EpochId > id+1 {
+		log.Warn("Poly epoch id inconsistent", "chain", s.name, "dst_epoch", id, "epoch", epoch.EpochId)
+		return msg.ERR_EPOCH_MISS
+	}
+
+	epoch.Decode()
+	log.Info("Submitting poly epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name)
+
+	m.DstData, err = s.abi.Pack(
+		"changeEpoch",
+		epoch.Header, epoch.Seal, epoch.AccountProof, epoch.StorageProof, epoch.Epoch,
+	)
+	if err != nil {
+		err = fmt.Errorf("%s processPolyEpoch pack tx error %v", s.name, err)
+		return err
+	}
+	return s.submit(m)
 }
 
 func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
@@ -183,9 +224,20 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	if err != nil {
 		return fmt.Errorf("%s fetch dst chain poly epoch height error %v", s.name, err)
 	}
-	m.DstPolyKeepers, err = s.GetPolyKeepers()
-	if err != nil {
-		return fmt.Errorf("%s fetch dst chain poly keepers error %v", s.name, err)
+	/*
+		if m.PolyHeight > m.DstPolyEpochEndHeight {
+			log.Warn(
+				"Poly epoch miss for tx", "poly_height", tx.PolyHeight,
+				"epoch_start", m.DstPolyEpochStartHeight,
+				"epoch_end", m.DstPolyEpochEndHeight,
+				"poly_hash", m.PolyHash,
+			)
+			return msg.ERR_EPOCH_MISS
+		}
+	*/
+	m.AnchorHeight = m.PolyHeight
+	if m.AnchorHeight < m.DstPolyEpochStartHeight {
+		m.AnchorHeight = m.DstPolyEpochStartHeight
 	}
 	err = compose(m)
 	if err != nil {
@@ -231,9 +283,14 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			time.Sleep(time.Second)
 			continue
 		}
-		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 		tx.DstSender = &account
-		err = s.ProcessTx(tx, compose)
+		if tx.Type() == msg.POLY {
+			log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
+			err = s.ProcessTx(tx, compose)
+		} else if tx.Type() == msg.POLY_EPOCH {
+			log.Info("Processing poly epoch", "poly_epoch", tx.PolyEpoch.EpochId, "account", account.Address)
+			err = s.ProcessEpoch(tx)
+		}
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash, "err", err)
 			log.Json(log.ERROR, tx)
@@ -246,7 +303,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) || errors.Is(err, msg.ERR_TX_EXEC_ALWAYS_FAIL) {
 				tsp := time.Now().Unix() + 60*3
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
-			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) {
+			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) || err == msg.ERR_EPOCH_MISS {
 				tsp := time.Now().Unix() + 10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {

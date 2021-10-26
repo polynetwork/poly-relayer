@@ -210,6 +210,12 @@ LOOP:
 		if !flush || len(txs) < 100 {
 			tx, _ := b.TxBus.PopTimed(ctx, time.Second)
 			if tx != nil {
+				if tx.Type() == msg.POLY_EPOCH {
+					log.Info("Found new poly epoch info", "poly_epoch", tx.PolyEpoch.EpochId, "chain", b.name)
+					b.ch <- tx
+					continue
+				}
+
 				if msg.Empty(tx.PolyHash) {
 					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
 					continue

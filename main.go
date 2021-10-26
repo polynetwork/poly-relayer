@@ -55,6 +55,18 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.SET_EPOCH_HEIGHT,
+				Usage:  "Set poly epoch sync height",
+				Action: command(relayer.SET_EPOCH_HEIGHT),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "height",
+						Usage:    "target block height",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.SET_TX_HEIGHT,
 				Usage:  "Set side chain tx sync height",
 				Action: command(relayer.SET_TX_HEIGHT),

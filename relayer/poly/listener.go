@@ -21,11 +21,17 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/rlp"
 
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
+	"github.com/devfans/zion-sdk/core/types"
+
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/zion"
@@ -35,8 +41,9 @@ import (
 )
 
 type Listener struct {
-	sdk    *zion.SDK
-	config *config.ListenerConfig
+	sdk       *zion.SDK
+	config    *config.ListenerConfig
+	lastEpoch uint64
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error) {
@@ -84,6 +91,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 
 		tx := new(msg.Tx)
 		tx.MerkleValue = param
+		tx.PolyParam = ev.MerkleValueHex
 		tx.DstChainId = param.MakeTxParam.ToChainID
 		tx.SrcProxy = hex.EncodeToString(param.MakeTxParam.FromContractAddress)
 		tx.DstProxy = hex.EncodeToString(param.MakeTxParam.ToContractAddress)
@@ -127,10 +135,6 @@ func (l *Listener) Defer() int {
 	return 1
 }
 
-func (l *Listener) Header(uint64) (header []byte, hash []byte, err error) {
-	return
-}
-
 func (l *Listener) ListenCheck() time.Duration {
 	duration := time.Second
 	if l.config.ListenCheck > 0 {
@@ -143,6 +147,75 @@ func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
 }
 
-func (l *Listener) LastHeaderSync(uint64, uint64) (uint64, error) {
-	return 0, nil
+func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
+	return
+}
+
+func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
+	epoch, err := l.sdk.Node().GetEpochInfo(height)
+	if err != nil {
+		return
+	}
+	if epoch.Status != node_manager.ProposalStatusPassed {
+		return
+	}
+	if epoch.ID == l.lastEpoch {
+		return
+	}
+
+	info = &msg.PolyEpoch{
+		EpochId: epoch.ID,
+		Height:  height,
+	}
+	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
+	if err != nil {
+		return nil, err
+	}
+	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
+	if err != nil {
+		return nil, err
+	}
+	extra, err := types.ExtractHotstuffExtra(header)
+	if err != nil {
+		return
+	}
+	info.Seal, err = rlp.EncodeToBytes(extra.CommittedSeal)
+	if err != nil {
+		return
+	}
+
+	proof, err := l.sdk.Node().GetProof(zion.NODE_MANAGER_ADDRESS.Hex(), zion.EpochProofKey(epoch.ID).Hex(), height)
+	if err != nil {
+		return
+	}
+	info.AccountProof, err = msg.RlpEncodeStrings(proof.AccountProof)
+	if err != nil {
+		err = fmt.Errorf("rlp encode poly epoch account proof failed", "epoch", epoch.ID, "err", err)
+		return
+	}
+	if len(proof.StorageProofs) == 0 {
+		err = fmt.Errorf("Failed to fetch poly epoch storage proof, got empty", "epoch", epoch.ID)
+		return
+	}
+	info.StorageProof, err = msg.RlpEncodeStrings(proof.StorageProofs[0].Proof)
+	if err != nil {
+		err = fmt.Errorf("rlp encode poly storage proof failed", "epoch", epoch.ID, "err", err)
+		return
+	}
+	info.Epoch, err = msg.RlpEncodeEpoch(epoch.ID, epoch.StartHeight, epoch.Peers)
+	if err != nil {
+		return
+	}
+	l.lastEpoch = epoch.ID
+	return
+}
+
+func (l *Listener) LastHeaderSync(force uint64, last uint64) (uint64, error) {
+	if force != 0 {
+		return force, nil
+	}
+	if last == 0 {
+		last = 1
+	}
+	return last, nil
 }
