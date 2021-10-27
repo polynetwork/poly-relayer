@@ -255,7 +255,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			switch s.config.ChainId {
 			case base.MATIC, base.PLT:
 				tsp = time.Now().Unix() + 60*3
-			case base.ARBITRUM, base.XDAI:
+			case base.ARBITRUM, base.XDAI, base.OPTIMISM:
 				tsp = time.Now().Unix() + 60*25
 			case base.BSC, base.HECO, base.OK:
 				tsp = time.Now().Unix() + 60*4
