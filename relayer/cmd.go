@@ -110,6 +110,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 	txs, err := listener.Scan(height)
 	if err != nil {
 		log.Error("Fetch block txs error", "height", height, "err", err)
+		return
 	}
 
 	count := 0

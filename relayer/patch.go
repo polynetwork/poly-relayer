@@ -121,7 +121,7 @@ func Relay(tx *msg.Tx) {
 	}()
 	select {
 	case <-done:
-		log.Error("Relay tx executed", "chain", chain, "hash", hash)
+		log.Info("Relay tx executed", "chain", chain, "hash", hash)
 	case <-time.After(40 * time.Second):
 		log.Error("Failed to relay tx for a timeout", "chain", chain, "hash", hash)
 	}

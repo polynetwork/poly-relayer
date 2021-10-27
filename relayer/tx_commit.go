@@ -214,6 +214,10 @@ LOOP:
 					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
 					continue
 				}
+				if tx.Attempts > 1000 && base.ENV == "testnet" {
+					log.Error("Dropping failed tx for too many retries in testnet", "chain", b.name, "poly_hash", tx.PolyHash)
+					continue
+				}
 				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash)
 
 				// Skip tx check fee
