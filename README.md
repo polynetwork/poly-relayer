@@ -15,6 +15,7 @@ Reimplement poly relayer
 |Palette |plt  |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Arbitrum|main |:x:|:x:|:white_check_mark:|
 |Xdai    |main |:x:|:x:|:white_check_mark:|
+|Optimism|main |:x:|:x:|:white_check_mark:|
 
 ## TODOs
 - [x] metrics, height, height_diff, queue length
