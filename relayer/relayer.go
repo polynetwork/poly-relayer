@@ -39,6 +39,7 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/o3"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
+	"github.com/polynetwork/poly-relayer/relayer/opt"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
 	"github.com/polynetwork/poly-relayer/relayer/xdai"
 )
@@ -117,6 +118,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(arb.Submitter)
 	case base.XDAI:
 		submitter = new(xdai.Submitter)
+	case base.OPTIMISM:
+		submitter = new(opt.Submitter)
 	default:
 	}
 	return
