@@ -168,7 +168,7 @@ func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKe
 		return
 	}
 	if len(tx.DstPolyKeepers) == 0 {
-		err = fmt.Errorf("Dst chain poly keeper not provided")
+		// err = fmt.Errorf("Dst chain poly keeper not provided")
 		return
 	}
 	if hdr.NextBookkeeper == pcom.ADDRESS_EMPTY {
