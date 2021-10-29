@@ -201,6 +201,13 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return
 	}
 	hash, err = s.wallet.SendWithAccount(*s.signer, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+	if err != nil {
+		return
+	}
+	_, err = s.sdk.Node().Confirm(hash, 0, 10)
+	if err == nil {
+		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
+	}
 	return
 }
 
