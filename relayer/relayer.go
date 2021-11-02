@@ -31,12 +31,15 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/arb"
+	"github.com/polynetwork/poly-relayer/relayer/ava"
 	"github.com/polynetwork/poly-relayer/relayer/bsc"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly-relayer/relayer/fantom"
 	"github.com/polynetwork/poly-relayer/relayer/heco"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
 	"github.com/polynetwork/poly-relayer/relayer/o3"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
+	"github.com/polynetwork/poly-relayer/relayer/opt"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
 	"github.com/polynetwork/poly-relayer/relayer/xdai"
 )
@@ -108,6 +111,12 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(arb.Submitter)
 	case base.XDAI:
 		submitter = new(xdai.Submitter)
+	case base.OPTIMISM:
+		submitter = new(opt.Submitter)
+	case base.FANTOM:
+		submitter = new(fantom.Submitter)
+	case base.AVA:
+		submitter = new(ava.Submitter)
 	default:
 	}
 	return

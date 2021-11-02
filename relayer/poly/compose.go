@@ -65,6 +65,12 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 	if msg.Empty(tx.PolyHash) {
 		return fmt.Errorf("ComposeTx: Invalid poly hash")
 	}
+	/*
+		if tx.DstPolyEpochStartHeight == 0 {
+			return fmt.Errorf("ComposeTx: Dst chain poly height not specified")
+		}
+	*/
+
 	if tx.PolyHeight == 0 {
 		tx.PolyHeight, err = s.sdk.Node().GetBlockHeightByTxHash(tx.PolyHash)
 		if err != nil {

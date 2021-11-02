@@ -70,7 +70,7 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 	}
 
 	switch chainId {
-	case base.O3, base.ETH, base.HECO, base.BSC, base.ARBITRUM, base.XDAI:
+	case base.O3, base.ETH, base.HECO, base.BSC, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA:
 		bin = "relayer_main"
 	case base.MATIC:
 		bin = "relayer_matic"
@@ -78,6 +78,8 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 		bin = "relayer_plt"
 	case base.ONT:
 		bin = "relayer_ont"
+	case base.OK:
+		bin = "relayer_ok"
 	}
 	if bin != "" {
 		bin = path.Join(BIN_DIR, bin)
@@ -121,7 +123,7 @@ func Relay(tx *msg.Tx) {
 	}()
 	select {
 	case <-done:
-		log.Error("Relay tx executed", "chain", chain, "hash", hash)
+		log.Info("Relay tx executed", "chain", chain, "hash", hash)
 	case <-time.After(40 * time.Second):
 		log.Error("Failed to relay tx for a timeout", "chain", chain, "hash", hash)
 	}
