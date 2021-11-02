@@ -301,6 +301,9 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 		for _, p := range c.Wallet.KeyStoreProviders {
 			p.Path = GetConfigPath(WALLET_PATH, p.Path)
 		}
+		if len(c.Wallet.Nodes) == 0 {
+			c.Wallet.Nodes = c.Nodes
+		}
 	}
 	return
 }
