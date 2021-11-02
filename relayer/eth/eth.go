@@ -245,7 +245,8 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp := time.Now().Unix() + 10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
-				bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
+				tsp := time.Now().Unix() + 1
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)

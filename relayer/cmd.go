@@ -25,6 +25,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/urfave/cli/v2"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
@@ -44,6 +46,7 @@ const (
 	PATCH             = "patch"
 	SKIP              = "skip"
 	CHECK_SKIP        = "checkskip"
+	CREATE_ACCOUNT    = "createaccount"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -57,6 +60,7 @@ func init() {
 	_Handlers[SKIP] = Skip
 	_Handlers[CHECK_SKIP] = CheckSkip
 	_Handlers[RELAY_TX] = RelayTx
+	_Handlers[CREATE_ACCOUNT] = CreateAccount
 }
 
 func RelayTx(ctx *cli.Context) (err error) {
@@ -292,4 +296,35 @@ func HandleCommand(method string, ctx *cli.Context) error {
 		return fmt.Errorf("Unsupported subcommand %s", method)
 	}
 	return h(ctx)
+}
+
+func CreateAccount(ctx *cli.Context) (err error) {
+	path := ctx.String("path")
+	password := ctx.String("pass")
+	if path == "" {
+		log.Error("Wallet patch can not be empty")
+		return
+	}
+	if password == "" {
+		log.Warn("Using default password: test")
+		password = "test"
+	}
+	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
+	account, err := ks.NewAccount(password)
+	if err != nil {
+		return
+	}
+	log.Info("Created new account", "address", account.Address.Hex())
+	/*
+		data, err := ks.Export(account, password, password)
+		if err != nil {
+			return
+		}
+		fmt.Println(string(data))
+		err = ioutil.WriteFile(fmt.Sprintf("%s/%s.json", path, account.Address.Hex()), data, 0644)
+		if err != nil {
+			log.Error("Failed to write account file", "err", err)
+		}
+	*/
+	return nil
 }

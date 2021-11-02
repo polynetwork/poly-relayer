@@ -195,6 +195,22 @@ func main() {
 					},
 				},
 			},
+			&cli.Command{
+				Name:   relayer.CREATE_ACCOUNT,
+				Usage:  "Create a new eth keystore account",
+				Action: command(relayer.CREATE_ACCOUNT),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "path",
+						Usage:    "wallet path",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "pass",
+						Usage: "wallet password",
+					},
+				},
+			},
 		},
 	}
 
