@@ -141,6 +141,12 @@ func (c *PolySubmitterConfig) Fill(o *PolySubmitterConfig) *PolySubmitterConfig 
 		o.Wallet = c.Wallet
 	} else {
 		o.Wallet.Path = GetConfigPath(WALLET_PATH, o.Wallet.Path)
+		if len(o.Wallet.Nodes) == 0 {
+			o.Wallet.Nodes = c.Wallet.Nodes
+		}
+		for _, p := range o.Wallet.KeyStoreProviders {
+			p.Path = GetConfigPath(WALLET_PATH, p.Path)
+		}
 	}
 	return o
 }
@@ -292,6 +298,9 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 	}
 	if c.Wallet != nil {
 		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
+		for _, p := range c.Wallet.KeyStoreProviders {
+			p.Path = GetConfigPath(WALLET_PATH, p.Path)
+		}
 	}
 	return
 }
