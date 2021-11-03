@@ -188,7 +188,7 @@ func (b *TxBusWithFilter) Pop(ctx context.Context) (*msg.Tx, uint64, error) {
 			log.Debug("Filter passes tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
 			return tx, score, nil
 		} else {
-			log.Warn("Filter ignores tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
+			log.Warn("Filter ignores tx", "tx", tx.Encode())
 		}
 	}
 }
