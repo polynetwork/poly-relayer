@@ -335,6 +335,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 			c.HeaderSync.Bus = bus
 		}
 		c.HeaderSync.Poly = poly.PolySubmitterConfig.Fill(c.HeaderSync.Poly)
+		c.HeaderSync.Poly.ChainId = chain
 	}
 
 	if c.SrcTxSync == nil {

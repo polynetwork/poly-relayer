@@ -75,7 +75,7 @@ func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 		return
 	}
 	if config.Wallet != nil {
-		sdk, err := eth.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1)
+		sdk, err := eth.WithOptions(base.POLY, config.Wallet.Nodes, time.Minute, 1)
 		if err != nil {
 			return err
 		}
