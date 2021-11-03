@@ -32,6 +32,7 @@ import (
 
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
 	hs "github.com/devfans/zion-sdk/contracts/native/go_abi/header_sync_abi"
+	"github.com/devfans/zion-sdk/contracts/native/utils"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
@@ -200,7 +201,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 	if err != nil {
 		return
 	}
-	hash, err = s.wallet.SendWithAccount(*s.signer, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+	hash, err = s.wallet.SendWithAccount(*s.signer, utils.HeaderSyncContractAddress, big.NewInt(0), 0, nil, nil, data)
 	if err != nil {
 		return
 	}
