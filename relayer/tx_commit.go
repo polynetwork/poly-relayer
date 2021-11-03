@@ -89,7 +89,7 @@ func (h *PolyTxCommitHandler) Compose(tx *msg.Tx) (err error) {
 		return
 	}
 	if h.config.Filter != nil {
-		if !h.config.Filter.Check(tx.SrcProxy, tx.DstProxy) {
+		if !h.config.Filter.Check(tx) {
 			log.Warn("Poly tx commit skipped for not target", "from", tx.SrcProxy, "to", tx.DstProxy)
 			return msg.ERR_TX_BYPASS
 		} else {

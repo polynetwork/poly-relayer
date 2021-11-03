@@ -17,13 +17,18 @@
 
 package config
 
-import "github.com/polynetwork/bridge-common/util"
+import (
+	"github.com/polynetwork/bridge-common/util"
+	"github.com/polynetwork/poly-relayer/msg"
+)
 
 type FilterConfig struct {
-	SrcProxyFilter bool
-	DstProxyFilter bool
-	SrcProxies     []string
-	DstProxies     []string
+	SrcProxyFilter bool     // Enable src proxy filter
+	DstProxyFilter bool     // Enable dst proxy filter
+	SrcProxies     []string // Desired src proxy list
+	DstProxies     []string // Desired dst proxy list
+	AddressFilter  bool     // Enable address filter
+	Addresses      []string // Address black list
 }
 
 func (c *FilterConfig) Init() {
@@ -39,6 +44,23 @@ func (c *FilterConfig) Init() {
 	}
 	c.SrcProxies = parse(c.SrcProxies)
 	c.DstProxies = parse(c.DstProxies)
+	c.Addresses = parse(c.Addresses)
+}
+
+func filterOut(enabled bool, sets []string, value string) bool {
+	if enabled {
+		value = util.LowerHex(value)
+		if len(value) == 0 {
+			return true // Allow empty address here for black address list
+		}
+		for _, v := range sets {
+			if v == value {
+				return false
+			}
+		}
+		return true
+	}
+	return true
 }
 
 func filter(enabled bool, sets []string, value string) bool {
@@ -51,7 +73,6 @@ func filter(enabled bool, sets []string, value string) bool {
 		for _, v := range sets {
 			if v == value {
 				return true
-				break
 			}
 		}
 		return false
@@ -59,7 +80,10 @@ func filter(enabled bool, sets []string, value string) bool {
 	return true
 }
 
-func (c *FilterConfig) Check(srcProxy, dstProxy string) bool {
-	return c == nil || (filter(c.SrcProxyFilter, c.SrcProxies, srcProxy) &&
-		filter(c.DstProxyFilter, c.DstProxies, dstProxy))
+func (c *FilterConfig) Check(tx *msg.Tx) bool {
+	if c == nil {
+		return true
+	}
+	return filter(c.SrcProxyFilter, c.SrcProxies, tx.SrcProxy) && filter(c.SrcProxyFilter, c.SrcProxies, tx.DstProxy) &&
+		filterOut(c.AddressFilter, c.Addresses, tx.SrcAddress) && filterOut(c.AddressFilter, c.Addresses, tx.DstAddress)
 }

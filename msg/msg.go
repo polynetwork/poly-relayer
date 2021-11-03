@@ -63,6 +63,7 @@ type Tx struct {
 	SrcParam       string `json:",omitempty"`
 	SrcStateRoot   []byte `json:"-"`
 	SrcProxy       string `json:",omitempty"`
+	SrcAddress     string `json:",omitempty"`
 
 	PolyHash     string        `json:",omitempty"`
 	PolyHeight   uint32        `json:",omitempty"`
@@ -73,6 +74,7 @@ type Tx struct {
 	AuditPath    string        `json:"-"`
 	PolySigs     []byte        `json:"-"`
 
+	DstAddress              string                `json:",omitempty"`
 	DstHash                 string                `json:",omitempty"`
 	DstHeight               uint64                `json:",omitempty"`
 	DstChainId              uint64                `json:",omitempty"`
