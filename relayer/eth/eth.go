@@ -142,6 +142,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 
 	if exist {
 		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "poly_hash", tx.PolyHash)
+		tx.DstHash = ""
 		return nil
 	}
 
