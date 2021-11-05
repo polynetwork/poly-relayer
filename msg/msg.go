@@ -32,7 +32,17 @@ var TxParam abi.Arguments
 func init() {
 	BytesTy, _ := abi.NewType("bytes", "", nil)
 	IntTy, _ := abi.NewType("int", "", nil)
-	TxParam = abi.Arguments{{Type: BytesTy}, {Type: BytesTy}, {Type: BytesTy}, {Type: IntTy}, {Type: BytesTy}, {Type: BytesTy}, {Type: BytesTy}}
+	StringTy, _ := abi.NewType("string", "", nil)
+
+	TxParam = abi.Arguments{
+		{Type: BytesTy, Name: "txHash"},
+		{Type: BytesTy, Name: "crossChainID"},
+		{Type: BytesTy, Name: "fromContractAddress"},
+		{Type: IntTy, Name: "toChainID"},
+		{Type: BytesTy, Name: "toContractAddress"},
+		{Type: StringTy, Name: "method"},
+		{Type: BytesTy, Name: "args"},
+	}
 }
 
 type Message interface {
