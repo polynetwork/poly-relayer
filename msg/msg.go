@@ -199,7 +199,7 @@ func DecodeTxParam(data []byte) (param *ccom.MakeTxParam, err error) {
 	}
 
 	shim := new(MakeTxParamShim)
-	err = TxParam.Copy(param, args)
+	err = TxParam.Copy(shim, args)
 	if err != nil {
 		return nil, err
 	}
