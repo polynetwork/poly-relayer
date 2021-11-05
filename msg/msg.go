@@ -32,7 +32,7 @@ var TxParam abi.Arguments
 func init() {
 	BytesTy, _ := abi.NewType("bytes", "", nil)
 	IntTy, _ := abi.NewType("int", "", nil)
-	StringTy, _ := abi.NewType("string", "", nil)
+	// StringTy, _ := abi.NewType("string", "", nil)
 
 	TxParam = abi.Arguments{
 		{Type: BytesTy, Name: "txHash"},
@@ -40,7 +40,7 @@ func init() {
 		{Type: BytesTy, Name: "fromContractAddress"},
 		{Type: IntTy, Name: "toChainID"},
 		{Type: BytesTy, Name: "toContractAddress"},
-		{Type: StringTy, Name: "method"},
+		{Type: BytesTy, Name: "method"},
 		{Type: BytesTy, Name: "args"},
 	}
 }
@@ -188,7 +188,7 @@ type MakeTxParamShim struct {
 	FromContractAddress []byte
 	ToChainID           *big.Int
 	ToContractAddress   []byte
-	Method              string
+	Method              []byte
 	Args                []byte
 }
 
@@ -209,7 +209,7 @@ func DecodeTxParam(data []byte) (param *ccom.MakeTxParam, err error) {
 		ToChainID:           shim.ToChainID.Uint64(),
 		FromContractAddress: shim.FromContractAddress,
 		ToContractAddress:   shim.ToContractAddress,
-		Method:              shim.Method,
+		Method:              string(shim.Method),
 		Args:                shim.Args,
 	}
 	return
