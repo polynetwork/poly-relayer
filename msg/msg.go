@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -25,6 +26,14 @@ import (
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	pcom "github.com/polynetwork/poly/common"
 )
+
+var TxParam abi.Arguments
+
+func init() {
+	BytesTy, _ := abi.NewType("bytes", "", nil)
+	IntTy, _ := abi.NewType("int", "", nil)
+	TxParam = abi.Arguments{{Type: BytesTy}, {Type: BytesTy}, {Type: BytesTy}, {Type: IntTy}, {Type: BytesTy}, {Type: BytesTy}, {Type: BytesTy}}
+}
 
 type Message interface {
 	Type() TxType
@@ -161,6 +170,19 @@ func (tx *Tx) Encode() string {
 	}
 	bytes, _ := json.Marshal(*tx)
 	return string(bytes)
+}
+
+func DecodeTxParam(data []byte) (param *ccom.MakeTxParam, err error) {
+	args, err := TxParam.Unpack(data)
+	if err != nil {
+		return
+	}
+	param = new(ccom.MakeTxParam)
+	err = TxParam.Copy(param, args)
+	if err != nil {
+		return nil, err
+	}
+	return
 }
 
 func (tx *Tx) Decode(data string) (err error) {

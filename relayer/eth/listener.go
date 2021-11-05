@@ -196,18 +196,24 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	txs = []*msg.Tx{}
 	for events.Next() {
 		ev := events.Event
-		param := &ccom.MakeTxParam{}
-		err = param.Deserialization(pcom.NewZeroCopySource([]byte(ev.Rawdata)))
+		/*
+			param := &ccom.MakeTxParam{}
+			err = param.Deserialization(pcom.NewZeroCopySource([]byte(ev.Rawdata)))
+		*/
+		param, err := msg.DecodeTxParam(ev.Rawdata)
 		if err != nil {
-			return
+			return nil, err
 		}
+		log.Info("Found src cross chain tx", "method", param.Method, "hash", ev.Raw.TxHash.String())
+		sink := pcom.NewZeroCopySink(nil)
+		param.Serialization(sink)
 		tx := &msg.Tx{
 			TxType:     msg.SRC,
 			TxId:       msg.EncodeTxId(ev.TxId),
 			SrcHash:    ev.Raw.TxHash.String(),
 			DstChainId: ev.ToChainId,
 			SrcHeight:  height,
-			SrcParam:   hex.EncodeToString(ev.Rawdata),
+			SrcParam:   hex.EncodeToString(sink.Bytes()),
 			SrcChainId: l.config.ChainId,
 			SrcProxy:   ev.ProxyOrAssetContract.String(),
 			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
