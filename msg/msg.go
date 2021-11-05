@@ -182,15 +182,35 @@ func (tx *Tx) Encode() string {
 	return string(bytes)
 }
 
+type MakeTxParamShim struct {
+	TxHash              []byte
+	CrossChainID        []byte
+	FromContractAddress []byte
+	ToChainID           *big.Int
+	ToContractAddress   []byte
+	Method              string
+	Args                []byte
+}
+
 func DecodeTxParam(data []byte) (param *ccom.MakeTxParam, err error) {
 	args, err := TxParam.Unpack(data)
 	if err != nil {
 		return
 	}
-	param = new(ccom.MakeTxParam)
+
+	shim := new(MakeTxParamShim)
 	err = TxParam.Copy(param, args)
 	if err != nil {
 		return nil, err
+	}
+	param = &ccom.MakeTxParam{
+		TxHash:              shim.TxHash,
+		CrossChainID:        shim.CrossChainID,
+		ToChainID:           shim.ToChainID.Uint64(),
+		FromContractAddress: shim.FromContractAddress,
+		ToContractAddress:   shim.ToContractAddress,
+		Method:              shim.Method,
+		Args:                shim.Args,
 	}
 	return
 }
