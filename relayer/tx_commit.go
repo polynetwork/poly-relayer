@@ -160,6 +160,7 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 			PolyHash: tx.PolyHash,
 		}
 	}
+	log.Info("Sending check fee request", "size", len(state), "chain", b.name)
 	err = b.bridge.Node().CheckFee(state)
 	if err != nil {
 		return
@@ -220,7 +221,7 @@ LOOP:
 					log.Error("Dropping failed tx for too many retries in testnet", "chain", b.name, "poly_hash", tx.PolyHash)
 					continue
 				}
-				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash)
+				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash, "process_pending", len(b.ch))
 
 				// Skip tx check fee
 				if tx.SkipFee() {
