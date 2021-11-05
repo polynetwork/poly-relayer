@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -135,6 +136,7 @@ func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint
 				log.Info("Found common ancestor", "chain", h.config.ChainId, "height", target)
 				return target
 			} else {
+				log.Info("Hard forked block", "synced_hash", common.BytesToHash(a), "hash", common.BytesToHash(b), "height", target, "chain", h.config.ChainId)
 				target--
 				continue
 			}

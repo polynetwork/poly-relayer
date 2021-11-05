@@ -202,7 +202,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return
 	}
 	hash, err = s.wallet.SendWithAccount(*s.signer, utils.HeaderSyncContractAddress, big.NewInt(0), 0, nil, nil, data)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "already known") {
 		return
 	}
 	_, err = s.sdk.Node().Confirm(msg.Hash(hash), 0, 10)
