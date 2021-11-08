@@ -233,7 +233,10 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		tx.SrcStateRoot = []byte{}
 	}
 
-	signer := tx.PolySender.(*accounts.Account)
+	signer := s.signer
+	if tx.PolySender != nil {
+		signer = tx.PolySender.(*accounts.Account)
+	}
 	switch tx.SrcChainId {
 	case base.NEO, base.ONT:
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
