@@ -262,7 +262,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			case base.BSC, base.HECO, base.OK:
 				tsp = time.Now().Unix() + 60*4
 			case base.ETH:
-				tsp = time.Now().Unix() + 60*10
+				tsp = time.Now().Unix() + 60*6
 			}
 			if tsp > 0 && tx.DstHash != "" {
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
