@@ -30,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
-	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ceth "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/eth"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -41,7 +40,6 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	pcom "github.com/polynetwork/poly/common"
 )
 
 type Listener struct {
@@ -151,8 +149,11 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	if err != nil {
 		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
 	}
-	param := &ccom.MakeTxParam{}
-	err = param.Deserialization(pcom.NewZeroCopySource(event))
+	param, err := msg.DecodeTxParam(event)
+	/*
+		param := &ccom.MakeTxParam{}
+		err = param.Deserialization(pcom.NewZeroCopySource(event))
+	*/
 	if err != nil {
 		return
 	}
@@ -205,15 +206,17 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			return nil, err
 		}
 		log.Info("Found src cross chain tx", "method", param.Method, "hash", ev.Raw.TxHash.String())
-		sink := pcom.NewZeroCopySink(nil)
-		param.Serialization(sink)
+		/*
+			sink := pcom.NewZeroCopySink(nil)
+			param.Serialization(sink)
+		*/
 		tx := &msg.Tx{
 			TxType:     msg.SRC,
 			TxId:       msg.EncodeTxId(ev.TxId),
 			SrcHash:    ev.Raw.TxHash.String(),
 			DstChainId: ev.ToChainId,
 			SrcHeight:  height,
-			SrcParam:   hex.EncodeToString(sink.Bytes()),
+			SrcParam:   hex.EncodeToString(ev.Rawdata),
 			SrcChainId: l.config.ChainId,
 			SrcProxy:   ev.ProxyOrAssetContract.String(),
 			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
