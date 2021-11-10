@@ -27,12 +27,17 @@ import (
 
 func TestMain(m *testing.M) {
 	log.Init()
+	path := "../config.json"
+	env := os.Getenv("CONFIG")
+	if env != "" {
+		path = env
+	}
 
-	conf, err := config.New("./config.json")
+	conf, err := config.New(path)
 	if err != nil {
 		log.Error("Failed to parse config file", "err", err)
 		os.Exit(2)
 	}
 	err = conf.Init()
-	config.CONFIG_PATH = "./config.json"
+	config.CONFIG_PATH = path
 }
