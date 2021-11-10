@@ -727,6 +727,10 @@ github.com/polynetwork/bridge-common v0.0.19-gamma h1:61mL/Lmyau5a1ZWRX5BzZt6aFl
 github.com/polynetwork/bridge-common v0.0.19-gamma/go.mod h1:R3upIgVox9GcDDXNkibupOeAPkuQq66gykdyiimLjco=
 github.com/polynetwork/bridge-common v0.0.20-alpha h1:KV/eo4bOjpBRXb3VVhE2vWDS0CmJxLcWI0i55U1BiIw=
 github.com/polynetwork/bridge-common v0.0.20-alpha/go.mod h1:R3upIgVox9GcDDXNkibupOeAPkuQq66gykdyiimLjco=
+github.com/polynetwork/bridge-common v0.0.20-beta h1:Il6Cbg2xFTiy34/KRT+hxJcEibe7Ok5C9h/9V4tsp5o=
+github.com/polynetwork/bridge-common v0.0.20-beta/go.mod h1:R3upIgVox9GcDDXNkibupOeAPkuQq66gykdyiimLjco=
+github.com/polynetwork/bridge-common v0.0.20-gamma h1:I9ph4M1t/jgi6IO9eYhPZcmtLu5BVWIHJvX29+N/rac=
+github.com/polynetwork/bridge-common v0.0.20-gamma/go.mod h1:R3upIgVox9GcDDXNkibupOeAPkuQq66gykdyiimLjco=
 github.com/polynetwork/bridge-common v0.0.20 h1:dIkOIgbvBY1x3T4rvJUOH1yQTA7o97TEpGeLMnt18mc=
 github.com/polynetwork/bridge-common v0.0.20/go.mod h1:R3upIgVox9GcDDXNkibupOeAPkuQq66gykdyiimLjco=
 github.com/polynetwork/btc-vendor-tools v0.0.0-20200813091748-3b19a5fd7666/go.mod h1:U8rR9X6vemlkBAJWfvzwSoalcJjX8B2aQjB0kPRhBUA=
