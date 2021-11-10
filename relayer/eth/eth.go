@@ -2,6 +2,7 @@ package eth
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -149,6 +150,11 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		return nil
 	}
 
+	cctx, err := hex.DecodeString(tx.PolyParam)
+	if err != nil || len(cctx) == 0 {
+		return fmt.Errorf("Poly param merke value missing or invalid")
+	}
+
 	hsHeader, err := rlp.EncodeToBytes(types.HotstuffFilteredHeader(tx.AnchorHeader, false))
 	if err != nil {
 		return err
@@ -160,11 +166,6 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	rawSeals, err := rlp.EncodeToBytes(extra.CommittedSeal)
 	if err != nil {
 		return
-	}
-
-	cctx, err := rlp.EncodeToBytes(tx.MerkleValue)
-	if err != nil {
-		return fmt.Errorf("Encode poly merkle value failed %v", err)
 	}
 
 	tx.DstData, err = s.abi.Pack(

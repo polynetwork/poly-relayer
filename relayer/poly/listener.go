@@ -37,7 +37,6 @@ import (
 	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	pcom "github.com/polynetwork/poly/common"
 )
 
 type Listener struct {
@@ -83,9 +82,12 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		if err != nil {
 			return nil, err
 		}
-		err = param.Deserialization(pcom.NewZeroCopySource(value))
+		err = rlp.DecodeBytes(value, param)
+		/*
+			err = param.Deserialization(pcom.NewZeroCopySource(value))
+		*/
 		if err != nil {
-			err = fmt.Errorf("GetPolyParams: param.Deserialization error %v", err)
+			err = fmt.Errorf("rlp decode poly merkle value error %v", err)
 			return nil, err
 		}
 
