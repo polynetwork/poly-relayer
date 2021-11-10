@@ -18,7 +18,6 @@
 package relayer
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -132,7 +131,7 @@ func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint
 		}
 		_, a, err = h.listener.Header(target)
 		if err == nil {
-			if bytes.Equal(a, b) {
+			if common.BytesToHash(a).String() == common.BytesToHash(b).String() {
 				log.Info("Found common ancestor", "chain", h.config.ChainId, "height", target)
 				return target
 			} else {
