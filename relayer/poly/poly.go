@@ -205,9 +205,19 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 	if err != nil && !strings.Contains(err.Error(), "already known") {
 		return
 	}
-	_, err = s.sdk.Node().Confirm(msg.Hash(hash), 0, 10)
-	if err == nil {
-		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
+	var height uint64
+	var pending bool
+	for {
+		height, _, pending, err = s.sdk.Node().Confirm(msg.Hash(hash), 0, 10)
+		if height > 0 {
+			log.Info("Submitted header to poly", "chain", chainId, "hash", hash, "height", height)
+			return
+		}
+		if err == nil && !pending {
+			err = fmt.Errorf("Failed to find the transaction %v", err)
+			return
+		}
+		log.Warn("Tx wait confirm timeout", "chain", chainId, "hash", hash, "pending", pending)
 	}
 	return
 }
