@@ -25,11 +25,13 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
 	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
+	"github.com/devfans/zion-sdk/core/state"
 	"github.com/devfans/zion-sdk/core/types"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -98,6 +100,8 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		tx.SrcProxy = hex.EncodeToString(param.MakeTxParam.FromContractAddress)
 		tx.DstProxy = hex.EncodeToString(param.MakeTxParam.ToContractAddress)
 		tx.PolyKey = ev.Key
+		key, _ := hex.DecodeString(ev.Key)
+		tx.PolyKey = state.Key2Slot(key[common.AddressLength:]).String()
 		tx.PolyHeight = height
 		tx.PolyHash = ev.Raw.TxHash
 		tx.TxType = msg.POLY
