@@ -33,10 +33,7 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (err error) {
 		return
 	}
 
-	if tx.AnchorHeight == 0 {
-		return fmt.Errorf("Poly tx anchor height not provided", "poly_hash", tx.PolyHash)
-	}
-
+	tx.AnchorHeight = s.sdk.Height()
 	tx.AnchorHeader, err = s.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(tx.AnchorHeight)))
 	if err != nil {
 		return err

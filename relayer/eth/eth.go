@@ -235,10 +235,12 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 			return msg.ERR_EPOCH_MISS
 		}
 	*/
-	m.AnchorHeight = m.PolyHeight
-	if m.AnchorHeight < m.DstPolyEpochStartHeight {
-		m.AnchorHeight = m.DstPolyEpochStartHeight
-	}
+	/*
+		m.AnchorHeight = m.PolyHeight
+		if m.AnchorHeight < m.DstPolyEpochStartHeight {
+			m.AnchorHeight = m.DstPolyEpochStartHeight
+		}
+	*/
 	err = compose(m)
 	if err != nil {
 		return
