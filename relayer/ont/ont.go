@@ -31,7 +31,7 @@ import (
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/ont"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -58,7 +58,7 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	if err != nil {
 		return
 	}
-	s.polyId = poly.ReadChainID()
+	s.polyId = zion.ReadChainID()
 	return
 }
 
@@ -98,13 +98,13 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	param := &ccm.ProcessCrossChainTxParam{
 		Address:     s.signer.Address,
 		FromChainID: s.polyId,
-		Height:      tx.PolyHeight + 1,
+		Height:      uint32(tx.PolyHeight + 1),
 		Proof:       tx.AuditPath,
 	}
 
 	v, _ := s.sdk.Node().GetSideChainHeaderIndex(s.polyId, uint64(tx.PolyHeight+1))
 	if len(v) == 0 {
-		param.Header = tx.PolyHeader.ToArray()
+		param.Header, _ = tx.PolyHeader.MarshalJSON()
 	}
 	hash, err := s.sdk.Node().Native.InvokeNativeContract(
 		s.signer.Config.GasPrice, s.signer.Config.GasLimit,

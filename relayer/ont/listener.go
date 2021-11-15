@@ -27,26 +27,26 @@ import (
 	ccom "github.com/ontio/ontology/smartcontract/service/native/cross_chain/common"
 	outils "github.com/ontio/ontology/smartcontract/service/native/utils"
 
+	pcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/ont"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
-	pcom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 )
 
 type Listener struct {
 	sdk    *ont.SDK
-	poly   *poly.SDK
+	poly   *zion.SDK
 	ccm    string
 	ccd    string
 	config *config.ListenerConfig
 	name   string
 }
 
-func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	if config.ChainId != base.ONT {
 		return fmt.Errorf("ONT chain id is incorrect in config %v", config.ChainId)
 	}

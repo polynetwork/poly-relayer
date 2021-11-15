@@ -32,16 +32,16 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 
+	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/ok"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
 	pcom "github.com/polynetwork/poly/common"
-	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/okex"
 	okex2 "github.com/polynetwork/poly/native/service/header_sync/okex"
 
@@ -54,7 +54,7 @@ type Listener struct {
 	codec *codec.Codec
 }
 
-func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	l.Listener = new(eth.Listener)
 	err = l.Listener.Init(config, poly)
 	if err != nil {

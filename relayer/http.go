@@ -107,17 +107,17 @@ func recordMetrics() {
 
 func SkipTx(w http.ResponseWriter, r *http.Request) {
 	hash := r.FormValue("hash")
-	err := _SKIP.Skip(context.Background(), &msg.Tx{PolyHash: hash})
+	err := _SKIP.Skip(context.Background(), &msg.Tx{SrcHash: hash})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
-		Json(w, &msg.Tx{PolyHash: hash})
+		Json(w, &msg.Tx{SrcHash: hash})
 	}
 }
 
 func SkipCheckTx(w http.ResponseWriter, r *http.Request) {
 	hash := r.FormValue("hash")
-	tx := &msg.Tx{PolyHash: hash}
+	tx := &msg.Tx{SrcHash: hash}
 	skip, err := _SKIP.CheckSkip(context.Background(), tx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -139,8 +139,8 @@ func PatchTx(w http.ResponseWriter, r *http.Request) {
 		DstGasLimit:  uint64(limit),
 	}
 	if chain == 0 {
-		tx.PolyHeight = uint32(height)
-		tx.PolyHash = hash
+		tx.PolyHeight = uint64(height)
+		tx.PolyHash = msg.Hash(hash)
 		tx.TxType = msg.POLY
 	} else {
 		tx.TxType = msg.SRC
@@ -157,6 +157,9 @@ func PatchTx(w http.ResponseWriter, r *http.Request) {
 }
 
 func Patch(ctx *cli.Context) (err error) {
+	if ctx.Bool("auto") {
+		return AutoPatch()
+	}
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")
@@ -167,8 +170,8 @@ func Patch(ctx *cli.Context) (err error) {
 		DstGasLimit:  uint64(ctx.Int("limit")),
 	}
 	if chain == 0 {
-		tx.PolyHeight = uint32(height)
-		tx.PolyHash = hash
+		tx.PolyHeight = uint64(height)
+		tx.PolyHash = msg.Hash(hash)
 		tx.TxType = msg.POLY
 	} else {
 		tx.SrcHash = hash
