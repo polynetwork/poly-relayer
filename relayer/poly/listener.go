@@ -37,6 +37,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/zion"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
@@ -107,12 +108,10 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		tx.TxType = msg.POLY
 		tx.TxId = hex.EncodeToString(param.MakeTxParam.CrossChainID)
 		tx.SrcChainId = param.FromChainID
-		/*
-			switch tx.SrcChainId {
-			case base.NEO, base.ONT:
-				tx.TxId = util.ReverseHex(tx.TxId)
-			}
-		*/
+		switch tx.SrcChainId {
+		case base.NEO, base.ONT, base.NEO3:
+			tx.TxId = util.ReverseHex(tx.TxId)
+		}
 		txs = append(txs, tx)
 	}
 

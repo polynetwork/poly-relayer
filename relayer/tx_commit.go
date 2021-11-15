@@ -89,7 +89,7 @@ func (h *PolyTxCommitHandler) Compose(tx *msg.Tx) (err error) {
 		return
 	}
 	if h.config.Filter != nil {
-		if !h.config.Filter.Check(tx.SrcProxy, tx.DstProxy) {
+		if !h.config.Filter.Check(tx) {
 			log.Warn("Poly tx commit skipped for not target", "from", tx.SrcProxy, "to", tx.DstProxy)
 			return msg.ERR_TX_BYPASS
 		} else {
@@ -160,6 +160,7 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 			PolyHash: tx.PolyHash.Hex(),
 		}
 	}
+	log.Info("Sending check fee request", "size", len(state), "chain", b.name)
 	err = b.bridge.Node().CheckFee(state)
 	if err != nil {
 		return
@@ -226,7 +227,7 @@ LOOP:
 					log.Error("Dropping failed tx for too many retries in testnet", "chain", b.name, "poly_hash", tx.PolyHash)
 					continue
 				}
-				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash)
+				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash, "process_pending", len(b.ch))
 
 				// Skip tx check fee
 				if tx.SkipFee() {

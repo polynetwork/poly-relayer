@@ -220,6 +220,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			SrcChainId: l.config.ChainId,
 			SrcProxy:   ev.ProxyOrAssetContract.String(),
 			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
+			SrcAddress: ev.Sender.String(),
 		}
 		l.Compose(tx)
 		txs = append(txs, tx)
