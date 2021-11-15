@@ -208,7 +208,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 	var height uint64
 	var pending bool
 	for {
-		height, _, pending, err = s.sdk.Node().Confirm(msg.Hash(hash), 0, 10)
+		height, _, pending, err = s.sdk.Node().Confirm(msg.Hash(hash), 0, 100)
 		if height > 0 {
 			log.Info("Submitted header to poly", "chain", chainId, "hash", hash, "height", height)
 			return
