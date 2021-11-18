@@ -94,7 +94,7 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	case base.PLT:
 		height, _ = l.state.GetHeight(context.Background())
 		if height > txHeight+120 {
-			return height - 10
+			return height - 10, nil
 		}
 		return txHeight, nil
 	default:
