@@ -65,7 +65,7 @@ func Http(ctx *cli.Context) (err error) {
 	http.HandleFunc("/api/v1/patch", PatchTx)
 	http.HandleFunc("/api/v1/skip", SkipTx)
 	http.HandleFunc("/api/v1/skipcheck", SkipCheckTx)
-	http.HandleFunc("/api/v1/getManualData", controller.ComposeDstTx)
+	http.HandleFunc("/api/v1/composetx", controller.ComposeDstTx)
 	http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil)
 	return
 }
