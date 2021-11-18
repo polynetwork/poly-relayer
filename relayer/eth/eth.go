@@ -236,6 +236,11 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
 		if err != nil {
+			log.Error("eth ProcessTx poly tx for error", "poly_hash", tx.PolyHash, "err", err)
+			continue
+		}
+		err = s.SubmitTx(tx)
+		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash, "err", err)
 			log.Json(log.ERROR, tx)
 			if errors.Is(err, msg.ERR_INVALID_TX) || errors.Is(err, msg.ERR_TX_BYPASS) {
