@@ -27,6 +27,7 @@ import (
 
 type Role struct {
 	HeaderSync bool // header sync
+	EpochSync  bool // epoch sync
 	TxListen   bool // chain(src) -> mq
 	TxCommit   bool // mq -> poly
 	PolyListen bool // poly -> mq
@@ -59,7 +60,11 @@ func (c *Config) ApplyRoles(roles Roles) {
 			if c.Poly.PolyTxSync == nil {
 				c.Poly.PolyTxSync = new(PolyTxSyncConfig)
 			}
+			if c.Poly.PolyEpochSync == nil {
+				c.Poly.PolyEpochSync = new(PolyEpochSyncConfig)
+			}
 			c.Poly.PolyTxSync.Enabled = role.PolyListen
+			c.Poly.PolyEpochSync.Enabled = role.EpochSync
 		} else {
 			chain, ok := c.Chains[id]
 			if !ok {

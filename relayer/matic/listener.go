@@ -28,7 +28,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/matic"
 	"github.com/polynetwork/bridge-common/chains/matic/cosmos"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -47,7 +47,7 @@ type Listener struct {
 	*eth.Listener
 }
 
-func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	l.Listener = new(eth.Listener)
 	err = l.Listener.Init(config, poly)
 	if err != nil {

@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	POLY_SYNC = String("poly_sync_running")
+	POLY_SYNC       = String("poly_sync_running")
+	POLY_EPOCH_SYNC = String("poly_epoch_sync_running")
 
 	KEY_HEIGHT_EXTRA_HEADER ChainHeightType = "header_extra_sync"
 	KEY_HEIGHT_HEADER       ChainHeightType = "header_sync"       // chain sync mark
@@ -21,6 +22,8 @@ const (
 	KEY_HEIGHT_HEADER_RESET ChainHeightType = "header_sync_reset" // chain sync reset
 	KEY_HEIGHT_CHAIN        ChainHeightType = "chain_height"      // chain node height
 	KEY_HEIGHT_TX           ChainHeightType = "tx_sync"           // tx sync mark
+	KEY_HEIGHT_EPOCH        ChainHeightType = "epoch_sync"        // epoch sync mark
+	KEY_HEIGHT_EPOCH_RESET  ChainHeightType = "epoch_sync_reset"  // epoch sync reset
 )
 
 type ChainHeightType string

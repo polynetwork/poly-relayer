@@ -89,7 +89,7 @@ func (h *PolyTxCommitHandler) Compose(tx *msg.Tx) (err error) {
 		return
 	}
 	if h.config.Filter != nil {
-		if !h.config.Filter.Check(tx.SrcProxy, tx.DstProxy) {
+		if !h.config.Filter.Check(tx) {
 			log.Warn("Poly tx commit skipped for not target", "from", tx.SrcProxy, "to", tx.DstProxy)
 			return msg.ERR_TX_BYPASS
 		} else {
@@ -154,12 +154,13 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	// Missing -> send to delay queue
 	state := map[string]*bridge.CheckFeeRequest{}
 	for _, tx := range txs {
-		state[tx.PolyHash] = &bridge.CheckFeeRequest{
+		state[tx.PolyHash.Hex()] = &bridge.CheckFeeRequest{
 			ChainId:  tx.SrcChainId,
 			TxId:     tx.TxId,
-			PolyHash: tx.PolyHash,
+			PolyHash: tx.PolyHash.Hex(),
 		}
 	}
+	log.Info("Sending check fee request", "size", len(state), "chain", b.name)
 	err = b.bridge.Node().CheckFee(state)
 	if err != nil {
 		return
@@ -167,9 +168,9 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	for _, tx := range txs {
 		feeMin := float32(0)
 		feePaid := float32(0)
-		check := state[tx.PolyHash]
+		check := state[tx.PolyHash.Hex()]
 		if check != nil {
-			tx.CheckFeeStatus = state[tx.PolyHash].Status
+			tx.CheckFeeStatus = state[tx.PolyHash.Hex()].Status
 			feeMin = float32(check.Min)
 			feePaid = float32(check.Paid)
 		}
@@ -180,11 +181,13 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 		} else if check.Skip() {
 			log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
 		} else if check.Missing() {
+			tx.Attempts++
 			log.Info("CheckFee tx missing in bridge, delay for 2 seconds", "poly_hash", tx.PolyHash)
-			tsp := time.Now().Unix() + 2
+			tsp := time.Now().Unix() + 5
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 
 		} else {
+			tx.Attempts++
 			log.Info("CheckFee tx not paid, delay for 10 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
 			tsp := time.Now().Unix() + 600
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
@@ -210,11 +213,21 @@ LOOP:
 		if !flush || len(txs) < 100 {
 			tx, _ := b.TxBus.PopTimed(ctx, time.Second)
 			if tx != nil {
-				if tx.PolyHash == "" {
+				if tx.Type() == msg.POLY_EPOCH {
+					log.Info("Found new poly epoch info", "poly_epoch", tx.PolyEpoch.EpochId, "chain", b.name)
+					b.ch <- tx
+					continue
+				}
+
+				if msg.Empty(tx.PolyHash) {
 					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
 					continue
 				}
-				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash)
+				if tx.Attempts > 1000 && base.ENV == "testnet" {
+					log.Error("Dropping failed tx for too many retries in testnet", "chain", b.name, "poly_hash", tx.PolyHash)
+					continue
+				}
+				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash, "process_pending", len(b.ch))
 
 				// Skip tx check fee
 				if tx.SkipFee() {

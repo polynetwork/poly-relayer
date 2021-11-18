@@ -25,8 +25,11 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/urfave/cli/v2"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+
 	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/bridge"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -36,6 +39,7 @@ import (
 
 const (
 	SET_HEADER_HEIGHT = "setheaderblock"
+	SET_EPOCH_HEIGHT  = "setepochblock"
 	SET_TX_HEIGHT     = "settxblock"
 	RELAY_TX          = "submit"
 	STATUS            = "status"
@@ -43,12 +47,14 @@ const (
 	PATCH             = "patch"
 	SKIP              = "skip"
 	CHECK_SKIP        = "checkskip"
+	CREATE_ACCOUNT    = "createaccount"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
 
 func init() {
 	_Handlers[SET_HEADER_HEIGHT] = SetHeaderSyncHeight
+	_Handlers[SET_EPOCH_HEIGHT] = SetEpochSyncHeight
 	_Handlers[SET_TX_HEIGHT] = SetTxSyncHeight
 	_Handlers[STATUS] = Status
 	_Handlers[HTTP] = Http
@@ -56,17 +62,29 @@ func init() {
 	_Handlers[SKIP] = Skip
 	_Handlers[CHECK_SKIP] = CheckSkip
 	_Handlers[RELAY_TX] = RelayTx
+	_Handlers[CREATE_ACCOUNT] = CreateAccount
 }
 
 func RelayTx(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")
+	free := ctx.Bool("free")
 	params := &msg.Tx{
-		SkipCheckFee: ctx.Bool("free"),
+		SkipCheckFee: free,
 		DstGasPrice:  ctx.String("price"),
 		DstGasPriceX: ctx.String("pricex"),
 		DstGasLimit:  uint64(ctx.Int("limit")),
+	}
+	if ctx.Bool("auto") {
+		params.SrcChainId = chain
+		if chain == base.POLY {
+			params.PolyHash = msg.Hash(hash)
+		} else {
+			params.SrcHash = hash
+		}
+		Relay(params)
+		return
 	}
 
 	ps, err := PolySubmitter()
@@ -98,18 +116,42 @@ func RelayTx(ctx *cli.Context) (err error) {
 	txs, err := listener.Scan(height)
 	if err != nil {
 		log.Error("Fetch block txs error", "height", height, "err", err)
+		return
 	}
 
 	count := 0
+	var bridge *bridge.SDK
 	for _, tx := range txs {
 		txHash := tx.SrcHash
 		if chain == base.POLY {
-			txHash = tx.PolyHash
+			txHash = tx.PolyHash.Hex()
 		}
 		if hash == "" || util.LowerHex(hash) == util.LowerHex(txHash) {
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
+				if !free {
+					if bridge == nil {
+						bridge, err = Bridge()
+						if err != nil {
+							log.Error("Failed to init bridge sdk")
+							continue
+						}
+					}
+					res, err := CheckFee(bridge, tx)
+					if err != nil {
+						log.Error("Failed to call check fee", "poly_hash", tx.PolyHash)
+						continue
+					}
+					if res.Pass() {
+						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
+					} else {
+						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
+						fmt.Println(util.Verbose(tx))
+						fmt.Println(res)
+						continue
+					}
+				}
 				sub, err := ChainSubmitter(tx.DstChainId)
 				if err != nil {
 					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
@@ -133,13 +175,13 @@ func RelayTx(ctx *cli.Context) (err error) {
 
 type StatusHandler struct {
 	redis *redis.Client
-	poly  *poly.SDK
+	poly  *zion.SDK
 	store *bus.RedisChainStore
 }
 
 func NewStatusHandler(opt *redis.Options) *StatusHandler {
 	client := bus.New(opt)
-	sdk, err := poly.WithOptions(base.POLY, config.CONFIG.Poly.Nodes, time.Minute, 1)
+	sdk, err := zion.WithOptions(base.POLY, config.CONFIG.Poly.Nodes, time.Minute, 1)
 	if err != nil {
 		log.Error("Failed to initialize poly sdk")
 		panic(err)
@@ -151,11 +193,11 @@ func NewStatusHandler(opt *redis.Options) *StatusHandler {
 }
 
 func (h *StatusHandler) Skip(hash string) (err error) {
-	return bus.NewRedisSkipCheck(h.redis).Skip(context.Background(), &msg.Tx{PolyHash: hash})
+	return bus.NewRedisSkipCheck(h.redis).Skip(context.Background(), &msg.Tx{PolyHash: msg.Hash(hash)})
 }
 
 func (h *StatusHandler) CheckSkip(hash string) (skip bool, err error) {
-	return bus.NewRedisSkipCheck(h.redis).CheckSkip(context.Background(), &msg.Tx{PolyHash: hash})
+	return bus.NewRedisSkipCheck(h.redis).CheckSkip(context.Background(), &msg.Tx{PolyHash: msg.Hash(hash)})
 }
 
 func (h *StatusHandler) Height(chain uint64, key bus.ChainHeightType) (uint64, error) {
@@ -236,6 +278,11 @@ func SetTxSyncHeight(ctx *cli.Context) (err error) {
 	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(chain, bus.KEY_HEIGHT_TX, height)
 }
 
+func SetEpochSyncHeight(ctx *cli.Context) (err error) {
+	height := uint64(ctx.Int("height"))
+	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(base.POLY, bus.KEY_HEIGHT_EPOCH_RESET, height)
+}
+
 func Skip(ctx *cli.Context) (err error) {
 	hash := ctx.String("hash")
 	return NewStatusHandler(config.CONFIG.Bus.Redis).Skip(hash)
@@ -256,4 +303,35 @@ func HandleCommand(method string, ctx *cli.Context) error {
 		return fmt.Errorf("Unsupported subcommand %s", method)
 	}
 	return h(ctx)
+}
+
+func CreateAccount(ctx *cli.Context) (err error) {
+	path := ctx.String("path")
+	password := ctx.String("pass")
+	if path == "" {
+		log.Error("Wallet patch can not be empty")
+		return
+	}
+	if password == "" {
+		log.Warn("Using default password: test")
+		password = "test"
+	}
+	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
+	account, err := ks.NewAccount(password)
+	if err != nil {
+		return
+	}
+	log.Info("Created new account", "address", account.Address.Hex())
+	/*
+		data, err := ks.Export(account, password, password)
+		if err != nil {
+			return
+		}
+		fmt.Println(string(data))
+		err = ioutil.WriteFile(fmt.Sprintf("%s/%s.json", path, account.Address.Hex()), data, 0644)
+		if err != nil {
+			log.Error("Failed to write account file", "err", err)
+		}
+	*/
+	return nil
 }
