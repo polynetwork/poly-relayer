@@ -26,7 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -38,7 +38,7 @@ type Listener struct {
 	vs []common.Address
 }
 
-func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	l.Listener = new(eth.Listener)
 	return l.Listener.Init(config, poly)
 }

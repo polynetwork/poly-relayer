@@ -55,6 +55,18 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.SET_EPOCH_HEIGHT,
+				Usage:  "Set poly epoch sync height",
+				Action: command(relayer.SET_EPOCH_HEIGHT),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "height",
+						Usage:    "target block height",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.SET_TX_HEIGHT,
 				Usage:  "Set side chain tx sync height",
 				Action: command(relayer.SET_TX_HEIGHT),
@@ -109,11 +121,16 @@ func main() {
 						Name:  "free",
 						Usage: "skip check fee",
 					},
+					&cli.BoolFlag{
+						Name:  "auto",
+						Usage: "submit will try to find the proper bin",
+						Value: false,
+					},
 				},
 			},
 			&cli.Command{
 				Name:   relayer.PATCH,
-				Usage:  "Patch cross chain tx",
+				Usage:  "Patch cross chain tx, will do auto patching if auto is set",
 				Action: command(relayer.PATCH),
 				Flags: []cli.Flag{
 					&cli.Int64Flag{
@@ -143,6 +160,11 @@ func main() {
 					&cli.BoolFlag{
 						Name:  "free",
 						Usage: "skip check fee",
+					},
+					&cli.BoolFlag{
+						Name:  "auto",
+						Usage: "auto patch",
+						Value: false,
 					},
 				},
 			},
@@ -182,6 +204,22 @@ func main() {
 						Name:     "hash",
 						Usage:    "tx hash",
 						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.CREATE_ACCOUNT,
+				Usage:  "Create a new eth keystore account",
+				Action: command(relayer.CREATE_ACCOUNT),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "path",
+						Usage:    "wallet path",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "pass",
+						Usage: "wallet password",
 					},
 				},
 			},

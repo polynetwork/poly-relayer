@@ -25,7 +25,8 @@ import (
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/bridge"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -34,7 +35,7 @@ import (
 )
 
 type IChainListener interface {
-	Init(*config.ListenerConfig, *poly.SDK) error
+	Init(*config.ListenerConfig, *zion.SDK) error
 	Defer() int
 	ListenCheck() time.Duration
 	ChainId() uint64
@@ -60,7 +61,8 @@ type IChainSubmitter interface {
 	Hook(context.Context, *sync.WaitGroup, <-chan msg.Message) error
 	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
 	Process(msg.Message, msg.PolyComposer) error
-	ProcessTx(*msg.Tx, msg.PolyComposer) error
+	ProcessTx(*msg.Tx, msg.PolyComposer) error // Process poly tx
+	ProcessEpoch(*msg.Tx) error                // Process poly epoch sync
 	Stop() error
 }
 
@@ -110,7 +112,7 @@ func ChainSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	return
 }
 
-func ChainListener(chain uint64, poly *poly.SDK) (l IChainListener, err error) {
+func ChainListener(chain uint64, poly *zion.SDK) (l IChainListener, err error) {
 	l = GetListener(chain)
 	if l == nil {
 		err = fmt.Errorf("No listener for chain %d available", chain)
@@ -123,4 +125,8 @@ func ChainListener(chain uint64, poly *poly.SDK) (l IChainListener, err error) {
 
 	err = l.Init(conf.SrcTxSync.ListenerConfig, poly)
 	return
+}
+
+func Bridge() (sdk *bridge.SDK, err error) {
+	return bridge.WithOptions(0, config.CONFIG.Bridge, time.Minute, 100)
 }

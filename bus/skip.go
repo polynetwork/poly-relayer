@@ -52,7 +52,7 @@ func formatHashes(strs ...string) []string {
 }
 
 func (b *RedisSkipCheck) Skip(ctx context.Context, tx *msg.Tx) (err error) {
-	hashes := formatHashes(tx.SrcHash, tx.PolyHash)
+	hashes := formatHashes(tx.SrcHash, tx.PolyHash.String())
 	for _, hash := range hashes {
 		_, err = b.db.HSet(ctx, b.Key.Key(), hash, "true").Result()
 		if err != nil {
@@ -65,7 +65,7 @@ func (b *RedisSkipCheck) Skip(ctx context.Context, tx *msg.Tx) (err error) {
 }
 
 func (b *RedisSkipCheck) CheckSkip(ctx context.Context, tx *msg.Tx) (skip bool, err error) {
-	hashes := formatHashes(tx.SrcHash, tx.PolyHash)
+	hashes := formatHashes(tx.SrcHash, tx.PolyHash.String())
 	var res string
 	for _, hash := range hashes {
 		res, err = b.db.HGet(ctx, b.Key.Key(), hash).Result()

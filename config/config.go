@@ -88,6 +88,7 @@ func New(path string) (config *Config, err error) {
 type PolyChainConfig struct {
 	PolySubmitterConfig `json:",inline"`
 	PolyTxSync          *PolyTxSyncConfig
+	PolyEpochSync       *PolyEpochSyncConfig
 }
 
 type ChainConfig struct {
@@ -140,6 +141,12 @@ func (c *PolySubmitterConfig) Fill(o *PolySubmitterConfig) *PolySubmitterConfig 
 		o.Wallet = c.Wallet
 	} else {
 		o.Wallet.Path = GetConfigPath(WALLET_PATH, o.Wallet.Path)
+		if len(o.Wallet.Nodes) == 0 {
+			o.Wallet.Nodes = c.Wallet.Nodes
+		}
+		for _, p := range o.Wallet.KeyStoreProviders {
+			p.Path = GetConfigPath(WALLET_PATH, p.Path)
+		}
 	}
 	return o
 }
@@ -214,6 +221,8 @@ type PolyTxSyncConfig struct {
 	Bus             *BusConfig
 }
 
+type PolyEpochSyncConfig PolyTxSyncConfig
+
 type PolyTxCommitConfig struct {
 	*SubmitterConfig `json:",inline"`
 	Poly             *PolySubmitterConfig
@@ -275,8 +284,26 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 			c.PolyTxSync.Nodes = c.Nodes
 		}
 	}
+	if c.PolyEpochSync != nil {
+		if c.PolyEpochSync.ListenerConfig == nil {
+			c.PolyEpochSync.ListenerConfig = new(ListenerConfig)
+		}
+		c.PolyEpochSync.ChainId = base.POLY
+		if c.PolyEpochSync.Bus == nil {
+			c.PolyEpochSync.Bus = bus
+		}
+		if len(c.PolyEpochSync.Nodes) == 0 {
+			c.PolyEpochSync.Nodes = c.Nodes
+		}
+	}
 	if c.Wallet != nil {
 		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
+		for _, p := range c.Wallet.KeyStoreProviders {
+			p.Path = GetConfigPath(WALLET_PATH, p.Path)
+		}
+		if len(c.Wallet.Nodes) == 0 {
+			c.Wallet.Nodes = c.Nodes
+		}
 	}
 	return
 }
@@ -308,6 +335,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 			c.HeaderSync.Bus = bus
 		}
 		c.HeaderSync.Poly = poly.PolySubmitterConfig.Fill(c.HeaderSync.Poly)
+		c.HeaderSync.Poly.ChainId = chain
 	}
 
 	if c.SrcTxSync == nil {
