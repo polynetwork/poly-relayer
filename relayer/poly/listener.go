@@ -122,7 +122,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 			tx := new(msg.Tx)
 			tx.DstChainId = dstChain
 			tx.PolyKey = states[5].(string)
-			tx.PolyHeight = states[4].(uint32)
+			tx.PolyHeight = uint32(states[4].(float64))
 			tx.PolyHash = event.TxHash
 			tx.TxType = msg.POLY
 			tx.TxId = states[3].(string)
