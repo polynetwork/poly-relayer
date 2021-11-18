@@ -150,6 +150,15 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	builder := sc.NewScriptBuilder()
 	builder.MakeInvocationScript(scriptHash, VERIFY_AND_EXECUTE_TX, args)
 	script := builder.ToArray()
+	tx.SubmitTxData = fmt.Sprintf("%x", script)
+	return
+}
+
+func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	script, err := hex.DecodeString(tx.SubmitTxData)
+	if err != nil {
+		return
+	}
 	if tx.DstSender == nil {
 		tx.DstHash, err = s.wallet.Invoke(script, nil)
 	} else {

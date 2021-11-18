@@ -19,6 +19,7 @@ package ont
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -106,6 +107,20 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	if len(v) == 0 {
 		param.Header = tx.PolyHeader.ToArray()
 	}
+
+	submitData, err := json.Marshal(param)
+	if err != nil {
+		tx.SubmitTxData = string(submitData)
+	}
+	return
+}
+
+func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	param := new(ccm.ProcessCrossChainTxParam)
+	err = json.Unmarshal([]byte(tx.SubmitTxData), param)
+	if err != nil {
+		return err
+	}
 	hash, err := s.sdk.Node().Native.InvokeNativeContract(
 		s.signer.Config.GasPrice, s.signer.Config.GasLimit,
 		s.signer.Account, s.signer.Account, byte(0), utils.CrossChainContractAddress, ccm.PROCESS_CROSS_CHAIN_TX, []interface{}{param},
@@ -151,6 +166,11 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 		}
 		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 		err = s.ProcessTx(tx, compose)
+		if err != nil {
+			log.Error("ont ProcessTx error", "err", err)
+			continue
+		}
+		err = s.SubmitTx(tx)
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
 			log.Json(log.ERROR, tx)

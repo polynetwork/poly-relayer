@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/polynetwork/bridge-common/util"
 	"net/http"
 	"strconv"
 	"strings"
@@ -61,6 +62,7 @@ func Http(ctx *cli.Context) (err error) {
 	http.HandleFunc("/api/v1/patch", PatchTx)
 	http.HandleFunc("/api/v1/skip", SkipTx)
 	http.HandleFunc("/api/v1/skipcheck", SkipCheckTx)
+	http.HandleFunc("/api/v1/getManualData", GetManualData)
 	http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil)
 	return
 }
@@ -195,4 +197,55 @@ func Json(w http.ResponseWriter, data interface{}) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(bytes)
+}
+
+func GetManualData(w http.ResponseWriter, r *http.Request) {
+	polyhash := r.FormValue("polyhash")
+	if polyhash == "" {
+		http.Error(w, "request not invalid", http.StatusInternalServerError)
+	}
+	log.Info("http SendToDstData polyhash:", polyhash)
+	data, err := getManualData(polyhash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		Json(w, data)
+	}
+}
+
+func getManualData(polyhash string) (manualData string, err error) {
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
+	var listener IChainListener
+	listener, err = PolyListener()
+	if err != nil {
+		return
+	}
+
+	tx, err := listener.ScanTx(polyhash)
+	if err != nil {
+		log.Error("getManualData Fetch block tx error", "polyhash", polyhash, "err", err)
+		return
+	}
+	txHash := tx.PolyHash
+	if util.LowerHex(polyhash) == util.LowerHex(txHash) {
+		log.Info("getManualData Found patch target tx", "hash", txHash)
+		sub, err := ChainSubmitter(tx.DstChainId)
+		if err != nil {
+			log.Error("getManualData Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
+			return manualData, err
+		}
+		err = sub.ProcessTx(tx, ps.ComposeTx)
+		if err != nil {
+			log.Error("getManualData ProcessTx error", "err", err)
+			return manualData, err
+		}
+		log.Info("getManualData ProcessTx poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
+		return tx.SubmitTxData, nil
+	} else {
+		err = fmt.Errorf("ProcessTx Found tx in block not targeted txhash:%v", txHash)
+	}
+	return
 }

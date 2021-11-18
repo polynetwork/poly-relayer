@@ -18,6 +18,8 @@
 package poly
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -95,7 +97,44 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 }
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
-	return
+	//hash hasn't '0x'
+	event, err := l.sdk.Node().GetSmartContractEvent(hash)
+	if err != nil {
+		return nil, err
+	}
+	for _, notify := range event.Notify {
+		if notify.ContractAddress == poly.CCM_ADDRESS {
+			states := notify.States.([]interface{})
+			if len(states) < 6 {
+				continue
+			}
+			method, _ := states[0].(string)
+			if method != "makeProof" {
+				continue
+			}
+
+			dstChain := uint64(states[2].(float64))
+			if dstChain == 0 {
+				log.Error("Invalid dst chain id in poly tx", "hash", event.TxHash)
+				continue
+			}
+
+			tx := new(msg.Tx)
+			tx.DstChainId = dstChain
+			tx.PolyKey = states[5].(string)
+			tx.PolyHeight = states[4].(uint32)
+			tx.PolyHash = event.TxHash
+			tx.TxType = msg.POLY
+			tx.TxId = states[3].(string)
+			tx.SrcChainId = uint64(states[1].(float64))
+			switch tx.SrcChainId {
+			case base.NEO, base.NEO3, base.ONT:
+				tx.TxId = util.ReverseHex(tx.TxId)
+			}
+			return tx, nil
+		}
+	}
+	return nil, errors.New(fmt.Sprintf("hash:%v hasn't event", hash))
 }
 
 func (l *Listener) ChainId() uint64 {

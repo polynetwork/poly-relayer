@@ -74,6 +74,7 @@ type IChainSubmitter interface {
 	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
 	Process(msg.Message, msg.PolyComposer) error
 	ProcessTx(*msg.Tx, msg.PolyComposer) error
+	SubmitTx(*msg.Tx) error
 	Stop() error
 }
 

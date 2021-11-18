@@ -164,7 +164,8 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		err = fmt.Errorf("%s processPolyTx pack tx error %v", s.name, err)
 		return err
 	}
-	return s.submit(tx)
+	tx.SubmitTxData = fmt.Sprintf("%x", tx.DstData)
+	return
 }
 
 func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
@@ -188,6 +189,11 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 		return
 	}
 	err = s.processPolyTx(m)
+	return
+}
+
+func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	err = s.submit(tx)
 	if err != nil {
 		info := err.Error()
 		if strings.Contains(info, "business contract failed") {
