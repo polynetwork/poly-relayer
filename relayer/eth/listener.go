@@ -92,6 +92,10 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 		}
 		height = height - 2
 	case base.PLT:
+		height, _ = l.state.GetHeight(context.Background())
+		if height > txHeight+120 {
+			return height - 10
+		}
 		return txHeight, nil
 	default:
 		return 0, fmt.Errorf("getProofHeight unsupported chain %s", l.name)
