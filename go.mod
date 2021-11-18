@@ -15,7 +15,7 @@ require (
 	github.com/ontio/ontology v1.14.0-beta.0.20210818114002-fedaf66010a7
 	github.com/ontio/ontology-crypto v1.2.1
 	github.com/ontio/ontology-go-sdk v1.12.4
-	github.com/polynetwork/bridge-common v0.0.30-v2-plt
+	github.com/polynetwork/bridge-common v0.0.31-v2-plt
 	github.com/polynetwork/eth-contracts v0.0.0-20200814062128-70f58e22b014
 	github.com/polynetwork/poly v1.7.3-0.20210804073726-5d4f4d4a9371
 	github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4
