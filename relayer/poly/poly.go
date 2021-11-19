@@ -59,9 +59,13 @@ type Submitter struct {
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	s.config = config
-	s.signer, err = wallet.NewPolySigner(config.Wallet)
-	if err != nil {
-		return
+	if config.Wallet != nil && config.Wallet.Path != "" {
+		s.signer, err = wallet.NewPolySigner(config.Wallet)
+		if err != nil {
+			return
+		}
+	} else {
+		log.Warn("Skipping poly wallet init")
 	}
 	s.name = base.GetChainName(config.ChainId)
 	s.blocksToWait = base.BlocksToWait(config.ChainId)
