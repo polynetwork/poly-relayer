@@ -158,7 +158,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 				err = sub.ProcessTx(tx, ps.ComposeTx)
 				log.Info("Submtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
 			} else {
-				err = ps.ProcessTx(tx, listener.Compose)
+				err = ps.ProcessTx(tx, listener)
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
 			fmt.Println(util.Verbose(tx))

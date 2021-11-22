@@ -44,6 +44,10 @@ type Header struct {
 }
 
 type PolyComposer func(*Tx) error
+type SrcComposer interface {
+	Compose(*Tx) error
+	LatestHeight() (uint64, error)
+}
 
 type Tx struct {
 	TxType   TxType

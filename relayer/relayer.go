@@ -58,6 +58,7 @@ type IChainListener interface {
 	ScanTx(string) (*msg.Tx, error)
 	GetTxBlock(string) (uint64, error)
 	Compose(*msg.Tx) error
+	LatestHeight() (uint64, error)
 }
 
 type Handler interface {
