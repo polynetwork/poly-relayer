@@ -25,7 +25,10 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/urfave/cli/v2"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
@@ -43,6 +46,7 @@ const (
 	PATCH             = "patch"
 	SKIP              = "skip"
 	CHECK_SKIP        = "checkskip"
+	CREATE_ACCOUNT    = "createaccount"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -56,17 +60,29 @@ func init() {
 	_Handlers[SKIP] = Skip
 	_Handlers[CHECK_SKIP] = CheckSkip
 	_Handlers[RELAY_TX] = RelayTx
+	_Handlers[CREATE_ACCOUNT] = CreateAccount
 }
 
 func RelayTx(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")
+	free := ctx.Bool("free")
 	params := &msg.Tx{
-		SkipCheckFee: ctx.Bool("free"),
+		SkipCheckFee: free,
 		DstGasPrice:  ctx.String("price"),
 		DstGasPriceX: ctx.String("pricex"),
 		DstGasLimit:  uint64(ctx.Int("limit")),
+	}
+	if ctx.Bool("auto") {
+		params.SrcChainId = chain
+		if chain == base.POLY {
+			params.PolyHash = hash
+		} else {
+			params.SrcHash = hash
+		}
+		Relay(params)
+		return
 	}
 
 	ps, err := PolySubmitter()
@@ -98,9 +114,11 @@ func RelayTx(ctx *cli.Context) (err error) {
 	txs, err := listener.Scan(height)
 	if err != nil {
 		log.Error("Fetch block txs error", "height", height, "err", err)
+		return
 	}
 
 	count := 0
+	var bridge *bridge.SDK
 	for _, tx := range txs {
 		txHash := tx.SrcHash
 		if chain == base.POLY {
@@ -110,6 +128,28 @@ func RelayTx(ctx *cli.Context) (err error) {
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
+				if !free {
+					if bridge == nil {
+						bridge, err = Bridge()
+						if err != nil {
+							log.Error("Failed to init bridge sdk")
+							continue
+						}
+					}
+					res, err := CheckFee(bridge, tx)
+					if err != nil {
+						log.Error("Failed to call check fee", "poly_hash", tx.PolyHash)
+						continue
+					}
+					if res.Pass() {
+						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
+					} else {
+						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
+						fmt.Println(util.Verbose(tx))
+						fmt.Println(res)
+						continue
+					}
+				}
 				sub, err := ChainSubmitter(tx.DstChainId)
 				if err != nil {
 					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
@@ -118,7 +158,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 				err = sub.ProcessTx(tx, ps.ComposeTx)
 				log.Info("Submtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
 			} else {
-				err = ps.ProcessTx(tx, listener.Compose)
+				err = ps.ProcessTx(tx, listener)
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
 			log.Json(log.INFO, tx)
@@ -256,4 +296,35 @@ func HandleCommand(method string, ctx *cli.Context) error {
 		return fmt.Errorf("Unsupported subcommand %s", method)
 	}
 	return h(ctx)
+}
+
+func CreateAccount(ctx *cli.Context) (err error) {
+	path := ctx.String("path")
+	password := ctx.String("pass")
+	if path == "" {
+		log.Error("Wallet patch can not be empty")
+		return
+	}
+	if password == "" {
+		log.Warn("Using default password: test")
+		password = "test"
+	}
+	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
+	account, err := ks.NewAccount(password)
+	if err != nil {
+		return
+	}
+	log.Info("Created new account", "address", account.Address.Hex())
+	/*
+		data, err := ks.Export(account, password, password)
+		if err != nil {
+			return
+		}
+		fmt.Println(string(data))
+		err = ioutil.WriteFile(fmt.Sprintf("%s/%s.json", path, account.Address.Hex()), data, 0644)
+		if err != nil {
+			log.Error("Failed to write account file", "err", err)
+		}
+	*/
+	return nil
 }

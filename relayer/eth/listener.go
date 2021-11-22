@@ -213,6 +213,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			SrcChainId: l.config.ChainId,
 			SrcProxy:   ev.ProxyOrAssetContract.String(),
 			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
+			SrcAddress: ev.Sender.String(),
 		}
 		l.Compose(tx)
 		txs = append(txs, tx)
@@ -268,6 +269,10 @@ func (l *Listener) SDK() *eth.SDK {
 
 func (l *Listener) ECCD() common.Address {
 	return l.ccd
+}
+
+func (l *Listener) LatestHeight() (uint64, error) {
+	return l.sdk.Node().GetLatestHeight()
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {

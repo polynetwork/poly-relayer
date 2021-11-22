@@ -136,7 +136,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		return
 	}
 	scriptHash := helper.HexToBytes(s.ccm)
-	var anchor []byte
+	anchor := make([]byte, 0)
 	if tx.AnchorHeader != nil {
 		anchor = tx.AnchorHeader.GetMessage()
 	}

@@ -101,7 +101,8 @@ type ChainConfig struct {
 	CheckFee          bool
 	Defer             int
 	Wallet            *wallet.Config
-	Filter            *FilterConfig
+	SrcFilter         *FilterConfig
+	DstFilter         *FilterConfig
 
 	HeaderSync   *HeaderSyncConfig   // chain -> ch -> poly
 	SrcTxSync    *SrcTxSyncConfig    // chain -> mq
@@ -297,8 +298,11 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		}
 	}
 
-	if c.Filter != nil {
-		c.Filter.Init()
+	if c.SrcFilter != nil {
+		c.SrcFilter.Init()
+	}
+	if c.DstFilter != nil {
+		c.DstFilter.Init()
 	}
 
 	if c.HeaderSync != nil {
@@ -331,7 +335,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 	c.SrcTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxCommit.Poly)
 	if c.SrcTxCommit.Filter == nil {
-		c.SrcTxCommit.Filter = c.Filter
+		c.SrcTxCommit.Filter = c.SrcFilter
 	}
 
 	if c.PolyTxCommit == nil {
@@ -345,7 +349,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		c.PolyTxCommit.Bus = bus
 	}
 	if c.PolyTxCommit.Filter == nil {
-		c.PolyTxCommit.Filter = c.Filter
+		c.PolyTxCommit.Filter = c.DstFilter
 	}
 	return
 }

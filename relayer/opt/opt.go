@@ -15,7 +15,7 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package arb
+package opt
 
 import (
 	"github.com/polynetwork/bridge-common/base"
@@ -26,5 +26,5 @@ import (
 type Submitter = eth.Submitter
 
 func init() {
-	wallet.SetGasLimit(base.ARBITRUM, 4000000)
+	wallet.SetGasLimit(base.OPTIMISM, 4000000)
 }

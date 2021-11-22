@@ -15,16 +15,10 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package arb
+package fantom
 
 import (
-	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 )
 
 type Submitter = eth.Submitter
-
-func init() {
-	wallet.SetGasLimit(base.ARBITRUM, 4000000)
-}

@@ -157,6 +157,9 @@ func PatchTx(w http.ResponseWriter, r *http.Request) {
 }
 
 func Patch(ctx *cli.Context) (err error) {
+	if ctx.Bool("auto") {
+		return AutoPatch()
+	}
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")

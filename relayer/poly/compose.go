@@ -89,9 +89,11 @@ func (s *Submitter) ComposeTx(tx *msg.Tx) (err error) {
 	if tx.PolyHash == "" {
 		return fmt.Errorf("ComposeTx: Invalid poly hash")
 	}
-	if tx.DstPolyEpochStartHeight == 0 {
-		return fmt.Errorf("ComposeTx: Dst chain poly height not specified")
-	}
+	/*
+		if tx.DstPolyEpochStartHeight == 0 {
+			return fmt.Errorf("ComposeTx: Dst chain poly height not specified")
+		}
+	*/
 
 	if tx.PolyHeight == 0 {
 		tx.PolyHeight, err = s.sdk.Node().GetBlockHeightByTxHash(tx.PolyHash)
@@ -166,7 +168,7 @@ func (s *Submitter) CheckEpoch(tx *msg.Tx, hdr *types.Header) (epoch bool, pubKe
 		return
 	}
 	if len(tx.DstPolyKeepers) == 0 {
-		err = fmt.Errorf("Dst chain poly keeper not provided")
+		// err = fmt.Errorf("Dst chain poly keeper not provided")
 		return
 	}
 	if hdr.NextBookkeeper == pcom.ADDRESS_EMPTY {
