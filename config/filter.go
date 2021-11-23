@@ -84,6 +84,6 @@ func (c *FilterConfig) Check(tx *msg.Tx) bool {
 	if c == nil {
 		return true
 	}
-	return filter(c.SrcProxyFilter, c.SrcProxies, tx.SrcProxy) && filter(c.SrcProxyFilter, c.SrcProxies, tx.DstProxy) &&
+	return filter(c.SrcProxyFilter, c.SrcProxies, tx.SrcProxy) && filter(c.DstProxyFilter, c.DstProxies, tx.DstProxy) &&
 		filterOut(c.AddressFilter, c.Addresses, tx.SrcAddress) && filterOut(c.AddressFilter, c.Addresses, tx.DstAddress)
 }
