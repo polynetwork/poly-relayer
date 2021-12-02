@@ -164,7 +164,6 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		err = fmt.Errorf("%s processPolyTx pack tx error %v", s.name, err)
 		return err
 	}
-	tx.SubmitTxData = fmt.Sprintf("%x", tx.DstData)
 	return
 }
 

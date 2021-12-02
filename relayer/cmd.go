@@ -157,7 +157,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 				}
 				err = sub.ProcessTx(tx, ps.ComposeTx)
 				if err != nil {
-					log.Error("Failed to init chain ProcessTx", "chain", tx.DstChainId, "err", err)
+					log.Error("Failed to process tx", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.SubmitTx(tx)
