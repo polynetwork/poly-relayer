@@ -18,6 +18,7 @@
 package relayer
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net/http"
 
@@ -90,7 +91,7 @@ func (c *Controller) composeDstTx(hash string) (data interface{}, err error) {
 	case base.ONT:
 		payload["data"] = tx.Extra
 	default:
-		payload["data"] = tx.DstData
+		payload["data"] = hex.EncodeToString(tx.DstData)
 	}
 	data = payload
 	return
