@@ -70,7 +70,7 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 	}
 
 	switch chainId {
-	case base.O3, base.ETH, base.HECO, base.BSC, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA:
+	case base.O3, base.ETH, base.HECO, base.BSC, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA, base.NEO:
 		bin = "relayer_main"
 	case base.MATIC:
 		bin = "relayer_matic"
