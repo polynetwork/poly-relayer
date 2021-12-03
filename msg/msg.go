@@ -242,9 +242,9 @@ func (tx *Tx) Decode(data string) (err error) {
 				return fmt.Errorf("Decode poly param error %v event %s", err, tx.PolyParam)
 			}
 			tx.MerkleValue = param
-			err = param.Deserialization(pcom.NewZeroCopySource(value))
+			err = rlp.DecodeBytes(value, param)
 			if err != nil {
-				return fmt.Errorf("Decode poly merkle value error %v", err)
+				return fmt.Errorf("rlp decode poly merkle value error %v", err)
 			}
 			tx.Param = tx.MerkleValue.MakeTxParam
 		}
