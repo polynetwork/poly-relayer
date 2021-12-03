@@ -106,7 +106,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		tx.PolyHeight = height
 		tx.PolyHash = ev.Raw.TxHash
 		tx.TxType = msg.POLY
-		tx.TxId = hex.EncodeToString(param.MakeTxParam.TxHash)
+		tx.TxId = hex.EncodeToString(param.MakeTxParam.CrossChainID)
 		tx.SrcChainId = param.FromChainID
 		switch tx.SrcChainId {
 		case base.NEO, base.ONT, base.NEO3:
