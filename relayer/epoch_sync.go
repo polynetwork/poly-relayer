@@ -134,11 +134,12 @@ LOOP:
 			log.Info("Found new poly epoch", "epoch", epoch.EpochId, "height", epoch.Height)
 			epoch.Encode()
 			tx := &msg.Tx{
-				TxType:    msg.POLY_EPOCH,
-				PolyEpoch: epoch,
+				TxType:     msg.POLY_EPOCH,
+				PolyEpoch:  epoch,
+				DstChainId: h.config.ChainId,
 			}
 			bus.SafeCall(h.Context, tx, "push epoch change to target chain tx bus", func() error {
-				return h.bus.PushToChain(context.Background(), tx)
+				return h.bus.PushToChains(context.Background(), tx, base.CHAINS)
 			})
 			continue
 		} else {
