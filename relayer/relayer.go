@@ -37,6 +37,7 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/fantom"
 	"github.com/polynetwork/poly-relayer/relayer/heco"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
+	"github.com/polynetwork/poly-relayer/relayer/metis"
 	"github.com/polynetwork/poly-relayer/relayer/neo"
 	"github.com/polynetwork/poly-relayer/relayer/o3"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
@@ -127,6 +128,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(fantom.Submitter)
 	case base.AVA:
 		submitter = new(ava.Submitter)
+	case base.METIS:
+		submitter = new(metis.Submitter)
 	default:
 	}
 	return
