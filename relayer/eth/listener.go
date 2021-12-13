@@ -81,7 +81,7 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 			return 0, err
 		}
 		height = h - base.BlocksToWait(l.config.ChainId)
-	case base.OK:
+	case base.OK, base.SIDE:
 		height, _ = l.state.GetHeight(context.Background())
 		if height > 0 {
 			return
@@ -109,7 +109,7 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 	proofKey := hexutil.Encode(bytes)
 	height, err = l.GetProofHeight(txHeight)
 	if err != nil {
-		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
+		err = fmt.Errorf("%s chain get proof height error %v", l.name, err)
 		return
 	}
 	if txHeight > height {
