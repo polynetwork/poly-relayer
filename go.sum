@@ -212,6 +212,8 @@ github.com/deepmap/oapi-codegen v1.8.2/go.mod h1:YLgSKSDv/bZQB7N4ws6luhozi3cEdRk
 github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f/go.mod h1:xH/i4TFMt8koVQZ6WFms69WAsDWr2XsYL3Hkl7jkoLE=
 github.com/devfans/zion-sdk v0.0.2 h1:GiBhawfAqJbNc0r0ea0UxAD3qNz2cWm9mQjA9hT/+jk=
 github.com/devfans/zion-sdk v0.0.2/go.mod h1:Gg/Ob+yfNBdGxCLBym18ku6dSh6z9DYMoTn60uVbSxM=
+github.com/devfans/zion-sdk v0.0.3 h1:U2rXPIAMSDpAbulycIpQf+dSQxcnS1ds817H5nP0Lbw=
+github.com/devfans/zion-sdk v0.0.3/go.mod h1:Gg/Ob+yfNBdGxCLBym18ku6dSh6z9DYMoTn60uVbSxM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-bitstream v0.0.0-20180413035011-3522498ce2c8/go.mod h1:VMaSuZ+SZcx/wljOQKvp5srsbCiKDEb6K2wC4+PiBmQ=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=

@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/KSlashh/poly-abi v0.0.0-20211025090105-3ec8bf407931
 	github.com/btcsuite/btcd v0.21.0-beta
-	github.com/devfans/zion-sdk v0.0.2
+	github.com/devfans/zion-sdk v0.0.3
 	github.com/ethereum/go-ethereum v1.10.11
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/joeqian10/neo-gogogo v1.4.0

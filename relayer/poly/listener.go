@@ -20,6 +20,7 @@ package poly
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
@@ -31,12 +32,14 @@ import (
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
 	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
+	zh "github.com/devfans/zion-sdk/contracts/native/header_sync/zion"
 	"github.com/devfans/zion-sdk/core/state"
 	"github.com/devfans/zion-sdk/core/types"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/zion"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -44,12 +47,14 @@ import (
 
 type Listener struct {
 	sdk       *zion.SDK
+	name      string
 	config    *config.ListenerConfig
 	lastEpoch uint64
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error) {
 	l.config = config
+	l.name = base.GetChainName(config.ChainId)
 	if sdk != nil {
 		l.sdk = sdk
 	} else {
@@ -129,7 +134,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 }
 
 func (l *Listener) ChainId() uint64 {
-	return base.POLY
+	return l.config.ChainId
 }
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
@@ -153,6 +158,37 @@ func (l *Listener) Nodes() chains.Nodes {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
+	epoch, err := l.sdk.Node().GetEpochInfo(height)
+	if err != nil {
+		return
+	}
+	if epoch.Status != node_manager.ProposalStatusPassed {
+		return
+	}
+	if epoch.ID == l.lastEpoch {
+		return
+	}
+
+	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
+	if err != nil {
+		err = fmt.Errorf("Fetch block header error %v", err)
+		return nil, nil, err
+	}
+	log.Info("Fetched block header", "chain", l.name, "height", height, "hash", hdr.Hash().String())
+	hash = hdr.Hash().Bytes()
+
+	proof, err := l.sdk.Node().GetProof(zion.NODE_MANAGER_ADDRESS.Hex(), zion.EpochProofKey(epoch.ID).Hex(), height)
+	if err != nil {
+		return
+	}
+
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		panic(err)
+	}
+
+	payload := &zh.HeaderWithEpoch{hdr, epoch, proofBytes}
+	header, err = payload.Encode()
 	return
 }
 
@@ -216,11 +252,24 @@ func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
 }
 
 func (l *Listener) LastHeaderSync(force uint64, last uint64) (uint64, error) {
-	if force != 0 {
-		return force, nil
+	v := force
+
+	if v == 0 {
+		v = last
 	}
-	if last == 0 {
-		last = 1
+
+	if v == 0 {
+		v = 1
 	}
-	return last, nil
+
+	if v > 1 {
+		epoch, err := l.sdk.Node().GetEpochInfo(v - 1)
+		if err != nil {
+			return 0, err
+		}
+
+		l.lastEpoch = epoch.ID
+	}
+
+	return v, nil
 }
