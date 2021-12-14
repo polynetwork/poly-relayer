@@ -47,8 +47,15 @@ type HeaderSyncHandler struct {
 }
 
 func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
+	var listener IChainListener
+	switch config.ChainId {
+	case base.SIDE:
+		listener = new(poly.Listener)
+	default:
+		listener = GetListener(config.ChainId)
+	}
 	return &HeaderSyncHandler{
-		listener:  GetListener(config.ChainId),
+		listener:  listener,
 		submitter: new(poly.Submitter),
 		config:    config,
 		reset:     make(chan uint64, 1),

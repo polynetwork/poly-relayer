@@ -58,7 +58,7 @@ func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error
 	if sdk != nil {
 		l.sdk = sdk
 	} else {
-		l.sdk, err = zion.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+		l.sdk, err = zion.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	}
 	return
 }
