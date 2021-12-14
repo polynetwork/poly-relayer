@@ -177,7 +177,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	log.Info("Fetched block header", "chain", l.name, "height", height, "hash", hdr.Hash().String())
 	hash = hdr.Hash().Bytes()
 
-	proof, err := l.sdk.Node().GetProof(zion.NODE_MANAGER_ADDRESS.Hex(), zion.EpochProofKey(epoch.ID).Hex(), height)
+	proof, err := l.sdk.Node().GetProof(zion.NODE_MANAGER_ADDRESS.Hex(), zion.EpochProofKey(epoch.ID).Hex(), 0)
 	if err != nil {
 		return
 	}
