@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -79,6 +80,9 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 		bin = "relayer_ok"
 	default:
 		bin = "relayer_main"
+	}
+	if bin != "" {
+		bin = path.Join(BIN_DIR, bin)
 	}
 	return
 }
