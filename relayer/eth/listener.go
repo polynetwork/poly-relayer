@@ -160,6 +160,12 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	tx.Param = param
 	tx.SrcEvent = event
 	tx.SrcProofHeight, tx.SrcProof, err = l.GetProof(txId, tx.SrcHeight)
+	if err != nil {
+		return
+	}
+	if l.config.ChainId == base.SIDE {
+		tx.SrcStateRoot, _, err = l.Header(tx.SrcProofHeight)
+	}
 	return
 }
 

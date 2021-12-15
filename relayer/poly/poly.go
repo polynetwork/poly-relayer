@@ -248,7 +248,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		signer = tx.PolySender.(*accounts.Account)
 	}
 	switch tx.SrcChainId {
-	case base.NEO, base.ONT:
+	case base.NEO, base.ONT, base.SIDE:
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
 			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
 		}

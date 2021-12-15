@@ -55,7 +55,7 @@ type Listener struct {
 func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error) {
 	l.config = config
 	l.name = base.GetChainName(config.ChainId)
-	if sdk != nil {
+	if sdk != nil && config.ChainId == base.POLY {
 		l.sdk = sdk
 	} else {
 		l.sdk, err = zion.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
