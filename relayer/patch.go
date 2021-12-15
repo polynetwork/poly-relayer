@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -70,8 +69,6 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 	}
 
 	switch chainId {
-	case base.O3, base.ETH, base.HECO, base.BSC, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA:
-		bin = "relayer_main"
 	case base.MATIC:
 		bin = "relayer_matic"
 	case base.PLT:
@@ -80,9 +77,8 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 		bin = "relayer_ont"
 	case base.OK:
 		bin = "relayer_ok"
-	}
-	if bin != "" {
-		bin = path.Join(BIN_DIR, bin)
+	default:
+		bin = "relayer_main"
 	}
 	return
 }
