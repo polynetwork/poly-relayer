@@ -168,3 +168,7 @@ func (l *Listener) Nodes() chains.Nodes {
 func (l *Listener) LastHeaderSync(uint64, uint64) (uint64, error) {
 	return 0, nil
 }
+
+func (l *Listener) LatestHeight() (uint64, error) {
+	return l.sdk.Node().GetLatestHeight()
+}

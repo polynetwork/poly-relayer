@@ -101,11 +101,9 @@ func (h *PolyTxCommitHandler) Compose(tx *msg.Tx) (err error) {
 
 func (h *PolyTxCommitHandler) Start() (err error) {
 	mq := h.bus
-	/*
-		if h.config.Filter != nil {
-			mq = bus.WithFilter(h.bus, h.config.Filter)
-		}
-	*/
+	if h.config.Filter != nil {
+		mq = bus.WithTxFilter(h.bus, h.config.Filter)
+	}
 	if h.config.CheckFee {
 		bus := &CommitFilter{
 			name:   base.GetChainName(h.config.ChainId),
@@ -301,7 +299,7 @@ func (h *SrcTxCommitHandler) Start() (err error) {
 	if h.config.Filter != nil {
 		mq = bus.WithFilter(h.bus, h.config.Filter)
 	}
-	err = h.submitter.Start(h.Context, h.wg, mq, h.listener.Compose)
+	err = h.submitter.Start(h.Context, h.wg, mq, h.listener)
 	return
 }
 

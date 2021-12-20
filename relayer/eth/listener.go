@@ -260,6 +260,10 @@ func (l *Listener) SDK() *eth.SDK {
 	return l.sdk
 }
 
+func (l *Listener) LatestHeight() (uint64, error) {
+	return l.sdk.Node().GetLatestHeight()
+}
+
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
 	if l.poly == nil {
 		err = fmt.Errorf("No poly sdk provided for listener", "chain", l.name)
