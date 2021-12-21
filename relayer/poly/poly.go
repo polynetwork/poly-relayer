@@ -122,7 +122,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if s.lastCommit > 0 && s.lastCheck > 3 {
 				s.lastCheck = 0
 				switch chainId {
-				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3:
+				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3, base.RINKBY, base.KOVAN, base.GOERLI:
 					height, e := s.GetSideChainHeight(chainId)
 					if e != nil {
 						log.Error("Get side chain header height failure", "err", e)
@@ -314,7 +314,7 @@ func (s *Submitter) Stop() error {
 func (s *Submitter) ReadyBlock() (height uint64) {
 	var err error
 	switch s.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.RINKBY, base.KOVAN, base.GOERLI:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
 	case base.NEO:
 		tx := new(msg.Tx)

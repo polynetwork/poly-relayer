@@ -325,7 +325,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp = time.Now().Unix() + 60*25
 			case base.BSC, base.HECO, base.OK:
 				tsp = time.Now().Unix() + 60*4
-			case base.ETH:
+			case base.ETH, base.RINKBY, base.GOERLI, base.KOVAN:
 				tsp = time.Now().Unix() + 60*6
 			}
 			if tsp > 0 && tx.DstHash != "" {
