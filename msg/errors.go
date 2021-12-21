@@ -30,4 +30,5 @@ var (
 	ERR_HEADER_SUBMIT_FAILURE = errors.New("Header submit failure")
 	ERR_TX_EXEC_ALWAYS_FAIL   = errors.New("Tx exec always fail")
 	ERR_EPOCH_MISS            = errors.New("Poly epoch miss")
+	ERR_TX_PENDING            = errors.New("Tx pending")
 )

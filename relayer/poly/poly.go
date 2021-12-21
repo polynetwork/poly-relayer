@@ -287,6 +287,8 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		if strings.Contains(err.Error(), "tx already done") {
 			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
 			return nil
+		} else if strings.Contains(err.Error(), "already known") {
+			return msg.ERR_TX_PENDING
 		}
 		return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
 	}
@@ -376,6 +378,9 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 				continue
 			}
 			block += 1
+			if err == msg.ERR_TX_PENDING {
+				block += 69
+			}
 			tx.Attempts++
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block)
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
