@@ -265,7 +265,7 @@ func (l *Listener) LastHeaderSync(force uint64, last uint64) (uint64, error) {
 	if v > 1 {
 		epoch, err := l.sdk.Node().GetEpochInfo(v - 1)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("Get epoch info error %v height %v", err, v-1)
 		}
 
 		l.lastEpoch = epoch.ID
