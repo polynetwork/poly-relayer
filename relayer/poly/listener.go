@@ -238,13 +238,14 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		return
 	}
 
-	header, err := l.sdk.Node().HeaderByNumber(context.Background(), nil)
-	if err != nil {
-		return nil, err
-	}
 	info = &msg.PolyEpoch{
 		EpochId: epoch.ID,
-		Height:  header.Number.Uint64(),
+		Height:  epoch.StartHeight - 1,
+	}
+
+	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
+	if err != nil {
+		return nil, err
 	}
 
 	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
