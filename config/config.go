@@ -88,7 +88,6 @@ func New(path string) (config *Config, err error) {
 type PolyChainConfig struct {
 	PolySubmitterConfig `json:",inline"`
 	PolyTxSync          *PolyTxSyncConfig
-	PolyEpochSync       *PolyEpochSyncConfig
 }
 
 type ChainConfig struct {
@@ -105,6 +104,7 @@ type ChainConfig struct {
 	Filter            *FilterConfig
 
 	HeaderSync   *HeaderSyncConfig   // chain -> ch -> poly
+	EpochSync    *EpochSyncConfig    // poly -> chain
 	SrcTxSync    *SrcTxSyncConfig    // chain -> mq
 	SrcTxCommit  *SrcTxCommitConfig  // mq -> poly
 	PolyTxCommit *PolyTxCommitConfig // mq -> chain
@@ -221,7 +221,12 @@ type PolyTxSyncConfig struct {
 	Bus             *BusConfig
 }
 
-type PolyEpochSyncConfig PolyTxSyncConfig
+type EpochSyncConfig struct {
+	*SubmitterConfig `json:",inline"`
+	Bus              *BusConfig
+	Listener         *ListenerConfig
+	Enabled          bool
+}
 
 type PolyTxCommitConfig struct {
 	*SubmitterConfig `json:",inline"`
@@ -282,18 +287,6 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 		}
 		if len(c.PolyTxSync.Nodes) == 0 {
 			c.PolyTxSync.Nodes = c.Nodes
-		}
-	}
-	if c.PolyEpochSync != nil {
-		if c.PolyEpochSync.ListenerConfig == nil {
-			c.PolyEpochSync.ListenerConfig = new(ListenerConfig)
-		}
-		c.PolyEpochSync.ChainId = base.POLY
-		if c.PolyEpochSync.Bus == nil {
-			c.PolyEpochSync.Bus = bus
-		}
-		if len(c.PolyEpochSync.Nodes) == 0 {
-			c.PolyEpochSync.Nodes = c.Nodes
 		}
 	}
 	if c.Wallet != nil {
@@ -375,6 +368,22 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	if c.PolyTxCommit.Filter == nil {
 		c.PolyTxCommit.Filter = c.Filter
 	}
+
+	if c.EpochSync != nil {
+		c.EpochSync.SubmitterConfig = c.FillSubmitter(c.EpochSync.SubmitterConfig)
+		c.EpochSync.ChainId = chain
+		if c.EpochSync.Listener == nil {
+			c.EpochSync.Listener = new(ListenerConfig)
+		}
+		c.EpochSync.Listener.ChainId = base.POLY
+		if c.EpochSync.Bus == nil {
+			c.EpochSync.Bus = bus
+		}
+		if len(c.EpochSync.Listener.Nodes) == 0 {
+			c.EpochSync.Listener.Nodes = poly.PolyTxSync.Nodes
+		}
+	}
+
 	return
 }
 

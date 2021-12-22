@@ -43,13 +43,13 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Config) error
 func (s *Server) Start() (err error) {
 	// Create poly tx sync handler
 	if s.config.Active(base.POLY) && s.config.Poly != nil {
-		s.parseHandlers(base.POLY, s.config.Poly.PolyTxSync, s.config.Poly.PolyEpochSync)
+		s.parseHandlers(base.POLY, s.config.Poly.PolyTxSync)
 	}
 
 	// Create handlers
 	for id, chain := range s.config.Chains {
 		if s.config.Active(id) {
-			s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit)
+			s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit, chain.EpochSync)
 		}
 	}
 
@@ -94,8 +94,8 @@ func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) 
 	switch c := conf.(type) {
 	case *config.HeaderSyncConfig:
 		handler = NewHeaderSyncHandler(c)
-	case *config.PolyEpochSyncConfig:
-		handler = NewPolyEpochSyncHandler(c)
+	case *config.EpochSyncConfig:
+		handler = NewEpochSyncHandler(c)
 	case *config.SrcTxSyncConfig:
 		handler = NewSrcTxSyncHandler(c)
 	case *config.SrcTxCommitConfig:

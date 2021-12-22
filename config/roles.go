@@ -60,11 +60,7 @@ func (c *Config) ApplyRoles(roles Roles) {
 			if c.Poly.PolyTxSync == nil {
 				c.Poly.PolyTxSync = new(PolyTxSyncConfig)
 			}
-			if c.Poly.PolyEpochSync == nil {
-				c.Poly.PolyEpochSync = new(PolyEpochSyncConfig)
-			}
 			c.Poly.PolyTxSync.Enabled = role.PolyListen
-			c.Poly.PolyEpochSync.Enabled = role.EpochSync
 		} else {
 			chain, ok := c.Chains[id]
 			if !ok {
@@ -83,10 +79,14 @@ func (c *Config) ApplyRoles(roles Roles) {
 			if chain.HeaderSync == nil {
 				chain.HeaderSync = new(HeaderSyncConfig)
 			}
+			if chain.EpochSync == nil {
+				chain.EpochSync = new(EpochSyncConfig)
+			}
 			chain.SrcTxSync.Enabled = role.TxListen
 			chain.SrcTxCommit.Enabled = role.TxCommit
 			chain.PolyTxCommit.Enabled = role.PolyCommit
 			chain.HeaderSync.Enabled = role.HeaderSync
+			chain.EpochSync.Enabled = role.EpochSync
 		}
 	}
 }

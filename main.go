@@ -89,6 +89,11 @@ func main() {
 				Action: command(relayer.STATUS),
 			},
 			&cli.Command{
+				Name:   relayer.TEST,
+				Usage:  "Test",
+				Action: command(relayer.TEST),
+			},
+			&cli.Command{
 				Name:   relayer.RELAY_TX,
 				Usage:  "Submit cross chain tx",
 				Action: command(relayer.RELAY_TX),

@@ -48,6 +48,7 @@ const (
 	SKIP              = "skip"
 	CHECK_SKIP        = "checkskip"
 	CREATE_ACCOUNT    = "createaccount"
+	TEST              = "test"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -63,6 +64,20 @@ func init() {
 	_Handlers[CHECK_SKIP] = CheckSkip
 	_Handlers[RELAY_TX] = RelayTx
 	_Handlers[CREATE_ACCOUNT] = CreateAccount
+	_Handlers[TEST] = Test
+}
+
+func Test(ctx *cli.Context) (err error) {
+	l, err := PolyListener()
+	if err != nil {
+		return
+	}
+	info, err := l.EpochById(5)
+	if err != nil {
+		return
+	}
+	fmt.Printf("height %v header: %x seal: %x\n", info.Height, info.Header, info.Seal)
+	return
 }
 
 func RelayTx(ctx *cli.Context) (err error) {

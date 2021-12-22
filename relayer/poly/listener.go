@@ -49,12 +49,14 @@ type Listener struct {
 	sdk       *zion.SDK
 	name      string
 	config    *config.ListenerConfig
+	epochs    map[uint64]*node_manager.EpochInfo
 	lastEpoch uint64
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error) {
 	l.config = config
 	l.name = base.GetChainName(config.ChainId)
+	l.epochs = map[uint64]*node_manager.EpochInfo{}
 	if sdk != nil && config.ChainId == base.POLY {
 		l.sdk = sdk
 	} else {
@@ -189,6 +191,71 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 
 	payload := &zh.HeaderWithEpoch{hdr, epoch, proofBytes}
 	header, err = payload.Encode()
+	return
+}
+
+func (l *Listener) EpochUpdate(ctx context.Context, epochId uint64) (epochs []*msg.PolyEpoch, err error) {
+LOOP:
+	for {
+		select {
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+			err = fmt.Errorf("Exit signal received")
+			break LOOP
+		}
+		epoch, err := l.sdk.Node().GetEpochInfo(0)
+		if err != nil {
+			log.Error("Failed to fetch epoch info", "err", err)
+			continue
+		}
+		if epoch == nil || epoch.ID <= epochId {
+			continue
+		}
+
+		for epochId <= epoch.ID {
+			epochId++
+			info, err := l.EpochById(epochId)
+			if err != nil {
+				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", epochId)
+				continue LOOP
+			}
+			log.Info("Fetched epoch change info", "chain", l.config.ChainId, "id", epochId)
+			epochs = append(epochs, info)
+		}
+		l.lastEpoch = epoch.ID
+		return epochs, nil
+	}
+	return
+}
+
+func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
+	epoch, err := l.sdk.Node().EpochById(id)
+	if err != nil {
+		return
+	}
+	if epoch.Status != node_manager.ProposalStatusPassed {
+		err = fmt.Errorf("Invalid epoch status %v desired: %v", epoch.Status, node_manager.ProposalStatusPassed)
+		return
+	}
+
+	header, err := l.sdk.Node().HeaderByNumber(context.Background(), nil)
+	if err != nil {
+		return nil, err
+	}
+	info = &msg.PolyEpoch{
+		EpochId: epoch.ID,
+		Height:  header.Number.Uint64(),
+	}
+
+	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
+	if err != nil {
+		return nil, err
+	}
+	extra, err := types.ExtractHotstuffExtra(header)
+	if err != nil {
+		return
+	}
+	info.Seal, err = rlp.EncodeToBytes(extra.CommittedSeal)
 	return
 }
 

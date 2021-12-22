@@ -73,6 +73,7 @@ type IChainSubmitter interface {
 	Process(msg.Message, msg.PolyComposer) error
 	ProcessTx(*msg.Tx, msg.PolyComposer) error // Process poly tx
 	ProcessEpoch(*msg.Tx) error                // Process poly epoch sync
+	GetPolyEpochId() (id uint64, err error)
 	Stop() error
 }
 
