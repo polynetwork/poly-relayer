@@ -68,11 +68,12 @@ func init() {
 }
 
 func Test(ctx *cli.Context) (err error) {
+	id := uint64(ctx.Int("id"))
 	l, err := PolyListener()
 	if err != nil {
 		return
 	}
-	info, err := l.EpochById(5)
+	info, err := l.EpochById(id)
 	if err != nil {
 		return
 	}
