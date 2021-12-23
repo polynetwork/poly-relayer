@@ -182,7 +182,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := eccm_abi.NewEthCrossChainManagerImplemetation(l.ccm, l.sdk.Node())
+	ccm, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}

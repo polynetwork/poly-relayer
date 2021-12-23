@@ -66,7 +66,7 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.name = base.GetChainName(config.ChainId)
 	s.ccd = common.HexToAddress(config.CCDContract)
 	s.ccm = common.HexToAddress(config.CCMContract)
-	s.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplemetationABI))
+	s.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
 	return
 }
 

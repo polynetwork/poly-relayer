@@ -48,6 +48,8 @@ github.com/JohnCGriffin/overflow v0.0.0-20170615021017-4d914c927216 h1:2ZboyJ8vl
 github.com/JohnCGriffin/overflow v0.0.0-20170615021017-4d914c927216/go.mod h1:X0CRv0ky0k6m906ixxpzmDRLvX58TFUKS2eePweuyxk=
 github.com/KSlashh/poly-abi v0.0.0-20211025090105-3ec8bf407931 h1:TF7TYSPRrgXNqdMaTJ1hhw77ubxz+a+o7vzODQtsRKk=
 github.com/KSlashh/poly-abi v0.0.0-20211025090105-3ec8bf407931/go.mod h1:5pbvzROvsM8e3f58HEDIxP70GHc2h0elDyzvy2Ox1VE=
+github.com/KSlashh/poly-abi v0.0.0-20211223040949-f9bf1fe7c709 h1:Ho4LUnEg6+p2bapVREaUboc61Nr8iQT6OwvXfh3tOwE=
+github.com/KSlashh/poly-abi v0.0.0-20211223040949-f9bf1fe7c709/go.mod h1:5pbvzROvsM8e3f58HEDIxP70GHc2h0elDyzvy2Ox1VE=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/OneOfOne/xxhash v1.2.5/go.mod h1:eZbhyaAYD41SGSSsnmcpxVoRiQ/MPUTjUdIIOT9Um7Q=
