@@ -47,8 +47,15 @@ type HeaderSyncHandler struct {
 }
 
 func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
+	var listener IChainListener
+	switch config.ChainId {
+	case base.SIDE:
+		listener = new(poly.Listener)
+	default:
+		listener = GetListener(config.ChainId)
+	}
 	return &HeaderSyncHandler{
-		listener:  GetListener(config.ChainId),
+		listener:  listener,
 		submitter: new(poly.Submitter),
 		config:    config,
 		reset:     make(chan uint64, 1),
@@ -99,7 +106,7 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 			return
 		case <-timer.C:
 			switch h.config.ChainId {
-			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3:
+			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3, base.KOVAN, base.GOERLI, base.RINKBY:
 				height, err := h.submitter.GetSideChainHeight(h.config.ChainId)
 				if err == nil {
 					ch <- height
@@ -166,7 +173,7 @@ func (h *HeaderSyncHandler) watch() {
 			}
 
 			switch h.config.ChainId {
-			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3:
+			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3, base.KOVAN, base.GOERLI, base.RINKBY:
 				height, err = h.submitter.GetSideChainHeight(h.config.ChainId)
 				if err != nil {
 					log.Error("Watch chain sync height error", "chain", h.config.ChainId, "err", err)

@@ -20,6 +20,7 @@ package poly
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
@@ -31,12 +32,14 @@ import (
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
 	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
+	zh "github.com/devfans/zion-sdk/contracts/native/header_sync/zion"
 	"github.com/devfans/zion-sdk/core/state"
 	"github.com/devfans/zion-sdk/core/types"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/zion"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -44,16 +47,20 @@ import (
 
 type Listener struct {
 	sdk       *zion.SDK
+	name      string
 	config    *config.ListenerConfig
+	epochs    map[uint64]*node_manager.EpochInfo
 	lastEpoch uint64
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error) {
 	l.config = config
-	if sdk != nil {
+	l.name = base.GetChainName(config.ChainId)
+	l.epochs = map[uint64]*node_manager.EpochInfo{}
+	if sdk != nil && config.ChainId == base.POLY {
 		l.sdk = sdk
 	} else {
-		l.sdk, err = zion.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+		l.sdk, err = zion.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	}
 	return
 }
@@ -129,7 +136,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 }
 
 func (l *Listener) ChainId() uint64 {
-	return base.POLY
+	return l.config.ChainId
 }
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
@@ -153,6 +160,117 @@ func (l *Listener) Nodes() chains.Nodes {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
+	epoch, err := l.sdk.Node().GetEpochInfo(height)
+	if err != nil {
+		return
+	}
+	if epoch.Status != node_manager.ProposalStatusPassed {
+		return
+	}
+	if epoch.ID == l.lastEpoch {
+		return
+	}
+
+	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
+	if err != nil {
+		err = fmt.Errorf("Fetch block header error %v", err)
+		return nil, nil, err
+	}
+	log.Info("Fetched block header", "chain", l.name, "height", height, "hash", hdr.Hash().String())
+	hash = hdr.Hash().Bytes()
+
+	proof, err := l.sdk.Node().GetProof(zion.NODE_MANAGER_ADDRESS.Hex(), zion.EpochProofKey(epoch.ID).Hex(), 0)
+	if err != nil {
+		return
+	}
+
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		panic(err)
+	}
+
+	payload := &zh.HeaderWithEpoch{hdr, epoch, proofBytes}
+	header, err = payload.Encode()
+	return
+}
+
+func (l *Listener) EpochUpdate(ctx context.Context, startHeight uint64) (epochs []*msg.PolyEpoch, err error) {
+	var epoch *node_manager.EpochInfo
+
+LOOP:
+	for {
+		select {
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+			err = fmt.Errorf("Exit signal received")
+			break LOOP
+		}
+		epoch, err = l.sdk.Node().GetEpochInfo(0)
+		if err != nil {
+			log.Error("Failed to fetch epoch info", "err", err)
+			continue
+		}
+		if epoch == nil || epoch.StartHeight <= startHeight {
+			continue
+		}
+
+		id := epoch.ID
+		log.Info("Fetched latest epoch info", "chain", l.config.ChainId, "id", id, "start_height", epoch.StartHeight, "dst_epoch_height", startHeight)
+
+		for {
+			info, err := l.EpochById(id)
+			if err != nil {
+				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id)
+				continue LOOP
+			}
+			if info.Height <= startHeight {
+				l.lastEpoch = epoch.ID
+				return epochs, nil
+			} else {
+				epochs = append([]*msg.PolyEpoch{info}, epochs...)
+				log.Info("Fetched epoch change info", "chain", l.config.ChainId, "id", id, "start_height", info.Height, "size", len(epochs), "dst_epoch_height", startHeight)
+				id--
+			}
+		}
+	}
+	return
+}
+
+func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
+	epoch, err := l.sdk.Node().EpochById(id)
+	if err != nil {
+		return
+	}
+	if epoch.Status != node_manager.ProposalStatusPassed {
+		err = fmt.Errorf("Invalid epoch status %v desired: %v", epoch.Status, node_manager.ProposalStatusPassed)
+		return
+	}
+
+	info = &msg.PolyEpoch{
+		EpochId: epoch.ID,
+		Height:  epoch.StartHeight - 1,
+	}
+
+	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
+	if err != nil {
+		return nil, err
+	}
+
+	if l.config.ChainId == base.POLY {
+		info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
+	} else {
+		info.Header, err = rlp.EncodeToBytes(header)
+		info.ChainId = l.config.ChainId
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	extra, err := types.ExtractHotstuffExtra(header)
+	if err != nil {
+		return
+	}
+	info.Seal, err = rlp.EncodeToBytes(extra.CommittedSeal)
 	return
 }
 
@@ -216,11 +334,24 @@ func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
 }
 
 func (l *Listener) LastHeaderSync(force uint64, last uint64) (uint64, error) {
-	if force != 0 {
-		return force, nil
+	v := force
+
+	if v == 0 {
+		v = last
 	}
-	if last == 0 {
-		last = 1
+
+	if v == 0 {
+		v = 1
 	}
-	return last, nil
+
+	if v > 1 {
+		epoch, err := l.sdk.Node().GetEpochInfo(v - 1)
+		if err != nil {
+			return 0, fmt.Errorf("Get epoch info error %v height %v", err, v-1)
+		}
+
+		l.lastEpoch = epoch.ID
+	}
+
+	return v, nil
 }

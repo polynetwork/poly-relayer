@@ -66,7 +66,7 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.name = base.GetChainName(config.ChainId)
 	s.ccd = common.HexToAddress(config.CCDContract)
 	s.ccm = common.HexToAddress(config.CCMContract)
-	s.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplemetationABI))
+	s.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
 	return
 }
 
@@ -116,15 +116,7 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
-func (s *Submitter) GetPolyEpochId() (id uint64, err error) {
-	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
-	if err != nil {
-		return
-	}
-	return ccd.GetCurEpochId(nil)
-}
-
-func (s *Submitter) GetPolyEpochStartHeight() (height uint64, err error) {
+func (s *Submitter) GetPolyEpochStartHeight(uint64) (height uint64, err error) {
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
 		return
@@ -180,37 +172,46 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	return s.submit(tx)
 }
 
-func (s *Submitter) ProcessEpoch(m *msg.Tx) (err error) {
-	if m.Type() != msg.POLY_EPOCH || m.PolyEpoch == nil {
-		err = fmt.Errorf("Invalid Poly epoch message %s", m.Encode())
-		return
-	}
-	epoch := m.PolyEpoch
-	id, err := s.GetPolyEpochId()
-	if err != nil {
-		err = fmt.Errorf("Failed to fetch poly cur epoch id %v", err)
-		return
-	}
-	if epoch.EpochId <= id {
-		log.Info("Poly epoch id already synced", "chain", s.name, "dst_epoch", id, "epoch", epoch.EpochId)
-		return nil
-	} else if epoch.EpochId > id+1 {
-		log.Warn("Poly epoch id inconsistent", "chain", s.name, "dst_epoch", id, "epoch", epoch.EpochId)
-		return msg.ERR_EPOCH_MISS
-	}
+func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
+	for _, m := range epochs {
+		if m.Type() != msg.POLY_EPOCH || m.PolyEpoch == nil {
+			err = fmt.Errorf("Invalid Poly epoch message %s", m.Encode())
+			return
+		}
+		epoch := m.PolyEpoch
+		log.Info("Submitting poly epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name)
 
-	epoch.Decode()
-	log.Info("Submitting poly epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name)
+		m.DstData, err = s.abi.Pack(
+			"changeEpoch", epoch.Header, epoch.Seal,
+		)
+		if err != nil {
+			err = fmt.Errorf("%s processPolyEpoch pack tx error %v", s.name, err)
+			return err
+		}
+		err = s.submit(m)
+		if err != nil {
+			return
+		}
 
-	m.DstData, err = s.abi.Pack(
-		"changeEpoch",
-		epoch.Header, epoch.Seal, epoch.AccountProof, epoch.StorageProof, epoch.Epoch,
-	)
-	if err != nil {
-		err = fmt.Errorf("%s processPolyEpoch pack tx error %v", s.name, err)
-		return err
+		var height uint64
+		var pending bool
+	CONFIRM:
+		for {
+			hash := msg.Hash(m.DstHash)
+			height, _, pending, err = s.sdk.Node().Confirm(hash, 0, 100)
+			if height > 0 {
+				log.Info("Submitted header to poly", "chain", s.name, "hash", hash, "height", height)
+				break CONFIRM
+			}
+			if err == nil && !pending {
+				err = fmt.Errorf("Failed to find the transaction %v", err)
+				return
+			}
+			log.Warn("Tx wait confirm timeout", "chain", s.name, "hash", hash, "pending", pending)
+		}
+
 	}
-	return s.submit(m)
+	return nil
 }
 
 func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
@@ -221,7 +222,7 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	if m.DstChainId != s.config.ChainId {
 		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
 	}
-	m.DstPolyEpochStartHeight, err = s.GetPolyEpochStartHeight()
+	m.DstPolyEpochStartHeight, err = s.GetPolyEpochStartHeight(0)
 	if err != nil {
 		return fmt.Errorf("%s fetch dst chain poly epoch height error %v", s.name, err)
 	}
@@ -292,7 +293,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			err = s.ProcessTx(tx, compose)
 		} else if tx.Type() == msg.POLY_EPOCH {
 			log.Info("Processing poly epoch", "poly_epoch", tx.PolyEpoch.EpochId, "account", account.Address)
-			err = s.ProcessEpoch(tx)
+			err = s.ProcessEpochs([]*msg.Tx{tx})
 		}
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash, "err", err)
@@ -325,7 +326,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp = time.Now().Unix() + 60*25
 			case base.BSC, base.HECO, base.OK:
 				tsp = time.Now().Unix() + 60*4
-			case base.ETH:
+			case base.ETH, base.RINKBY, base.GOERLI, base.KOVAN:
 				tsp = time.Now().Unix() + 60*6
 			}
 			if tsp > 0 && tx.DstHash != "" {
