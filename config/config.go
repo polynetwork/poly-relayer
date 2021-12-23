@@ -197,6 +197,15 @@ type HeaderSyncConfig struct {
 	Bus *BusConfig
 }
 
+func (c *HeaderSyncConfig) AsEpochSyncConfig() *EpochSyncConfig {
+	return &EpochSyncConfig{
+		SubmitterConfig: &SubmitterConfig{ChainId: c.Poly.ChainId, Nodes: c.Poly.Nodes, Wallet: c.Poly.Wallet},
+		Bus:             c.Bus,
+		Listener:        c.ListenerConfig,
+		Enabled:         c.Enabled,
+	}
+}
+
 type SrcTxSyncConfig struct {
 	*ListenerConfig `json:",inline"`
 	Procs           int

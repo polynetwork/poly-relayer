@@ -35,10 +35,11 @@ type EpochSyncHandler struct {
 	context.Context
 	wg *sync.WaitGroup
 
-	listener  *poly.Listener
-	submitter IChainSubmitter
-	epoch     uint64
-	config    *config.EpochSyncConfig
+	listener         *poly.Listener
+	submitter        IChainSubmitter
+	epochStartHeight uint64
+	config           *config.EpochSyncConfig
+	name             string
 }
 
 func NewEpochSyncHandler(config *config.EpochSyncConfig) *EpochSyncHandler {
@@ -52,6 +53,7 @@ func NewEpochSyncHandler(config *config.EpochSyncConfig) *EpochSyncHandler {
 func (h *EpochSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
 	if h.listener == nil {
 		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.Listener.ChainId))
 	}
@@ -64,6 +66,7 @@ func (h *EpochSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 		return fmt.Errorf("Unabled to create submitter for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
+	h.name = fmt.Sprintf("%s->%s", base.GetChainName(h.config.Listener.ChainId), base.GetChainName(h.config.ChainId))
 	err = h.submitter.Init(h.config.SubmitterConfig)
 	if err != nil {
 		return
@@ -72,11 +75,11 @@ func (h *EpochSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 }
 
 func (h *EpochSyncHandler) Start() (err error) {
-	go h.run()
+	go h.start()
 	return
 }
 
-func (h *EpochSyncHandler) run() (err error) {
+func (h *EpochSyncHandler) start() (err error) {
 	ticker := time.NewTicker(time.Second)
 	h.wg.Add(1)
 	defer h.wg.Done()
@@ -88,14 +91,14 @@ LOOP:
 			break LOOP
 		}
 
-		h.epoch, err = h.submitter.GetPolyEpochId()
+		h.epochStartHeight, err = h.submitter.GetPolyEpochStartHeight()
 		if err != nil {
-			log.Error("Failed to fetch cur epoch id", "chain", h.config.ChainId)
+			log.Error("Failed to fetch cur epoch start height", "chain", h.name)
 			continue
 		}
-		epochs, err := h.listener.EpochUpdate(h.Context, h.epoch)
+		epochs, err := h.listener.EpochUpdate(h.Context, h.epochStartHeight)
 		if err != nil {
-			log.Error("Failed to fetch epoch update", "chain", h.config.ChainId)
+			log.Error("Failed to fetch epoch update", "chain", h.name)
 			continue
 		}
 
@@ -108,65 +111,14 @@ LOOP:
 			bus.Retry(h.Context, func() error {
 				err = h.submitter.ProcessEpoch(tx)
 				if err != nil {
-					log.Error("Failed to submit epoch change", "chain", h.config.ChainId, "epoch", epoch.EpochId, "height", epoch.Height, "err", err)
+					log.Error("Failed to submit epoch change", "chain", h.name, "epoch", epoch.EpochId, "height", epoch.Height, "err", err)
 				}
 				return err
 			}, time.Second, 0)
 		}
 	}
-	log.Info("Epoch sync handler is exiting...", "chain", h.config.ChainId, "epoch", h.epoch)
+	log.Info("Epoch sync handler is exiting...", "chain", h.name, "epoch", h.epochStartHeight)
 	return nil
-}
-func (h *EpochSyncHandler) start() (err error) {
-	/*
-	   	h.wg.Add(1)
-	   	defer h.wg.Done()
-	   	var (
-	   		latest   uint64
-	   		ok       bool
-	   		confirms uint64
-	   	)
-	   LOOP:
-	   	for {
-	   		select {
-	   		case <-h.Done():
-	   			break LOOP
-	   		default:
-	   		}
-
-	   		h.height++
-	   		log.Debug("Epoch sync processing block", "height", h.height, "chain", h.config.ChainId)
-	   		if latest < h.height+confirms {
-	   			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
-	   			if !ok {
-	   				break LOOP
-	   			}
-	   		}
-	   		epoch, err := h.listener.Epoch(h.height)
-	   		log.Debug("Epoch sync fetched block header", "height", h.height, "chain", h.config.ChainId, "err", err)
-	   		if err == nil {
-	   			if epoch == nil {
-	   				continue
-	   			}
-	   			log.Info("Found new poly epoch", "epoch", epoch.EpochId, "height", epoch.Height)
-	   			epoch.Encode()
-	   			tx := &msg.Tx{
-	   				TxType:     msg.POLY_EPOCH,
-	   				PolyEpoch:  epoch,
-	   				DstChainId: h.config.ChainId,
-	   			}
-	   			bus.SafeCall(h.Context, tx, "push epoch change to target chain tx bus", func() error {
-	   				return h.bus.PushToChains(context.Background(), tx, base.CHAINS)
-	   			})
-	   			continue
-	   		} else {
-	   			log.Error("Fetch poly epoch error", "chain", h.config.ChainId, "height", h.height, "err", err)
-	   		}
-	   		h.height--
-	   	}
-	   	log.Info("Epoch sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
-	*/
-	return
 }
 
 func (h *EpochSyncHandler) Stop() (err error) {

@@ -194,7 +194,9 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	return
 }
 
-func (l *Listener) EpochUpdate(ctx context.Context, epochId uint64) (epochs []*msg.PolyEpoch, err error) {
+func (l *Listener) EpochUpdate(ctx context.Context, startHeight uint64) (epochs []*msg.PolyEpoch, err error) {
+	var epoch *node_manager.EpochInfo
+
 LOOP:
 	for {
 		select {
@@ -203,27 +205,33 @@ LOOP:
 			err = fmt.Errorf("Exit signal received")
 			break LOOP
 		}
-		epoch, err := l.sdk.Node().GetEpochInfo(0)
+		epoch, err = l.sdk.Node().GetEpochInfo(0)
 		if err != nil {
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
-		if epoch == nil || epoch.ID <= epochId {
+		if epoch == nil || epoch.StartHeight <= startHeight {
 			continue
 		}
 
-		for epochId <= epoch.ID {
-			epochId++
-			info, err := l.EpochById(epochId)
+		id := epoch.ID
+		log.Info("Fetched latest epoch info", "chain", l.config.ChainId, "id", id, "start_height", epoch.StartHeight, "dst_epoch_height", startHeight)
+
+		for {
+			info, err := l.EpochById(id)
 			if err != nil {
-				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", epochId)
+				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id)
 				continue LOOP
 			}
-			log.Info("Fetched epoch change info", "chain", l.config.ChainId, "id", epochId)
-			epochs = append(epochs, info)
+			if info.Height <= startHeight {
+				l.lastEpoch = epoch.ID
+				return epochs, nil
+			} else {
+				epochs = append([]*msg.PolyEpoch{info}, epochs...)
+				log.Info("Fetched epoch change info", "chain", l.config.ChainId, "id", id, "start_height", info.Height, "size", len(epochs), "dst_epoch_height", startHeight)
+				id--
+			}
 		}
-		l.lastEpoch = epoch.ID
-		return epochs, nil
 	}
 	return
 }

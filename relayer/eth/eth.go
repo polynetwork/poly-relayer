@@ -116,14 +116,6 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
-func (s *Submitter) GetPolyEpochId() (id uint64, err error) {
-	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
-	if err != nil {
-		return
-	}
-	return ccd.GetCurEpochId(nil)
-}
-
 func (s *Submitter) GetPolyEpochStartHeight() (height uint64, err error) {
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
@@ -186,25 +178,10 @@ func (s *Submitter) ProcessEpoch(m *msg.Tx) (err error) {
 		return
 	}
 	epoch := m.PolyEpoch
-	id, err := s.GetPolyEpochId()
-	if err != nil {
-		err = fmt.Errorf("Failed to fetch poly cur epoch id %v", err)
-		return
-	}
-	if epoch.EpochId <= id {
-		log.Info("Poly epoch id already synced", "chain", s.name, "dst_epoch", id, "epoch", epoch.EpochId)
-		return nil
-	} else if epoch.EpochId > id+1 {
-		log.Warn("Poly epoch id inconsistent", "chain", s.name, "dst_epoch", id, "epoch", epoch.EpochId)
-		return msg.ERR_EPOCH_MISS
-	}
-
-	epoch.Decode()
 	log.Info("Submitting poly epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name)
 
 	m.DstData, err = s.abi.Pack(
-		"changeEpoch",
-		epoch.Header, epoch.Seal, epoch.AccountProof, epoch.StorageProof, epoch.Epoch,
+		"changeEpoch", epoch.Header, epoch.Seal,
 	)
 	if err != nil {
 		err = fmt.Errorf("%s processPolyEpoch pack tx error %v", s.name, err)
