@@ -62,7 +62,8 @@ type IChainSubmitter interface {
 	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
 	Process(msg.Message, msg.PolyComposer) error
 	ProcessTx(*msg.Tx, msg.PolyComposer) error // Process poly tx
-	ProcessEpoch(*msg.Tx) error                // Process poly epoch sync
+	ProcessEpochs([]*msg.Tx) error             // Process poly epoch sync
+	GetPolyEpochStartHeight(uint64) (height uint64, err error)
 	Stop() error
 }
 
@@ -81,6 +82,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
 	case base.PLT:
 		submitter = new(plt.Submitter)
+	case base.POLY:
+		submitter = new(po.Submitter)
 	default:
 	}
 	return
@@ -88,7 +91,7 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 
 func PolySubmitter() (sub *po.Submitter, err error) {
 	sub = new(po.Submitter)
-	err = sub.Init(&config.CONFIG.Poly.PolySubmitterConfig)
+	err = sub.Init(&config.CONFIG.Poly.SubmitterConfig)
 	return
 }
 
