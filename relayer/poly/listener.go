@@ -256,10 +256,16 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		return nil, err
 	}
 
-	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
+	if l.config.ChainId == base.POLY {
+		info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
+	} else {
+		info.Header, err = rlp.EncodeToBytes(header)
+		info.ChainId = l.config.ChainId
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	extra, err := types.ExtractHotstuffExtra(header)
 	if err != nil {
 		return

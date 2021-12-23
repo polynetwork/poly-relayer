@@ -48,7 +48,7 @@ import (
 type Submitter struct {
 	context.Context
 	wg      *sync.WaitGroup
-	config  *config.PolySubmitterConfig
+	config  *config.SubmitterConfig
 	sdk     *zion.SDK
 	name    string
 	sync    *config.HeaderSyncConfig
@@ -65,7 +65,7 @@ type Submitter struct {
 	txabi        abi.ABI
 }
 
-func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
+func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.config = config
 	s.name = base.GetChainName(config.ChainId)
 	s.blocksToWait = base.BlocksToWait(config.ChainId)
@@ -304,7 +304,7 @@ func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.PolyComposer) (err error) 
 	return s.submit(m)
 }
 
-func (s *Submitter) Process(msg msg.Message) error {
+func (s *Submitter) Process(msg msg.Message, composer msg.PolyComposer) error {
 	return nil
 }
 
@@ -453,7 +453,11 @@ func (s *Submitter) run(mq bus.TxBus) error {
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, compose msg.PolyComposer) error {
+	return nil
+}
+
+func (s *Submitter) Run(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.PolyComposer) error {
 	s.compose = composer
 	s.Context = ctx
 	s.wg = wg
@@ -599,4 +603,31 @@ func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 
 func (s *Submitter) Poly() *zion.SDK {
 	return s.sdk
+}
+
+func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
+	if len(epochs) == 0 {
+		return
+	}
+
+	headers := [][]byte{}
+	for _, m := range epochs {
+		if m.Type() != msg.POLY_EPOCH || m.PolyEpoch == nil {
+			err = fmt.Errorf("Invalid side chainy epoch message %s", m.Encode())
+			return
+		}
+		headers = append(headers, m.PolyEpoch.Header)
+	}
+
+	epoch := epochs[len(epochs)-1].PolyEpoch
+	log.Info("Submitting side chain epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "size", len(epochs))
+	hash, err := s.SubmitHeaders(epoch.ChainId, headers)
+	if err == nil {
+		log.Info("Submitted side chain epochs to zion", "size", len(epochs), "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "hash", hash)
+	}
+	return
+}
+
+func (s *Submitter) GetPolyEpochStartHeight(chainId uint64) (height uint64, err error) {
+	return s.sdk.Node().GetSideChainConsensusBlockHeight(chainId)
 }

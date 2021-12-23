@@ -307,7 +307,7 @@ func (h *SrcTxCommitHandler) Start() (err error) {
 	if h.config.Filter != nil {
 		mq = bus.WithFilter(h.bus, h.config.Filter)
 	}
-	err = h.submitter.Start(h.Context, h.wg, mq, h.listener.Compose)
+	err = h.submitter.Run(h.Context, h.wg, mq, h.listener.Compose)
 	return
 }
 

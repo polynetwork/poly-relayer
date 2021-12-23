@@ -86,8 +86,8 @@ func New(path string) (config *Config, err error) {
 }
 
 type PolyChainConfig struct {
-	PolySubmitterConfig `json:",inline"`
-	PolyTxSync          *PolyTxSyncConfig
+	SubmitterConfig `json:",inline"`
+	PolyTxSync      *PolyTxSyncConfig
 }
 
 type ChainConfig struct {
@@ -122,16 +122,9 @@ type ListenerConfig struct {
 	Defer             int
 }
 
-type PolySubmitterConfig struct {
-	ChainId uint64
-	Nodes   []string
-	Procs   int
-	Wallet  *wallet.Config
-}
-
-func (c *PolySubmitterConfig) Fill(o *PolySubmitterConfig) *PolySubmitterConfig {
+func (c *SubmitterConfig) Fill(o *SubmitterConfig) *SubmitterConfig {
 	if o == nil {
-		o = new(PolySubmitterConfig)
+		o = new(SubmitterConfig)
 	}
 	o.ChainId = base.POLY
 	if len(o.Nodes) == 0 {
@@ -192,7 +185,7 @@ type HeaderSyncConfig struct {
 	Timeout int
 	Buffer  int
 	Enabled bool
-	Poly    *PolySubmitterConfig
+	Poly    *SubmitterConfig
 	*ListenerConfig
 	Bus *BusConfig
 }
@@ -211,7 +204,7 @@ type SrcTxSyncConfig struct {
 	Procs           int
 	Enabled         bool
 	Bus             *BusConfig
-	Poly            *PolySubmitterConfig
+	Poly            *SubmitterConfig
 }
 
 type SrcTxCommitConfig struct {
@@ -219,7 +212,7 @@ type SrcTxCommitConfig struct {
 	Procs           int
 	Enabled         bool
 	Bus             *BusConfig
-	Poly            *PolySubmitterConfig
+	Poly            *SubmitterConfig
 	Filter          *FilterConfig
 }
 
@@ -239,7 +232,7 @@ type EpochSyncConfig struct {
 
 type PolyTxCommitConfig struct {
 	*SubmitterConfig `json:",inline"`
-	Poly             *PolySubmitterConfig
+	Poly             *SubmitterConfig
 	Procs            int
 	Enabled          bool
 	CheckFee         bool
@@ -336,7 +329,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		if c.HeaderSync.Bus == nil {
 			c.HeaderSync.Bus = bus
 		}
-		c.HeaderSync.Poly = poly.PolySubmitterConfig.Fill(c.HeaderSync.Poly)
+		c.HeaderSync.Poly = poly.SubmitterConfig.Fill(c.HeaderSync.Poly)
 		c.HeaderSync.Poly.ChainId = chain
 	}
 
@@ -349,7 +342,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		c.SrcTxSync.Bus = bus
 	}
 	c.SrcTxSync.ListenerConfig = c.FillListener(c.SrcTxSync.ListenerConfig, bus)
-	c.SrcTxSync.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxSync.Poly)
+	c.SrcTxSync.Poly = poly.SubmitterConfig.Fill(c.SrcTxSync.Poly)
 
 	if c.SrcTxCommit == nil {
 		c.SrcTxCommit = new(SrcTxCommitConfig)
@@ -359,7 +352,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	if c.SrcTxCommit.Bus == nil {
 		c.SrcTxCommit.Bus = bus
 	}
-	c.SrcTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.SrcTxCommit.Poly)
+	c.SrcTxCommit.Poly = poly.SubmitterConfig.Fill(c.SrcTxCommit.Poly)
 	if c.SrcTxCommit.Filter == nil {
 		c.SrcTxCommit.Filter = c.Filter
 	}
@@ -370,7 +363,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	c.PolyTxCommit.CheckFee = c.CheckFee
 	c.PolyTxCommit.SubmitterConfig = c.FillSubmitter(c.PolyTxCommit.SubmitterConfig)
 	c.PolyTxCommit.ChainId = chain
-	c.PolyTxCommit.Poly = poly.PolySubmitterConfig.Fill(c.PolyTxCommit.Poly)
+	c.PolyTxCommit.Poly = poly.SubmitterConfig.Fill(c.PolyTxCommit.Poly)
 	if c.PolyTxCommit.Bus == nil {
 		c.PolyTxCommit.Bus = bus
 	}

@@ -69,6 +69,7 @@ type Header struct {
 type PolyEpoch struct {
 	Height          uint64
 	EpochId         uint64
+	ChainId         uint64
 	HeaderHex       string `json:",omitempty"`
 	SealHex         string `json:",omitempty"`
 	AccountProofHex string `json:",omitempty"`

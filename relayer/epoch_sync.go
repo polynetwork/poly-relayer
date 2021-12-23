@@ -25,7 +25,6 @@ import (
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/poly"
@@ -91,7 +90,7 @@ LOOP:
 			break LOOP
 		}
 
-		h.epochStartHeight, err = h.submitter.GetPolyEpochStartHeight()
+		h.epochStartHeight, err = h.submitter.GetPolyEpochStartHeight(h.config.Listener.ChainId)
 		if err != nil {
 			log.Error("Failed to fetch cur epoch start height", "chain", h.name)
 			continue
@@ -102,19 +101,17 @@ LOOP:
 			continue
 		}
 
+		txs := []*msg.Tx{}
 		for _, epoch := range epochs {
-			tx := &msg.Tx{
+			txs = append(txs, &msg.Tx{
 				TxType:     msg.POLY_EPOCH,
 				PolyEpoch:  epoch,
 				DstChainId: h.config.ChainId,
-			}
-			bus.Retry(h.Context, func() error {
-				err = h.submitter.ProcessEpoch(tx)
-				if err != nil {
-					log.Error("Failed to submit epoch change", "chain", h.name, "epoch", epoch.EpochId, "height", epoch.Height, "err", err)
-				}
-				return err
-			}, time.Second, 0)
+			})
+		}
+		h.submitter.ProcessEpochs(txs)
+		if err != nil {
+			log.Error("Failed to submit epoch change", "chain", h.name, "size", len(txs), "epoch", h.epochStartHeight, "err", err)
 		}
 	}
 	log.Info("Epoch sync handler is exiting...", "chain", h.name, "epoch", h.epochStartHeight)
