@@ -192,7 +192,7 @@ type HeaderSyncConfig struct {
 
 func (c *HeaderSyncConfig) AsEpochSyncConfig() *EpochSyncConfig {
 	return &EpochSyncConfig{
-		SubmitterConfig: &SubmitterConfig{ChainId: c.Poly.ChainId, Nodes: c.Poly.Nodes, Wallet: c.Poly.Wallet},
+		SubmitterConfig: &SubmitterConfig{ChainId: base.POLY, Nodes: c.Poly.Nodes, Wallet: c.Poly.Wallet},
 		Bus:             c.Bus,
 		Listener:        c.ListenerConfig,
 		Enabled:         c.Enabled,
