@@ -21,139 +21,107 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/poly"
 )
 
-type PolyEpochSyncHandler struct {
+type EpochSyncHandler struct {
 	context.Context
 	wg *sync.WaitGroup
 
-	listener *poly.Listener
-	bus      bus.TxBus      // main poly tx queue
-	input    bus.ChainStore // init sync height(force)
-	state    bus.ChainStore
-	height   uint64
-	config   *config.PolyEpochSyncConfig
+	listener         *poly.Listener
+	submitter        IChainSubmitter
+	epochStartHeight uint64
+	config           *config.EpochSyncConfig
+	name             string
 }
 
-func NewPolyEpochSyncHandler(config *config.PolyEpochSyncConfig) *PolyEpochSyncHandler {
-	return &PolyEpochSyncHandler{
-		config:   config,
-		listener: new(poly.Listener),
+func NewEpochSyncHandler(config *config.EpochSyncConfig) *EpochSyncHandler {
+	return &EpochSyncHandler{
+		config:    config,
+		listener:  new(poly.Listener),
+		submitter: GetSubmitter(config.ChainId),
 	}
 }
 
-func (h *PolyEpochSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
+func (h *EpochSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
 	if h.listener == nil {
-		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
+		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.Listener.ChainId))
 	}
-	err = h.listener.Init(h.config.ListenerConfig, nil)
+	err = h.listener.Init(h.config.Listener, nil)
 	if err != nil {
 		return
 	}
 
-	h.state = bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_EPOCH}, bus.New(h.config.Bus.Redis),
-		h.config.Bus.HeightUpdateInterval,
-	)
-	h.input = bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: h.config.ChainId, Type: bus.KEY_HEIGHT_EPOCH_RESET}, bus.New(h.config.Bus.Redis),
-		h.config.Bus.HeightUpdateInterval,
-	)
-
-	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
-	ok, err := bus.NewStatusLock(bus.New(h.config.Bus.Redis), bus.POLY_EPOCH_SYNC).Start(ctx, h.wg)
-	if err != nil {
-		return err
+	if h.submitter == nil {
+		return fmt.Errorf("Unabled to create submitter for chain %s", base.GetChainName(h.config.ChainId))
 	}
-	if !ok {
-		err = fmt.Errorf("Only one poly epoch listener is expected to run.")
+
+	h.name = fmt.Sprintf("%s->%s", base.GetChainName(h.config.Listener.ChainId), base.GetChainName(h.config.ChainId))
+	err = h.submitter.Init(h.config.SubmitterConfig)
+	if err != nil {
+		return
 	}
 	return
 }
 
-func (h *PolyEpochSyncHandler) Start() (err error) {
-	// Reset height input
-	height, err := h.input.GetHeight(context.Background())
-	if err != nil {
-		log.Warn("Get forced epoch sync start error, will fetch last epoch state", "err", err)
-	} else {
-		// Attempt to clear reset
-		h.input.UpdateHeight(context.Background(), 0)
-	}
-	// Last successful sync height
-	lastHeight, _ := h.state.GetHeight(context.Background())
-	h.height, err = h.listener.LastHeaderSync(height, lastHeight)
-	if err != nil {
-		return
-	}
-	log.Info("Poly epoch sync will start...", "height", h.height+1, "force", height, "last", lastHeight, "chain", h.config.ChainId)
-
+func (h *EpochSyncHandler) Start() (err error) {
 	go h.start()
 	return
 }
 
-func (h *PolyEpochSyncHandler) start() (err error) {
+func (h *EpochSyncHandler) start() (err error) {
+	ticker := time.NewTicker(time.Second)
 	h.wg.Add(1)
 	defer h.wg.Done()
-	var (
-		latest   uint64
-		ok       bool
-		confirms uint64
-	)
 LOOP:
 	for {
 		select {
+		case <-ticker.C:
 		case <-h.Done():
 			break LOOP
-		default:
 		}
 
-		h.height++
-		log.Debug("Epoch sync processing block", "height", h.height, "chain", h.config.ChainId)
-		if latest < h.height+confirms {
-			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
-			if !ok {
-				break LOOP
-			}
-		}
-		epoch, err := h.listener.Epoch(h.height)
-		log.Debug("Epoch sync fetched block header", "height", h.height, "chain", h.config.ChainId, "err", err)
-		if err == nil {
-			if epoch == nil {
-				continue
-			}
-			log.Info("Found new poly epoch", "epoch", epoch.EpochId, "height", epoch.Height)
-			epoch.Encode()
-			tx := &msg.Tx{
-				TxType:    msg.POLY_EPOCH,
-				PolyEpoch: epoch,
-			}
-			bus.SafeCall(h.Context, tx, "push epoch change to target chain tx bus", func() error {
-				return h.bus.PushToChain(context.Background(), tx)
-			})
+		h.epochStartHeight, err = h.submitter.GetPolyEpochStartHeight(h.config.Listener.ChainId)
+		if err != nil {
+			log.Error("Failed to fetch cur epoch start height", "chain", h.name)
 			continue
-		} else {
-			log.Error("Fetch poly epoch error", "chain", h.config.ChainId, "height", h.height, "err", err)
 		}
-		h.height--
+		epochs, err := h.listener.EpochUpdate(h.Context, h.epochStartHeight)
+		if err != nil {
+			log.Error("Failed to fetch epoch update", "chain", h.name)
+			continue
+		}
+
+		txs := []*msg.Tx{}
+		for _, epoch := range epochs {
+			txs = append(txs, &msg.Tx{
+				TxType:     msg.POLY_EPOCH,
+				PolyEpoch:  epoch,
+				DstChainId: h.config.ChainId,
+			})
+		}
+		h.submitter.ProcessEpochs(txs)
+		if err != nil {
+			log.Error("Failed to submit epoch change", "chain", h.name, "size", len(txs), "epoch", h.epochStartHeight, "err", err)
+		}
 	}
-	log.Info("Epoch sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
+	log.Info("Epoch sync handler is exiting...", "chain", h.name, "epoch", h.epochStartHeight)
+	return nil
+}
+
+func (h *EpochSyncHandler) Stop() (err error) {
 	return
 }
 
-func (h *PolyEpochSyncHandler) Stop() (err error) {
-	return
-}
-
-func (h *PolyEpochSyncHandler) Chain() uint64 {
+func (h *EpochSyncHandler) Chain() uint64 {
 	return h.config.ChainId
 }

@@ -48,7 +48,7 @@ import (
 type Submitter struct {
 	context.Context
 	wg      *sync.WaitGroup
-	config  *config.PolySubmitterConfig
+	config  *config.SubmitterConfig
 	sdk     *zion.SDK
 	name    string
 	sync    *config.HeaderSyncConfig
@@ -65,7 +65,7 @@ type Submitter struct {
 	txabi        abi.ABI
 }
 
-func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
+func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.config = config
 	s.name = base.GetChainName(config.ChainId)
 	s.blocksToWait = base.BlocksToWait(config.ChainId)
@@ -122,7 +122,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if s.lastCommit > 0 && s.lastCheck > 3 {
 				s.lastCheck = 0
 				switch chainId {
-				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3:
+				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3, base.RINKBY, base.KOVAN, base.GOERLI:
 					height, e := s.GetSideChainHeight(chainId)
 					if e != nil {
 						log.Error("Get side chain header height failure", "err", e)
@@ -215,7 +215,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 	var height uint64
 	var pending bool
 	for {
-		height, _, pending, err = s.sdk.Node().Confirm(msg.Hash(hash), 0, 10)
+		height, _, pending, err = s.sdk.Node().Confirm(msg.Hash(hash), 0, 100)
 		if height > 0 {
 			log.Info("Submitted header to poly", "chain", chainId, "hash", hash, "height", height)
 			return
@@ -255,7 +255,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		signer = tx.PolySender.(*accounts.Account)
 	}
 	switch tx.SrcChainId {
-	case base.NEO, base.ONT:
+	case base.NEO, base.ONT, base.SIDE:
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
 			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
 		}
@@ -293,6 +293,8 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		if strings.Contains(err.Error(), "tx already done") {
 			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
 			return nil
+		} else if strings.Contains(err.Error(), "already known") {
+			return msg.ERR_TX_PENDING
 		}
 		return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
 	}
@@ -308,7 +310,7 @@ func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.PolyComposer) (err error) 
 	return s.submit(m)
 }
 
-func (s *Submitter) Process(msg msg.Message) error {
+func (s *Submitter) Process(msg msg.Message, composer msg.PolyComposer) error {
 	return nil
 }
 
@@ -320,7 +322,7 @@ func (s *Submitter) Stop() error {
 func (s *Submitter) ReadyBlock() (height uint64) {
 	var err error
 	switch s.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.RINKBY, base.KOVAN, base.GOERLI:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
 	case base.NEO:
 		tx := new(msg.Tx)
@@ -382,6 +384,9 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 				continue
 			}
 			block += 1
+			if err == msg.ERR_TX_PENDING {
+				block += 69
+			}
 			tx.Attempts++
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block)
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
@@ -454,7 +459,11 @@ func (s *Submitter) run(mq bus.TxBus) error {
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, compose msg.PolyComposer) error {
+	return nil
+}
+
+func (s *Submitter) Run(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.PolyComposer) error {
 	s.compose = composer
 	s.Context = ctx
 	s.wg = wg
@@ -605,4 +614,31 @@ func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
 
 func (s *Submitter) Poly() *zion.SDK {
 	return s.sdk
+}
+
+func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
+	if len(epochs) == 0 {
+		return
+	}
+
+	headers := [][]byte{}
+	for _, m := range epochs {
+		if m.Type() != msg.POLY_EPOCH || m.PolyEpoch == nil {
+			err = fmt.Errorf("Invalid side chainy epoch message %s", m.Encode())
+			return
+		}
+		headers = append(headers, m.PolyEpoch.Header)
+	}
+
+	epoch := epochs[len(epochs)-1].PolyEpoch
+	log.Info("Submitting side chain epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "size", len(epochs))
+	hash, err := s.SubmitHeaders(epoch.ChainId, headers)
+	if err == nil {
+		log.Info("Submitted side chain epochs to zion", "size", len(epochs), "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "hash", hash)
+	}
+	return
+}
+
+func (s *Submitter) GetPolyEpochStartHeight(chainId uint64) (height uint64, err error) {
+	return s.sdk.Node().GetSideChainConsensusBlockHeight(chainId)
 }

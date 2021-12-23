@@ -75,7 +75,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 
 func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	switch l.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.RINKBY, base.KOVAN, base.GOERLI:
 		h, err := l.poly.Node().GetSideChainHeight(l.config.ChainId)
 		if err != nil {
 			return 0, err
@@ -118,7 +118,7 @@ func (l *Listener) FetchProof(txId []byte, txHeight uint64) (height uint64, proo
 	proofKey := hexutil.Encode(bytes)
 	height, err = l.GetProofHeight(txHeight)
 	if err != nil {
-		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
+		err = fmt.Errorf("%s chain get proof height error %v", l.name, err)
 		return
 	}
 	/*
@@ -163,6 +163,12 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	tx.Param = param
 	tx.SrcEvent = event
 	tx.SrcProofHeight, tx.SrcProof, err = l.GetProof(txId, tx.SrcHeight)
+	if err != nil {
+		return
+	}
+	if l.config.ChainId == base.SIDE {
+		tx.SrcStateRoot, _, err = l.Header(tx.SrcProofHeight)
+	}
 	return
 }
 
@@ -179,7 +185,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := eccm_abi.NewEthCrossChainManagerImplemetation(l.ccm, l.sdk.Node())
+	ccm, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}

@@ -70,6 +70,7 @@ type TxBus interface {
 	PopTimed(context.Context, time.Duration) (*msg.Tx, error)
 	Push(context.Context, *msg.Tx) error
 	PushToChain(context.Context, *msg.Tx) error
+	PushToChains(context.Context, *msg.Tx, []uint64) error
 	Patch(context.Context, *msg.Tx) error
 	PushBack(context.Context, *msg.Tx) error
 	Len(context.Context) (uint64, error)
@@ -114,6 +115,17 @@ func (b *RedisTxBus) PopTimed(ctx context.Context, duration time.Duration) (*msg
 	tx := new(msg.Tx)
 	err = tx.Decode(res[1])
 	return tx, err
+}
+
+func (b *RedisTxBus) PushToChains(ctx context.Context, tx *msg.Tx, chains []uint64) error {
+	for _, chain := range chains {
+		tx.DstChainId = chain
+		err := b.PushToChain(ctx, tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *RedisTxBus) PushToChain(ctx context.Context, tx *msg.Tx) error {
