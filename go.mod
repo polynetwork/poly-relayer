@@ -6,7 +6,7 @@ require (
 	github.com/KSlashh/poly-abi v0.0.0-20211223040949-f9bf1fe7c709
 	github.com/apex/log v1.9.0 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta
-	github.com/devfans/poly-abi v0.0.0-20211118074720-ae7dcaf02c38
+	github.com/devfans/poly-abi v0.0.0-20211224081800-35044c8e3766
 	github.com/devfans/zion-sdk v0.0.4-0.20211223115626-e8b5b6a45245
 	github.com/ethereum/go-ethereum v1.10.7
 	github.com/go-redis/redis/v8 v8.11.3
