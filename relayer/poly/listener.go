@@ -210,14 +210,14 @@ LOOP:
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
-		if epoch == nil || epoch.StartHeight <= startHeight {
+		if epoch == nil || epoch.StartHeight <= startHeight || epoch.ID < 2 {
 			continue
 		}
 
 		id := epoch.ID
 		log.Info("Fetched latest epoch info", "chain", l.config.ChainId, "id", id, "start_height", epoch.StartHeight, "dst_epoch_height", startHeight)
 
-		for {
+		for id > 1 {
 			info, err := l.EpochById(id)
 			if err != nil {
 				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id, "err", err)
@@ -225,13 +225,14 @@ LOOP:
 			}
 			if info.Height <= startHeight {
 				l.lastEpoch = epoch.ID
-				return epochs, nil
+				break
 			} else {
 				epochs = append([]*msg.PolyEpoch{info}, epochs...)
 				log.Info("Fetched epoch change info", "chain", l.config.ChainId, "id", id, "start_height", info.Height, "size", len(epochs), "dst_epoch_height", startHeight)
 				id--
 			}
 		}
+		return epochs, nil
 	}
 	return
 }
