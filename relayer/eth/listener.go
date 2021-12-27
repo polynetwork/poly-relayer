@@ -81,14 +81,10 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 			return 0, err
 		}
 		height = h - base.BlocksToWait(l.config.ChainId)
-	case base.OK:
-		h, _ := l.state.GetHeight(context.Background())
+	case base.OK, base.SIDE:
 		height, err = l.sdk.Node().GetLatestHeight()
 		if err != nil {
 			return 0, err
-		}
-		if h > height {
-			height = h
 		}
 		height = height - base.BlocksToWait(l.config.ChainId)
 	case base.PLT:
@@ -285,6 +281,10 @@ func (l *Listener) SDK() *eth.SDK {
 
 func (l *Listener) ECCD() common.Address {
 	return l.ccd
+}
+
+func (l *Listener) LatestHeight() (uint64, error) {
+	return l.sdk.Node().GetLatestHeight()
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
