@@ -203,7 +203,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 }
 
 func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string, err error) {
-	data, err := s.hsabi.Pack("syncBlockHeader", s.config.ChainId, s.signer.Address, headers)
+	data, err := s.hsabi.Pack("syncBlockHeader", chainId, s.signer.Address, headers)
 	if err != nil {
 		return
 	}
