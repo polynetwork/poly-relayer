@@ -204,3 +204,27 @@ func (b *TxBusWithFilter) Pop(ctx context.Context) (*msg.Tx, uint64, error) {
 		}
 	}
 }
+
+type BusWithFilter struct {
+	TxBus
+	filter *config.FilterConfig
+}
+
+func WithTxFilter(bus TxBus, filter *config.FilterConfig) *BusWithFilter {
+	return &BusWithFilter{bus, filter}
+}
+
+func (b *BusWithFilter) Pop(ctx context.Context) (*msg.Tx, error) {
+	for {
+		tx, err := b.TxBus.Pop(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if b.filter.Check(tx) {
+			log.Debug("Filter passes tx", "chain", tx.DstChainId, "src_proxy", tx.SrcProxy, "dst_proxy", tx.DstProxy)
+			return tx, nil
+		} else {
+			log.Warn("Filter ignores tx", "tx", tx.Encode())
+		}
+	}
+}
