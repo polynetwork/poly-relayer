@@ -200,7 +200,7 @@ func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
 			hash := msg.Hash(m.DstHash)
 			height, _, pending, err = s.sdk.Node().Confirm(hash, 0, 100)
 			if height > 0 {
-				log.Info("Submitted header to poly", "chain", s.name, "hash", hash, "height", height)
+				log.Info("Submitted epoch updates", "chain", s.name, "hash", hash, "height", height)
 				break CONFIRM
 			}
 			if err == nil && !pending {

@@ -355,3 +355,7 @@ func (l *Listener) LastHeaderSync(force uint64, last uint64) (uint64, error) {
 
 	return v, nil
 }
+
+func (l *Listener) LatestHeight() (uint64, error) {
+	return l.sdk.Node().GetLatestHeight()
+}

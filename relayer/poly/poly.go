@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 	"strings"
 	"sync"
@@ -47,15 +46,15 @@ import (
 
 type Submitter struct {
 	context.Context
-	wg      *sync.WaitGroup
-	config  *config.SubmitterConfig
-	sdk     *zion.SDK
-	name    string
-	sync    *config.HeaderSyncConfig
-	compose msg.PolyComposer
-	state   bus.ChainStore // Header sync marking
-	wallet  wallet.IWallet
-	signer  *accounts.Account
+	wg       *sync.WaitGroup
+	config   *config.SubmitterConfig
+	sdk      *zion.SDK
+	name     string
+	sync     *config.HeaderSyncConfig
+	composer msg.SrcComposer
+	state    bus.ChainStore // Header sync marking
+	wallet   wallet.IWallet
+	signer   *accounts.Account
 
 	// Check last header commit
 	lastCommit   uint64
@@ -64,6 +63,13 @@ type Submitter struct {
 	hsabi        abi.ABI
 	txabi        abi.ABI
 }
+
+type Composer struct {
+	compose msg.PolyComposer
+}
+
+func (c *Composer) LatestHeight() (uint64, error) { return 0, nil }
+func (c *Composer) Compose(tx *msg.Tx) error      { return c.compose(tx) }
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.config = config
@@ -228,7 +234,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 }
 
 func (s *Submitter) submit(tx *msg.Tx) error {
-	err := s.compose(tx)
+	err := s.composer.Compose(tx)
 	if err != nil {
 		if strings.Contains(err.Error(), "missing trie node") {
 			return msg.ERR_PROOF_UNAVAILABLE
@@ -305,7 +311,7 @@ func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.PolyComposer) (err error) 
 	if m.Type() != msg.SRC {
 		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
 	}
-	s.compose = composer
+	s.composer = &Composer{composer}
 	return s.submit(m)
 }
 
@@ -323,12 +329,8 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	switch s.config.ChainId {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.RINKBY, base.KOVAN, base.GOERLI:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
-	case base.NEO:
-		tx := new(msg.Tx)
-		s.compose(tx)
-		return tx.SrcProofHeight
 	default:
-		height = math.MaxInt32
+		height, err = s.composer.LatestHeight()
 	}
 	if height > s.blocksToWait {
 		height -= s.blocksToWait
@@ -462,8 +464,8 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	return nil
 }
 
-func (s *Submitter) Run(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.PolyComposer) error {
-	s.compose = composer
+func (s *Submitter) Run(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.SrcComposer) error {
+	s.composer = composer
 	s.Context = ctx
 	s.wg = wg
 

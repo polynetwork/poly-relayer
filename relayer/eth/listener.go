@@ -81,11 +81,7 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 			return 0, err
 		}
 		height = h - base.BlocksToWait(l.config.ChainId) + 6 // Add 6 shim
-	case base.OK:
-		height, _ = l.state.GetHeight(context.Background())
-		if height > 0 {
-			return
-		}
+	case base.OK, base.SIDE:
 		height, err = l.sdk.Node().GetLatestHeight()
 		if err != nil {
 			return 0, err
@@ -278,6 +274,10 @@ func (l *Listener) Poly() *zion.SDK {
 
 func (l *Listener) Name() string {
 	return l.name
+}
+
+func (l *Listener) LatestHeight() (uint64, error) {
+	return l.sdk.Node().GetLatestHeight()
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
