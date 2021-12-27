@@ -220,7 +220,7 @@ LOOP:
 		for {
 			info, err := l.EpochById(id)
 			if err != nil {
-				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id)
+				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id, "err", err)
 				continue LOOP
 			}
 			if info.Height <= startHeight {
