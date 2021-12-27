@@ -624,9 +624,7 @@ func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
 	epoch := epochs[len(epochs)-1].PolyEpoch
 	log.Info("Submitting side chain epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "size", len(epochs))
 	hash, err := s.SubmitHeaders(epoch.ChainId, headers)
-	if err == nil {
-		log.Info("Submitted side chain epochs to zion", "size", len(epochs), "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "hash", hash)
-	}
+	log.Info("Submit side chain epochs to zion", "size", len(epochs), "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "hash", hash, "err", err)
 	return
 }
 
