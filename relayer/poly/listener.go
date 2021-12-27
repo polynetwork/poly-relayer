@@ -253,7 +253,7 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 
 	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to fetch header at height %v, err %v", info.Height, err)
 	}
 
 	if l.config.ChainId == base.POLY {
