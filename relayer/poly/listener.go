@@ -241,7 +241,7 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 	if err != nil {
 		return
 	}
-	if epoch.Status != node_manager.ProposalStatusPassed {
+	if epoch.Status != node_manager.ProposalStatusPassed && id > 1 {
 		err = fmt.Errorf("Invalid epoch status %v desired: %v", epoch.Status, node_manager.ProposalStatusPassed)
 		return
 	}
