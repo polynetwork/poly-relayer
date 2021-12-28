@@ -44,6 +44,7 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/ont"
 	"github.com/polynetwork/poly-relayer/relayer/opt"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
+	"github.com/polynetwork/poly-relayer/relayer/solana"
 	"github.com/polynetwork/poly-relayer/relayer/xdai"
 )
 
@@ -130,6 +131,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(ava.Submitter)
 	case base.METIS:
 		submitter = new(metis.Submitter)
+	case base.SOLANA:
+		submitter = new(solana.Submitter)
 	default:
 	}
 	return

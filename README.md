@@ -18,6 +18,8 @@ Reimplement poly relayer
 |Optimism |main |:x:|:x:|:white_check_mark:|
 |Fantom   |main |:x:|:x:|:white_check_mark:|
 |Avalanche|main |:x:|:x:|:white_check_mark:|
+|Metis    |main |:x:|:x:|:white_check_mark:|
+|Solana   |main |:x:|:x:|:white_check_mark:|
 
 ## TODOs
 - [x] metrics, height, height_diff, queue length
