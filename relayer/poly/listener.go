@@ -260,7 +260,7 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 	if l.config.ChainId == base.POLY {
 		info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
 	} else {
-		info.Header, err = rlp.EncodeToBytes(header)
+		info.Header, err = header.MarshalJSON()
 		info.ChainId = l.config.ChainId
 	}
 	if err != nil {
