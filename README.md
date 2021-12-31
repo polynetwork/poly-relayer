@@ -28,3 +28,9 @@ Reimplement poly relayer
 - [x] Delayed retry queue for failed transactions
 - [x] Transaction listen filters: methods, lockproxy contracts
 - [x] Bridge check fee
+
+
+## Docs
+
+* [Setup](docs/README.md)
+
