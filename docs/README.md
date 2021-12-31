@@ -13,7 +13,7 @@ To build the binary, switch to the right branch [Branch Select](../README.md#sup
 
 ### Configuration
 
-* Make sure necessory configuration is specifed in `config.json` [Sample]("../config.sample.json).
+* Make sure necessory configuration is specifed in `config.json` [Sample](../config.sample.json).
 
 * Specify roles to enable in `roles.json` [Sample](../roles.sample.json)
 
