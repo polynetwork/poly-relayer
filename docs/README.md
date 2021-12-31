@@ -3,7 +3,7 @@
 
 ### Build and binaries
 
-To build the binary, switch to the right branch [Branch Select](""), then run:
+To build the binary, switch to the right branch [Branch Select]("https://github.com/polynetwork/poly-relayer#supported-chains"), then run:
 
 
 ```
@@ -15,9 +15,9 @@ To build the binary, switch to the right branch [Branch Select](""), then run:
 
 ### Configuration
 
-* Make sure necessory configuration is specifed in `config.json` [Sample]("../config.sample.json").
+* Make sure necessory configuration is specifed in `config.json` [Sample]("https://github.com/polynetwork/poly-relayer/blob/main/config.sample.json").
 
-* Specify roles to enable in `roles.json` [Sample]("../roles.sample.json")
+* Specify roles to enable in `roles.json` [Sample]("https://github.com/polynetwork/poly-relayer/blob/main/roles.sample.json")
 
 
 ### Run
@@ -38,20 +38,20 @@ Some chains require `HeaderSync` process to run to submit chain headers to poly 
 
 * Source Chain -> Poly
 
-`SyncTxSync` observes cross chain transactions from source chain, and push them to message queue.
+`TxListen` observes cross chain transactions from source chain, and push them to message queue.
 
 
-`SrcTxCommit` consumes the message queue, and submit the cross chain transactions to poly.
+`TxCommit` consumes the message queue, and submit the cross chain transactions to poly.
 
 
 * Poly -> Destination Chain
 
-`PolyTxSync` observes cross chain transactions from poly chain and push them to message queue.
+`PolyListen` observes cross chain transactions from poly chain and push them to message queue.
 
 **ONLY ONE `PolyTxSync` PROCESS IS NEEDED FOR ALL CHAINS!**
 
 
-`PolyTxCommit` consumes the message queue, and submit the cross chain transaction to the destination chain.
+`PolyCommit` consumes the message queue, and submit the cross chain transaction to the destination chain.
 
 
 
