@@ -3,29 +3,26 @@
 
 ### Build and binaries
 
-To build the binary, switch to the right branch [Branch Select]("https://github.com/polynetwork/poly-relayer#supported-chains"), then run:
+To build the binary, switch to the right branch [Branch Select](../README.md#supported-chains), then run:
 
 
 ```
-
 ./build.sh testnet/mainnet
-
 ```
 
 
 ### Configuration
 
-* Make sure necessory configuration is specifed in `config.json` [Sample]("https://github.com/polynetwork/poly-relayer/blob/main/config.sample.json").
+* Make sure necessory configuration is specifed in `config.json` [Sample]("../config.sample.json).
 
-* Specify roles to enable in `roles.json` [Sample]("https://github.com/polynetwork/poly-relayer/blob/main/roles.sample.json")
+* Specify roles to enable in `roles.json` [Sample](../roles.sample.json)
 
 
 ### Run
 
 
 ```
-server --config ./config.json --roles ./roles.json
-
+./server --config ./config.json --roles ./roles.json
 ```
 
 
