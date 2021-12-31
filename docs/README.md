@@ -45,7 +45,7 @@ Some chains require `HeaderSync` process to run to submit chain headers to poly 
 
 `PolyListen` observes cross chain transactions from poly chain and push them to message queue.
 
-**ONLY ONE `PolyTxSync` PROCESS IS NEEDED FOR ALL CHAINS!**
+**ONLY ONE `PolyListen` PROCESS IS NEEDED FOR ALL CHAINS!**
 
 
 `PolyCommit` consumes the message queue, and submit the cross chain transaction to the destination chain.
