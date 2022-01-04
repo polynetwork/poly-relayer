@@ -25,7 +25,9 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/urfave/cli/v2"
 
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
@@ -68,11 +70,15 @@ func RelayTx(ctx *cli.Context) (err error) {
 	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")
 	free := ctx.Bool("free")
+	sender := ctx.String("sender")
 	params := &msg.Tx{
 		SkipCheckFee: free,
 		DstGasPrice:  ctx.String("price"),
 		DstGasPriceX: ctx.String("pricex"),
 		DstGasLimit:  uint64(ctx.Int("limit")),
+	}
+	if len(sender) > 0 {
+		params.DstSender = &accounts.Account{Address: common.HexToAddress(sender)}
 	}
 	if ctx.Bool("auto") {
 		params.SrcChainId = chain

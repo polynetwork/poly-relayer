@@ -109,6 +109,10 @@ func main() {
 						Name:  "free",
 						Usage: "skip check fee",
 					},
+					&cli.StringFlag{
+						Name:  "sender",
+						Usage: "tx sender address",
+					},
 					&cli.BoolFlag{
 						Name:  "auto",
 						Usage: "submit will try to find the proper bin",
