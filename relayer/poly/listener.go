@@ -77,7 +77,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 				tx.TxId = states[3].(string)
 				tx.SrcChainId = uint64(states[1].(float64))
 				switch tx.SrcChainId {
-				case base.NEO, base.ONT:
+				case base.NEO, base.NEO3, base.ONT:
 					tx.TxId = util.ReverseHex(tx.TxId)
 				}
 				txs = append(txs, tx)
@@ -128,4 +128,8 @@ func (l *Listener) Nodes() chains.Nodes {
 
 func (l *Listener) LastHeaderSync(uint64, uint64) (uint64, error) {
 	return 0, nil
+}
+
+func (l *Listener) LatestHeight() (uint64, error) {
+	return l.sdk.Node().GetLatestHeight()
 }

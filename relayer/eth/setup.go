@@ -15,9 +15,7 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package o3
+package eth
 
-import "github.com/polynetwork/poly-relayer/relayer/eth"
-
-type Listener = eth.Listener
-type Submitter = eth.Submitter
+func init() {
+}

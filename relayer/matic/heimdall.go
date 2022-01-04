@@ -133,3 +133,7 @@ func (l *HeimdallListener) ScanTx(hash string) (tx *msg.Tx, err error) {
 func (l *HeimdallListener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
+
+func (l *HeimdallListener) LatestHeight() (uint64, error) {
+	return 0, nil
+}

@@ -89,7 +89,7 @@ func (h *PolyTxCommitHandler) Compose(tx *msg.Tx) (err error) {
 		return
 	}
 	if h.config.Filter != nil {
-		if !h.config.Filter.Check(tx.SrcProxy, tx.DstProxy) {
+		if !h.config.Filter.Check(tx) {
 			log.Warn("Poly tx commit skipped for not target", "from", tx.SrcProxy, "to", tx.DstProxy)
 			return msg.ERR_TX_BYPASS
 		} else {
@@ -101,11 +101,9 @@ func (h *PolyTxCommitHandler) Compose(tx *msg.Tx) (err error) {
 
 func (h *PolyTxCommitHandler) Start() (err error) {
 	mq := h.bus
-	/*
-		if h.config.Filter != nil {
-			mq = bus.WithFilter(h.bus, h.config.Filter)
-		}
-	*/
+	if h.config.Filter != nil {
+		mq = bus.WithTxFilter(h.bus, h.config.Filter)
+	}
 	if h.config.CheckFee {
 		bus := &CommitFilter{
 			name:   base.GetChainName(h.config.ChainId),
@@ -160,6 +158,7 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 			PolyHash: tx.PolyHash,
 		}
 	}
+	log.Info("Sending check fee request", "size", len(state), "chain", b.name)
 	err = b.bridge.Node().CheckFee(state)
 	if err != nil {
 		return
@@ -180,11 +179,13 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 		} else if check.Skip() {
 			log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
 		} else if check.Missing() {
+			tx.Attempts++
 			log.Info("CheckFee tx missing in bridge, delay for 2 seconds", "poly_hash", tx.PolyHash)
-			tsp := time.Now().Unix() + 2
+			tsp := time.Now().Unix() + 5
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 
 		} else {
+			tx.Attempts++
 			log.Info("CheckFee tx not paid, delay for 10 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
 			tsp := time.Now().Unix() + 600
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
@@ -214,7 +215,11 @@ LOOP:
 					log.Error("Invalid poly tx, poly hash missing", "body", tx.Encode())
 					continue
 				}
-				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash)
+				if tx.Attempts > 1000 && base.ENV == "testnet" {
+					log.Error("Dropping failed tx for too many retries in testnet", "chain", b.name, "poly_hash", tx.PolyHash)
+					continue
+				}
+				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash, "process_pending", len(b.ch))
 
 				// Skip tx check fee
 				if tx.SkipFee() {
@@ -294,7 +299,7 @@ func (h *SrcTxCommitHandler) Start() (err error) {
 	if h.config.Filter != nil {
 		mq = bus.WithFilter(h.bus, h.config.Filter)
 	}
-	err = h.submitter.Start(h.Context, h.wg, mq, h.listener.Compose)
+	err = h.submitter.Start(h.Context, h.wg, mq, h.listener)
 	return
 }
 

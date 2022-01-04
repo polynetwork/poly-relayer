@@ -129,21 +129,20 @@ func (s *Submitter) GetPolyEpochStartHeight() (height uint32, err error) {
 }
 
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
-	txId, err := tx.GetTxId()
-	if err != nil {
-		return
-	}
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
 		return
 	}
+	txId := [32]byte{}
+	copy(txId[:], tx.MerkleValue.TxHash[:32])
 	exist, err := ccd.CheckIfFromChainTxExist(nil, tx.SrcChainId, txId)
 	if err != nil {
 		return err
 	}
 
 	if exist {
-		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "txid", tx.TxId)
+		log.Info("ProcessPolyTx dst tx already relayed, tx id occupied", "chain", s.name, "poly_hash", tx.PolyHash)
+		tx.DstHash = ""
 		return nil
 	}
 
@@ -247,7 +246,8 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp := time.Now().Unix() + 10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
-				bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
+				tsp := time.Now().Unix() + 1
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
@@ -257,10 +257,10 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			switch s.config.ChainId {
 			case base.MATIC, base.PLT:
 				tsp = time.Now().Unix() + 60*3
-			case base.ARBITRUM:
-				tsp = time.Now().Unix() + 60*25
 			case base.BSC, base.HECO, base.OK:
 				tsp = time.Now().Unix() + 60*4
+			case base.ETH:
+				tsp = time.Now().Unix() + 60*6
 			}
 			if tsp > 0 && tx.DstHash != "" {
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })

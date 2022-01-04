@@ -44,6 +44,10 @@ type Header struct {
 }
 
 type PolyComposer func(*Tx) error
+type SrcComposer interface {
+	Compose(*Tx) error
+	LatestHeight() (uint64, error)
+}
 
 type Tx struct {
 	TxType   TxType
@@ -63,6 +67,7 @@ type Tx struct {
 	SrcParam       string `json:",omitempty"`
 	SrcStateRoot   []byte `json:"-"`
 	SrcProxy       string `json:",omitempty"`
+	SrcAddress     string `json:",omitempty"`
 
 	PolyHash     string        `json:",omitempty"`
 	PolyHeight   uint32        `json:",omitempty"`
@@ -73,6 +78,7 @@ type Tx struct {
 	AuditPath    string        `json:"-"`
 	PolySigs     []byte        `json:"-"`
 
+	DstAddress              string                `json:",omitempty"`
 	DstHash                 string                `json:",omitempty"`
 	DstHeight               uint64                `json:",omitempty"`
 	DstChainId              uint64                `json:",omitempty"`
@@ -136,6 +142,9 @@ func (tx *Tx) CapturePatchParams(o *Tx) *Tx {
 
 		if o.SkipCheckFee {
 			tx.SkipCheckFee = o.SkipCheckFee
+		}
+		if o.DstSender != nil {
+			tx.DstSender = o.DstSender
 		}
 	}
 	return tx
