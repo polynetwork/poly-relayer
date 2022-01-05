@@ -248,6 +248,10 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			} else {
 				tsp := time.Now().Unix() + 1
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+				if errors.Is(err, msg.ERR_LOW_BALANCE) {
+					log.Info("Low wallet balance detected", "chain", s.name, "account", account.Address)
+					s.WaitForBalance(account.Address)
+				}
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
@@ -267,6 +271,22 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			if tsp > 0 && tx.DstHash != "" {
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
+		}
+	}
+}
+
+func (s *Submitter) WaitForBalance(address common.Address) {
+	for {
+		balance, err := s.wallet.GetBalance(address)
+		hasBalance := wallet.HasBalance(s.config.ChainId, balance)
+		log.Info("Wallet balance check", "chain", s.name, "account", address, "has_balance", hasBalance, "err", err)
+		if hasBalance {
+			return
+		}
+		select {
+		case <-time.After(time.Minute):
+		case <-s.Done():
+			return
 		}
 	}
 }
