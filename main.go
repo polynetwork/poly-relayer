@@ -38,6 +38,18 @@ func main() {
 		Before: Init,
 		Commands: []*cli.Command{
 			&cli.Command{
+				Name:   relayer.CHECK_WALLET,
+				Usage:  "Check wallet status",
+				Action: command(relayer.CHECK_WALLET),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "target side chain",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.SET_HEADER_HEIGHT,
 				Usage:  "Set side chain header sync height",
 				Action: command(relayer.SET_HEADER_HEIGHT),
@@ -246,8 +258,8 @@ func start(c *cli.Context) error {
 	status := 0
 	err = relayer.Start(ctx, wg, config)
 	if err == nil {
-		sc := make(chan os.Signal, 1)
-		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		sc := make(chan os.Signal, 10)
+		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGSTOP, syscall.SIGQUIT)
 		sig := <-sc
 		log.Info("Poly relayer is exiting with received signal", "signal", sig.String())
 	} else {
