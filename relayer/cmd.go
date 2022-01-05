@@ -25,9 +25,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/urfave/cli/v2"
 
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
@@ -78,7 +76,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 		DstGasLimit:  uint64(ctx.Int("limit")),
 	}
 	if len(sender) > 0 {
-		params.DstSender = &accounts.Account{Address: common.HexToAddress(sender)}
+		params.DstSender = sender
 	}
 	if ctx.Bool("auto") {
 		params.SrcChainId = chain

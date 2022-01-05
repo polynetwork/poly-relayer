@@ -19,6 +19,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -172,6 +173,16 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
 	}
 
+	switch v := m.DstSender.(type) {
+	case string:
+		for _, a := range s.wallet.Accounts() {
+			if util.LowerHex(a.Address.String()) == util.LowerHex(v) {
+				m.DstSender = &a
+				break
+			}
+		}
+	}
+
 	if m.DstChainId != s.config.ChainId {
 		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
 	}
@@ -194,6 +205,8 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_FAILURE, err)
 		} else if strings.Contains(info, "always failing") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_ALWAYS_FAIL, err)
+		} else if strings.Contains(info, "insufficient funds") || strings.Contains(info, "exceeds allowance") {
+			err = msg.ERR_LOW_BALANCE
 		}
 	}
 	return
