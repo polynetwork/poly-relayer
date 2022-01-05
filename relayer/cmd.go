@@ -47,6 +47,7 @@ const (
 	SKIP              = "skip"
 	CHECK_SKIP        = "checkskip"
 	CREATE_ACCOUNT    = "createaccount"
+	CHECK_WALLET      = "wallet"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -60,7 +61,25 @@ func init() {
 	_Handlers[SKIP] = Skip
 	_Handlers[CHECK_SKIP] = CheckSkip
 	_Handlers[RELAY_TX] = RelayTx
+	_Handlers[CHECK_WALLET] = CheckWallet
 	_Handlers[CREATE_ACCOUNT] = CreateAccount
+}
+
+func CheckWallet(ctx *cli.Context) (err error) {
+	chain := uint64(ctx.Int("chain"))
+	for _, c := range base.ETH_CHAINS {
+		if chain > 0 && c != chain {
+			continue
+		}
+		fmt.Printf("Wallet status %s:\n", base.GetChainName(chain))
+		_, err := ChainSubmitter(chain)
+		if err != nil {
+			log.Error("Failed to find the submitter", "chain", base.GetChainName(chain), "err", err)
+		} else {
+			// TODO: dump balance status of wallet accounts
+		}
+	}
+	return nil
 }
 
 func RelayTx(ctx *cli.Context) (err error) {

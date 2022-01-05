@@ -38,6 +38,18 @@ func main() {
 		Before: Init,
 		Commands: []*cli.Command{
 			&cli.Command{
+				Name:   relayer.CHECK_WALLET,
+				Usage:  "Check wallet status",
+				Action: command(relayer.CHECK_WALLET),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "target side chain",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.SET_HEADER_HEIGHT,
 				Usage:  "Set side chain header sync height",
 				Action: command(relayer.SET_HEADER_HEIGHT),
