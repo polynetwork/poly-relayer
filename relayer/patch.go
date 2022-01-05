@@ -70,8 +70,6 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 	}
 
 	switch chainId {
-	case base.O3, base.ETH, base.HECO, base.BSC, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA:
-		bin = "relayer_main"
 	case base.MATIC:
 		bin = "relayer_matic"
 	case base.PLT:
@@ -80,10 +78,10 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 		bin = "relayer_ont"
 	case base.OK:
 		bin = "relayer_ok"
+	default:
+		bin = "relayer_main"
 	}
-	if bin != "" {
-		bin = path.Join(BIN_DIR, bin)
-	}
+	bin = path.Join(BIN_DIR, bin)
 	return
 }
 
@@ -110,6 +108,9 @@ func Relay(tx *msg.Tx) {
 	}
 	if tx.SkipCheckFee {
 		args = append(args, "-free")
+	}
+	if tx.DstSender != nil {
+		args = append(args, "-sender", tx.DstSender.(string))
 	}
 	cmd := exec.Command(bin, args...)
 	log.Info(fmt.Sprintf("Executing auto patch %v: %v", bin, args))
