@@ -246,8 +246,8 @@ func start(c *cli.Context) error {
 	status := 0
 	err = relayer.Start(ctx, wg, config)
 	if err == nil {
-		sc := make(chan os.Signal, 1)
-		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		sc := make(chan os.Signal, 10)
+		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGSTOP, syscall.SIGQUIT)
 		sig := <-sc
 		log.Info("Poly relayer is exiting with received signal", "signal", sig.String())
 	} else {
