@@ -83,13 +83,9 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 		}
 		height = h - base.BlocksToWait(l.config.ChainId)
 	case base.OK:
-		h, _ := l.state.GetHeight(context.Background())
 		height, err = l.sdk.Node().GetLatestHeight()
 		if err != nil {
 			return 0, err
-		}
-		if h > height {
-			height = h
 		}
 		height = height - base.BlocksToWait(l.config.ChainId)
 	case base.PLT:
