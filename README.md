@@ -19,6 +19,7 @@ Reimplement poly relayer
 |Fantom   |main |:x:|:x:|:white_check_mark:|
 |Avalanche|main |:x:|:x:|:white_check_mark:|
 |Metis    |main |:x:|:x:|:white_check_mark:|
+|Boba     |main |:x:|:x:|:white_check_mark:|
 
 ## TODOs
 - [x] metrics, height, height_diff, queue length
