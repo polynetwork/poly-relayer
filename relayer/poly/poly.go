@@ -466,6 +466,9 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
 	var hash []byte
+	if s.sync.ChainId == base.PLT {
+		return
+	}
 	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT {
 		hash, err = s.sdk.Node().GetSideChainHeaderIndex(s.sync.ChainId, header.Height)
 		if err != nil {
