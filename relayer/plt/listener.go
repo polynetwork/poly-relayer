@@ -60,6 +60,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 		return
 	}
 	header, err = hdr.MarshalJSON()
+	hash = hdr.Hash().Bytes()
 	return
 }
 
