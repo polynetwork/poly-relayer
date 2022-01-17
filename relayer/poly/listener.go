@@ -210,28 +210,29 @@ LOOP:
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
-		if epoch == nil || epoch.StartHeight <= startHeight {
+		if epoch == nil || epoch.StartHeight <= startHeight || epoch.ID < 2 {
 			continue
 		}
 
 		id := epoch.ID
 		log.Info("Fetched latest epoch info", "chain", l.config.ChainId, "id", id, "start_height", epoch.StartHeight, "dst_epoch_height", startHeight)
 
-		for {
+		for id > 1 {
 			info, err := l.EpochById(id)
 			if err != nil {
-				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id)
+				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id, "err", err)
 				continue LOOP
 			}
 			if info.Height <= startHeight {
 				l.lastEpoch = epoch.ID
-				return epochs, nil
+				break
 			} else {
 				epochs = append([]*msg.PolyEpoch{info}, epochs...)
 				log.Info("Fetched epoch change info", "chain", l.config.ChainId, "id", id, "start_height", info.Height, "size", len(epochs), "dst_epoch_height", startHeight)
 				id--
 			}
 		}
+		return epochs, nil
 	}
 	return
 }
@@ -241,7 +242,7 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 	if err != nil {
 		return
 	}
-	if epoch.Status != node_manager.ProposalStatusPassed {
+	if epoch.Status != node_manager.ProposalStatusPassed && id > 1 {
 		err = fmt.Errorf("Invalid epoch status %v desired: %v", epoch.Status, node_manager.ProposalStatusPassed)
 		return
 	}
@@ -253,13 +254,13 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 
 	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to fetch header at height %v, err %v", info.Height, err)
 	}
 
 	if l.config.ChainId == base.POLY {
 		info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
 	} else {
-		info.Header, err = rlp.EncodeToBytes(header)
+		info.Header, err = header.MarshalJSON()
 		info.ChainId = l.config.ChainId
 	}
 	if err != nil {

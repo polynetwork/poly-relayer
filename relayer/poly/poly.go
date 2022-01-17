@@ -203,7 +203,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 }
 
 func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string, err error) {
-	data, err := s.hsabi.Pack("syncBlockHeader", s.config.ChainId, s.signer.Address, headers)
+	data, err := s.hsabi.Pack("syncBlockHeader", chainId, s.signer.Address, headers)
 	if err != nil {
 		return
 	}
@@ -509,6 +509,9 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
 	var hash []byte
+	if s.sync.ChainId == base.PLT {
+		return
+	}
 	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT {
 		hash, err = s.sdk.Node().GetSideChainHeaderIndex(s.sync.ChainId, header.Height)
 		if err != nil {
@@ -622,11 +625,9 @@ func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
 	}
 
 	epoch := epochs[len(epochs)-1].PolyEpoch
-	log.Info("Submitting side chain epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "size", len(epochs))
+	log.Info("Submitting side chain epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "size", len(epochs), "from_chain", epoch.ChainId)
 	hash, err := s.SubmitHeaders(epoch.ChainId, headers)
-	if err == nil {
-		log.Info("Submitted side chain epochs to zion", "size", len(epochs), "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "hash", hash)
-	}
+	log.Info("Submit side chain epochs to zion", "size", len(epochs), "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "from_chain", epoch.ChainId, "hash", hash, "err", err)
 	return
 }
 
