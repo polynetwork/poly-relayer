@@ -67,6 +67,7 @@ type IChainSubmitter interface {
 	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
 	Process(msg.Message, msg.PolyComposer) error
 	ProcessTx(*msg.Tx, msg.PolyComposer) error
+	SubmitTx(*msg.Tx) error
 	Stop() error
 }
 
@@ -111,6 +112,27 @@ func PolySubmitter() (sub *po.Submitter, err error) {
 func PolyListener() (l *po.Listener, err error) {
 	l = new(po.Listener)
 	err = l.Init(config.CONFIG.Poly.PolyTxSync.ListenerConfig, nil)
+	return
+}
+
+func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
+	switch chain {
+	case base.ETH, base.OK, base.HECO, base.BSC, base.MATIC, base.AVA, base.FANTOM, base.XDAI, base.ARBITRUM, base.OPTIMISM, base.O3:
+		sub = new(eth.Submitter)
+	case base.ONT:
+		sub = new(ont.Submitter)
+	case base.NEO:
+		sub = new(neo.Submitter)
+	}
+	if sub == nil {
+		err = fmt.Errorf("No submitter for chain %d available", chain)
+		return
+	}
+	conf := config.CONFIG.Chains[chain]
+	if conf == nil || conf.PolyTxCommit == nil {
+		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
+	}
+	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
 	return
 }
 
