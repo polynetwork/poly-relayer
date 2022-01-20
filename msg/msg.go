@@ -143,6 +143,9 @@ func (tx *Tx) CapturePatchParams(o *Tx) *Tx {
 		if o.SkipCheckFee {
 			tx.SkipCheckFee = o.SkipCheckFee
 		}
+		if o.DstSender != nil {
+			tx.DstSender = o.DstSender
+		}
 	}
 	return tx
 }

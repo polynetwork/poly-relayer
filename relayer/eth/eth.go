@@ -19,6 +19,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -172,6 +173,16 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
 	}
 
+	switch v := m.DstSender.(type) {
+	case string:
+		for _, a := range s.wallet.Accounts() {
+			if util.LowerHex(a.Address.String()) == util.LowerHex(v) {
+				m.DstSender = &a
+				break
+			}
+		}
+	}
+
 	if m.DstChainId != s.config.ChainId {
 		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
 	}
@@ -194,6 +205,8 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_FAILURE, err)
 		} else if strings.Contains(info, "always failing") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_ALWAYS_FAIL, err)
+		} else if strings.Contains(info, "insufficient funds") || strings.Contains(info, "exceeds allowance") {
+			err = msg.ERR_LOW_BALANCE
 		}
 	}
 	return
@@ -248,6 +261,10 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			} else {
 				tsp := time.Now().Unix() + 1
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+				if errors.Is(err, msg.ERR_LOW_BALANCE) {
+					log.Info("Low wallet balance detected", "chain", s.name, "account", account.Address)
+					s.WaitForBalance(account.Address)
+				}
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
@@ -257,7 +274,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			switch s.config.ChainId {
 			case base.MATIC, base.PLT:
 				tsp = time.Now().Unix() + 60*3
-			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM:
+			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM, base.RINKEBY, base.BOBA:
 				tsp = time.Now().Unix() + 60*25
 			case base.BSC, base.HECO, base.OK:
 				tsp = time.Now().Unix() + 60*4
@@ -267,6 +284,22 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			if tsp > 0 && tx.DstHash != "" {
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
+		}
+	}
+}
+
+func (s *Submitter) WaitForBalance(address common.Address) {
+	for {
+		balance, err := s.wallet.GetBalance(address)
+		hasBalance := wallet.HasBalance(s.config.ChainId, balance)
+		log.Info("Wallet balance check", "chain", s.name, "account", address, "has_balance", hasBalance, "err", err)
+		if hasBalance {
+			return
+		}
+		select {
+		case <-time.After(time.Minute):
+		case <-s.Done():
+			return
 		}
 	}
 }

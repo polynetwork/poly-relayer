@@ -30,21 +30,12 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/polynetwork/poly-relayer/relayer/arb"
-	"github.com/polynetwork/poly-relayer/relayer/ava"
-	"github.com/polynetwork/poly-relayer/relayer/bsc"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
-	"github.com/polynetwork/poly-relayer/relayer/fantom"
-	"github.com/polynetwork/poly-relayer/relayer/heco"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
-	"github.com/polynetwork/poly-relayer/relayer/metis"
 	"github.com/polynetwork/poly-relayer/relayer/neo"
-	"github.com/polynetwork/poly-relayer/relayer/o3"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
-	"github.com/polynetwork/poly-relayer/relayer/opt"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
-	"github.com/polynetwork/poly-relayer/relayer/xdai"
 )
 
 type IChainListener interface {
@@ -81,18 +72,12 @@ type IChainSubmitter interface {
 
 func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
-	case base.ETH:
+	case base.ETH, base.BSC, base.HECO, base.O3:
 		listener = new(eth.Listener)
 	case base.OK:
 		listener = new(ok.Listener)
 	case base.MATIC:
 		listener = new(matic.Listener)
-	case base.BSC:
-		listener = new(bsc.Listener)
-	case base.HECO:
-		listener = new(heco.Listener)
-	case base.O3:
-		listener = new(o3.Listener)
 	case base.NEO:
 		listener = new(neo.Listener)
 	case base.ONT:
@@ -106,30 +91,12 @@ func GetListener(chain uint64) (listener IChainListener) {
 
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
-	case base.ETH:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA, base.METIS, base.RINKEBY, base.BOBA:
 		submitter = new(eth.Submitter)
-	case base.BSC:
-		submitter = new(bsc.Submitter)
-	case base.HECO:
-		submitter = new(heco.Submitter)
-	case base.O3:
-		submitter = new(o3.Submitter)
 	case base.NEO:
 		submitter = new(neo.Submitter)
 	case base.ONT:
 		submitter = new(ont.Submitter)
-	case base.ARBITRUM:
-		submitter = new(arb.Submitter)
-	case base.XDAI:
-		submitter = new(xdai.Submitter)
-	case base.OPTIMISM:
-		submitter = new(opt.Submitter)
-	case base.FANTOM:
-		submitter = new(fantom.Submitter)
-	case base.AVA:
-		submitter = new(ava.Submitter)
-	case base.METIS:
-		submitter = new(metis.Submitter)
 	default:
 	}
 	return

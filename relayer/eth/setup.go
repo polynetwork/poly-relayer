@@ -15,10 +15,14 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package xdai
+package eth
 
 import (
-	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/wallet"
 )
 
-type Submitter = eth.Submitter
+func init() {
+	wallet.SetGasLimit(base.ARBITRUM, 4000000)
+	wallet.SetGasLimit(base.OPTIMISM, 4000000)
+}
