@@ -149,13 +149,17 @@ func PolyListener() (l *po.Listener, err error) {
 }
 
 func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
-	switch chain {
-	case base.ETH, base.OK, base.HECO, base.BSC, base.MATIC, base.AVA, base.FANTOM, base.XDAI, base.ARBITRUM, base.OPTIMISM, base.O3:
+	if chain == base.ONT {
 		sub = new(eth.Submitter)
-	case base.ONT:
-		sub = new(ont.Submitter)
-	case base.NEO:
+	} else if chain == base.NEO {
 		sub = new(neo.Submitter)
+	} else {
+		for _, v := range base.ETH_CHAINS {
+			if v == chain {
+				sub = new(eth.Submitter)
+				break
+			}
+		}
 	}
 	if sub == nil {
 		err = fmt.Errorf("No submitter for chain %d available", chain)
