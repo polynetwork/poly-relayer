@@ -520,6 +520,10 @@ COMMIT:
 		case header, ok := <-ch:
 			if ok {
 				hdr = &header
+				if len(headers) > 0 && height != header.Height - 1 {
+                                        log.Info("Resetting header set", "chain", s.sync.ChainId, "height", height, "current_height", header.Height)
+                                        headers = [][]byte{}
+                                }
 				height = header.Height
 				if hdr.Data == nil {
 					// Update header sync height
