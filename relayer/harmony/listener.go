@@ -93,11 +93,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	if err != nil {
 		return
 	}
-	nextHeader, _ := l.sdk.Node().HeaderByNumber(tx.SrcProofHeight + 1)
-	if nextHeader == nil  {
-		time.Sleep(time.Second * 2) // Wait 2 second block time
-		nextHeader, err = l.sdk.Node().HeaderByNumber(tx.SrcProofHeight + 1)
-	}
+	nextHeader, err := l.sdk.Node().HeaderByNumber(tx.SrcProofHeight + 1)
 	if err != nil { return }
 	sig, err := nextHeader.GetLastCommitSignature()
 	if err != nil { return  }
