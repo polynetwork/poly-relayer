@@ -72,7 +72,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 			return nil, nil, err
 		}
 		l.header = nil
-		return
+		return header, nil, nil
 	}
 
 	epoch := hdr.Epoch.Uint64()
