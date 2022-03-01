@@ -639,6 +639,8 @@ github.com/polynetwork/bridge-common v0.0.27-alpha.0.20220301023107-237404335a3f
 github.com/polynetwork/bridge-common v0.0.27-alpha.0.20220301023107-237404335a3f/go.mod h1:AVeMKfirzCsHXOT4cIwWMntHy5Bu4HhUqfukQsqsDAs=
 github.com/polynetwork/bridge-common v0.0.27-beta h1:49ORN6AERb48WdVV4l1BexLxu1X/IyupCOAmzzyF++U=
 github.com/polynetwork/bridge-common v0.0.27-beta/go.mod h1:AVeMKfirzCsHXOT4cIwWMntHy5Bu4HhUqfukQsqsDAs=
+github.com/polynetwork/bridge-common v0.0.27-beta.0.20220301103315-4e7787c48cfa h1:JbYzz0eaynD6dpy0ddsGlsmPdoU4s+KZptY49RZvfsI=
+github.com/polynetwork/bridge-common v0.0.27-beta.0.20220301103315-4e7787c48cfa/go.mod h1:AVeMKfirzCsHXOT4cIwWMntHy5Bu4HhUqfukQsqsDAs=
 github.com/polynetwork/btc-vendor-tools v0.0.0-20200813091748-3b19a5fd7666/go.mod h1:U8rR9X6vemlkBAJWfvzwSoalcJjX8B2aQjB0kPRhBUA=
 github.com/polynetwork/cosmos-poly-module v0.0.0-20200810030259-95d586518759/go.mod h1:VMBJZ8GSZeoWBntd/rWx2Rr5roRKofO7siP1qd6A6pY=
 github.com/polynetwork/eth-contracts v0.0.0-20200814062128-70f58e22b014/go.mod h1:TeePrYZfWJAwuksPlie7RPequ51Ujp5l/JY6TcutsFc=
