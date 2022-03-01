@@ -18,16 +18,18 @@
 package harmony
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/harmony"
-	"github.com/polynetwork/poly-relayer/config"
-	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly/native/service/governance/side_chain_manager"
 )
 
 type Listener struct {
@@ -101,6 +103,39 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	if err != nil { return }
 	hs := harmony.HeaderWithSig{header, sig, bitmap}
 	tx.SrcStateRoot, err = hs.Encode()
+	return
+}
+
+func (l *Listener) GenesisHeader(height uint64) (data []byte, err error) {
+	header, err := l.sdk.Node().HeaderByNumberRLP(height)
+	if err != nil {
+		return
+	}
+	nextHeader, err := l.sdk.Node().HeaderByNumber(height + 1)
+	if err != nil { return }
+	sig, err := nextHeader.GetLastCommitSignature()
+	if err != nil { return  }
+	bitmap, err := nextHeader.GetLastCommitBitmap()
+	if err != nil { return }
+	hs := harmony.HeaderWithSig{header, sig, bitmap}
+	data, err = hs.Encode()
+	return
+}
+
+type Context struct {
+	NetworkID int
+}
+
+func (l *Listener) SideChain() (sc *side_chain_manager.SideChain, err error) {
+	sc = &side_chain_manager.SideChain{
+		ChainId: base.HARMONY,
+		Name: "harmony",
+	}
+	ctx := &Context{}
+	if config.CONFIG.Env == "mainnet" {
+		ctx.NetworkID = 1
+	}
+	sc.ExtraInfo, err = json.Marshal(ctx)
 	return
 }
 
