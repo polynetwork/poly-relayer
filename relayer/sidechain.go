@@ -75,7 +75,7 @@ func GetPolyWallets() (accounts []*poly_go_sdk.Account, err error) {
 			if info.IsDir() { return nil }
 			log.Info("Loading wallet file", "path", path)
 			c := *config.CONFIG.Poly.ExtraWallets
-			c.Path = path + info.Name()
+			c.Path = path
 			account, err := wallet.NewPolySigner(&c)
 			if err != nil { return err }
 			accounts = append(accounts, account)
