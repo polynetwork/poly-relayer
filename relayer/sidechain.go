@@ -174,10 +174,13 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if err != nil {
 		return
 	}
+	//NOTE: only block 0 can succeed?!
+	/*
 	if height == 0 {
 		height, err = ps.SDK().Node().GetLatestHeight()
 		if err != nil { return err }
 	}
+	*/
 	block, err := ps.SDK().Node().GetBlockByHeight(uint32(height))
 	if err != nil { return }
 	info := &vconfig.VbftBlockInfo{}
@@ -188,7 +191,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if info.NewChainConfig == nil {
 		height = uint64(info.LastConfigBlockNum)
 		block, err := ps.SDK().Node().GetBlockByHeight(uint32(height))
-		if err != nil { return nil }
+		if err != nil { return err }
 		info = &vconfig.VbftBlockInfo{}
 		err = json.Unmarshal(block.Header.ConsensusPayload, info);
 		if err != nil {
