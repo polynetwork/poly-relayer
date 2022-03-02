@@ -72,9 +72,10 @@ func GetPolyWallets() (accounts []*poly_go_sdk.Account, err error) {
 			if err != nil {
 				return err
 			}
+			if info.IsDir() { return nil }
 			log.Info("Loading wallet file", "path", path)
 			c := *config.CONFIG.Poly.ExtraWallets
-			c.Path = path
+			c.Path = path + info.Name()
 			account, err := wallet.NewPolySigner(&c)
 			if err != nil { return err }
 			accounts = append(accounts, account)
@@ -140,7 +141,7 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	if err != nil { return }
 	height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 0)
 	if err != nil { return }
-	log.Info("SyncGenesis succeed", "height", height)
+	log.Info("Add side chain succeed", "height", height)
 	return
 }
 
