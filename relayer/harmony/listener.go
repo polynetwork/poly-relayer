@@ -133,7 +133,7 @@ func (l *Listener) SideChain() (sc *side_chain_manager.SideChain, err error) {
 		BlocksToWait: 1,
 	}
 	ctx := &Context{}
-	if config.CONFIG.Env == "mainnet" {
+	if config.CONFIG.Env != "mainnet" {
 		ctx.NetworkID = 1
 	}
 	sc.ExtraInfo, err = json.Marshal(ctx)
