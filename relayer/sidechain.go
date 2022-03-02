@@ -174,6 +174,10 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if err != nil {
 		return
 	}
+	if height == 0 {
+		height, err = ps.SDK().Node().GetLatestHeight()
+		if err != nil { return err }
+	}
 	block, err := ps.SDK().Node().GetBlockByHeight(uint32(height))
 	if err != nil { return }
 	info := &vconfig.VbftBlockInfo{}
