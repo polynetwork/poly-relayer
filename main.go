@@ -254,6 +254,21 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.SYNC_HEADER,
+				Usage:  "Sync side chain header to poly",
+				Action: command(relayer.SYNC_HEADER),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target block height",
+					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.ADD_SIDECHAIN,
 				Usage:  "Register side chain to poly",
 				Action: command(relayer.ADD_SIDECHAIN),

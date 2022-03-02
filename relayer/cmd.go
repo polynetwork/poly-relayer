@@ -52,6 +52,7 @@ const (
 	SYNC_GENESIS      = "syncgenesis"
 	APPROVE_SIDECHAIN = "approvesidechain"
 	INIT_GENESIS      = "initgenesis"
+	SYNC_HEADER       = "syncheader"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -69,6 +70,7 @@ func init() {
 	_Handlers[CREATE_ACCOUNT] = CreateAccount
 	_Handlers[ADD_SIDECHAIN] = AddSideChain
 	_Handlers[SYNC_GENESIS] = SyncGenesis
+	_Handlers[SYNC_HEADER] = SyncHeader
 	_Handlers[APPROVE_SIDECHAIN] = ApproveSideChain
 	_Handlers[INIT_GENESIS] = SyncContractGenesis
 

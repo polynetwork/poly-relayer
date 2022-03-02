@@ -145,6 +145,22 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	return
 }
 
+func SyncHeader(ctx *cli.Context) (err error) {
+	chainID := ctx.Uint64("chain")
+	height := ctx.Uint64("height")
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
+	sc := GetSideChain(chainID)
+	header, err := sc.GenesisHeader(height)
+	if err != nil { return }
+	hash, err := ps.SubmitHeaders(chainID, [][]byte{header})
+	if err != nil { return }
+	log.Info("Sync header succeed", "hash", hash)
+	return
+}
+
 func SyncGenesis(ctx *cli.Context) (err error) {
 	chainID := ctx.Uint64("chain")
 	height := ctx.Uint64("height")
