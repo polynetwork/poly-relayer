@@ -24,28 +24,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/urfave/cli/v2"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/ontio/ontology-crypto/sm2"
+	"github.com/urfave/cli/v2"
 
-	poly_go_sdk "github.com/polynetwork/poly-go-sdk"
-	"github.com/polynetwork/poly/common"
-	ecom "github.com/ethereum/go-ethereum/common"
-	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	ecom "github.com/ethereum/go-ethereum/common"
 	"github.com/ontio/ontology-crypto/ec"
 	"github.com/ontio/ontology-crypto/keypair"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
+	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/wallet"
+	poly_go_sdk "github.com/polynetwork/poly-go-sdk"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly/common"
 	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
 	"github.com/polynetwork/poly/native/service/governance/side_chain_manager"
-	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/wallet"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
-	"github.com/polynetwork/bridge-common/log"
 
-	"github.com/polynetwork/poly-relayer/relayer/harmony"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/relayer/harmony"
 )
 
 // For side chain registration
@@ -65,11 +67,19 @@ func GetSideChain(chainID uint64) ISideChain {
 }
 
 func GetPolyWallets() (accounts []*poly_go_sdk.Account, err error) {
-	for _, c := range config.CONFIG.Poly.ExtraWallets {
-		account, err := wallet.NewPolySigner(c)
-		if err != nil { return nil, err }
-		accounts = append(accounts, account)
-	}
+	err = filepath.Walk(config.CONFIG.Poly.ExtraWallets.Path,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			log.Info("Loading wallet file", "path", path)
+			c := *config.CONFIG.Poly.ExtraWallets
+			c.Path = path
+			account, err := wallet.NewPolySigner(&c)
+			if err != nil { return err }
+			accounts = append(accounts, account)
+			return nil
+		})
 	return
 }
 

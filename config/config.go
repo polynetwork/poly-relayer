@@ -88,7 +88,7 @@ func New(path string) (config *Config, err error) {
 type PolyChainConfig struct {
 	PolySubmitterConfig `json:",inline"`
 	PolyTxSync          *PolyTxSyncConfig
-	ExtraWallets []*wallet.Config
+	ExtraWallets 		*wallet.Config
 }
 
 type ChainConfig struct {
@@ -280,9 +280,7 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 	if c.Wallet != nil {
 		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
 	}
-	for _, w := range c.ExtraWallets {
-		w.Path = GetConfigPath(WALLET_PATH, w.Path)
-	}
+	c.ExtraWallets.Path = GetConfigPath(WALLET_PATH, c.ExtraWallets.Path)
 	return
 }
 
