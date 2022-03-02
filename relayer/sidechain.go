@@ -181,6 +181,16 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if err != nil {
 		panic(err)
 	}
+	if info.NewChainConfig == nil {
+		height = uint64(info.LastConfigBlockNum)
+		block, err := ps.SDK().Node().GetBlockByHeight(uint32(height))
+		if err != nil { return nil }
+		info = &vconfig.VbftBlockInfo{}
+		err = json.Unmarshal(block.Header.ConsensusPayload, info);
+		if err != nil {
+			panic(err)
+		}
+	}
 	var bookkeepers []keypair.PublicKey
 	for _, peer := range info.NewChainConfig.Peers {
 		keystr, _ := hex.DecodeString(peer.ID)
