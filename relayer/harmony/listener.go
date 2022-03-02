@@ -130,6 +130,7 @@ func (l *Listener) SideChain() (sc *side_chain_manager.SideChain, err error) {
 	sc = &side_chain_manager.SideChain{
 		ChainId: base.HARMONY,
 		Name: "harmony",
+		BlocksToWait: 1,
 	}
 	ctx := &Context{}
 	if config.CONFIG.Env == "mainnet" {
