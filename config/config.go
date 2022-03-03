@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
@@ -53,6 +54,7 @@ type Config struct {
 
 // Parse file path, if path is empty, use config file directory path
 func GetConfigPath(path, file string) string {
+	if strings.HasPrefix(file, "/") { return file }
 	if path == "" {
 		path = filepath.Dir(CONFIG_PATH)
 	}
@@ -88,6 +90,7 @@ func New(path string) (config *Config, err error) {
 type PolyChainConfig struct {
 	PolySubmitterConfig `json:",inline"`
 	PolyTxSync          *PolyTxSyncConfig
+	ExtraWallets 		*wallet.Config
 }
 
 type ChainConfig struct {
@@ -279,6 +282,7 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 	if c.Wallet != nil {
 		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
 	}
+	c.ExtraWallets.Path = GetConfigPath(WALLET_PATH, c.ExtraWallets.Path)
 	return
 }
 

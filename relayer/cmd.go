@@ -48,6 +48,11 @@ const (
 	CHECK_SKIP        = "checkskip"
 	CREATE_ACCOUNT    = "createaccount"
 	CHECK_WALLET      = "wallet"
+	ADD_SIDECHAIN     = "addsidechain"
+	SYNC_GENESIS      = "syncgenesis"
+	APPROVE_SIDECHAIN = "approvesidechain"
+	INIT_GENESIS      = "initgenesis"
+	SYNC_HEADER       = "syncheader"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -63,6 +68,12 @@ func init() {
 	_Handlers[RELAY_TX] = RelayTx
 	_Handlers[CHECK_WALLET] = CheckWallet
 	_Handlers[CREATE_ACCOUNT] = CreateAccount
+	_Handlers[ADD_SIDECHAIN] = AddSideChain
+	_Handlers[SYNC_GENESIS] = SyncGenesis
+	_Handlers[SYNC_HEADER] = SyncHeader
+	_Handlers[APPROVE_SIDECHAIN] = ApproveSideChain
+	_Handlers[INIT_GENESIS] = SyncContractGenesis
+
 }
 
 func CheckWallet(ctx *cli.Context) (err error) {

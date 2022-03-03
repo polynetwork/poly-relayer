@@ -162,7 +162,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
 			return nil
 		default:
-			if attempt > 30 {
+			if attempt > 30 || (attempt > 3 && chainId == base.HARMONY) {
 				log.Error("Header submit too many failed attempts", "chain", chainId, "attempts", attempt)
 				return msg.ERR_HEADER_SUBMIT_FAILURE
 			}
@@ -464,6 +464,8 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 }
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
+	if s.sync.ChainId == base.HARMONY { return }
+
 	var hash []byte
 	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT {
 		hash, err = s.sdk.Node().GetSideChainHeaderIndex(s.sync.ChainId, header.Height)
@@ -472,6 +474,12 @@ func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error
 		}
 		ok = len(hash) != 0
 		return
+	} else if s.sync.ChainId == base.HARMONY {
+		height, err := s.sdk.Node().GetSideChainHeight(s.sync.ChainId)
+		if err != nil { return false, err }
+		if height >= header.Height {
+			return true, nil
+		}
 	}
 	hash, err = s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
 	if err != nil {
