@@ -19,7 +19,6 @@ package harmony
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -38,8 +37,26 @@ type Listener struct {
 	poly *poly.SDK
 	epoch uint64
 	header []byte // Pending header
-	blocksPerEpoch uint64
 	nextEpochBlock uint64
+}
+
+const (
+	EPOCH_START_MAINNET uint64 = 23592960
+	EPOCH_START_TESTNET uint64 = 22172656
+
+	EPOCH_BLOCKS_MAINNET uint64 = 32768
+	EPOCH_BLOCKS_TESTNET uint64 = 8192
+)
+
+func GetLastEpochBlock(height uint64) (prev, next uint64) {
+	start, blocks := EPOCH_START_TESTNET, EPOCH_BLOCKS_TESTNET
+	if config.CONFIG.Env == "mainnet" {
+		start, blocks = EPOCH_START_MAINNET, EPOCH_BLOCKS_MAINNET
+	}
+	step := (height - start) % blocks
+	prev = height - step - 1
+	next = prev + blocks
+	return
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
@@ -48,43 +65,21 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	err = l.Listener.Init(config, poly)
 	if err != nil { return }
 	l.sdk, err = harmony.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
-	if base.ENV == "mainnet" { l.blocksPerEpoch =  32768 } else { l.blocksPerEpoch = 8192 }
 	return
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
-	if l.nextEpochBlock > 0 && height < l.nextEpochBlock &&
-		height > l.nextEpochBlock - l.blocksPerEpoch + 1 { return }
-	hdr, err := l.sdk.Node().HeaderByNumber(height)
-	if err != nil {
-		err = fmt.Errorf("Fetch block header error %v", err)
-		return nil, nil, err
-	}
-	log.Info("Fetched block header", "chain", l.Name(), "height", height, )
-	if l.header != nil {
-		sig, err := hdr.GetLastCommitSignature()
-		if err != nil { return nil, nil, err }
-		bitmap, err := hdr.GetLastCommitBitmap()
-		if err != nil { return nil, nil, err }
-		hs := harmony.HeaderWithSig{l.header, sig, bitmap}
-		header, err = hs.Encode()
-		if err != nil {
-			return nil, nil, err
+	prev, next := GetLastEpochBlock(height)
+	if prev == height || next == height {
+		header, err = l.GenesisHeader(height)
+		if err == nil {
+			log.Info("Fetched block header", "chain", l.Name(), "height", height, )
 		}
-		l.header = nil
-		return header, nil, nil
+	} else {
+		log.Warn("Skipping harmony header fetch, for not last epoch",
+			"height", height, "prev", prev, "next", next)
 	}
 
-	epoch := hdr.Epoch.Uint64()
-	if epoch <= l.epoch {
-		return
-	}
-
-	l.header, err = l.sdk.Node().HeaderByNumberRLP(height)
-	if err == nil {
-		l.epoch = epoch
-		l.nextEpochBlock = height + l.blocksPerEpoch - 1
-	}
 	return
 }
 
@@ -138,5 +133,9 @@ func (l *Listener) SideChain() (sc *side_chain_manager.SideChain, err error) {
 	}
 	sc.ExtraInfo, err = json.Marshal(ctx)
 	return
+}
+
+func (l *Listener) Defer() int {
+	return 2
 }
 
