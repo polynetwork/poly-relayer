@@ -71,7 +71,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
 	prev, next := GetLastEpochBlock(height)
 	if prev == height || next == height {
-		header, err = l.GenesisHeader(height)
+		header, err = l.genesisHeader(height)
 		if err == nil {
 			log.Info("Fetched block header", "chain", l.Name(), "height", height, )
 		}
@@ -102,6 +102,15 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 }
 
 func (l *Listener) GenesisHeader(height uint64) (data []byte, err error) {
+	if height == 0 {
+		height, err = l.sdk.Node().GetLatestHeight()
+		if err != nil { return }
+		height, _ = GetLastEpochBlock(height)
+	}
+	return l.genesisHeader(height)
+}
+
+func (l *Listener) genesisHeader(height uint64) (data []byte, err error) {
 	header, err := l.sdk.Node().HeaderByNumberRLP(height)
 	if err != nil {
 		return
