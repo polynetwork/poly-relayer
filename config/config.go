@@ -282,7 +282,9 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 	if c.Wallet != nil {
 		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
 	}
-	c.ExtraWallets.Path = GetConfigPath(WALLET_PATH, c.ExtraWallets.Path)
+	if c.ExtraWallets != nil {
+		c.ExtraWallets.Path = GetConfigPath(WALLET_PATH, c.ExtraWallets.Path)
+	}
 	return
 }
 
