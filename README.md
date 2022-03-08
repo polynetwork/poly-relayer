@@ -13,6 +13,7 @@ Reimplement poly relayer
 |Polygon  |maitc|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |O3       |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Palette  |plt  |:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|Harmony  |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Arbitrum |main |:x:|:x:|:white_check_mark:|
 |Xdai     |main |:x:|:x:|:white_check_mark:|
 |Optimism |main |:x:|:x:|:white_check_mark:|
