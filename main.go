@@ -227,6 +227,85 @@ func main() {
 					},
 				},
 			},
+			&cli.Command{
+				Name:   relayer.APPROVE_SIDECHAIN,
+				Usage:  "Approve side chain",
+				Action: command(relayer.APPROVE_SIDECHAIN),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.SYNC_GENESIS,
+				Usage:  "Sync side chain genesis to poly",
+				Action: command(relayer.SYNC_GENESIS),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target block height",
+					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.SYNC_HEADER,
+				Usage:  "Sync side chain header to poly",
+				Action: command(relayer.SYNC_HEADER),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target block height",
+					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.ADD_SIDECHAIN,
+				Usage:  "Register side chain to poly",
+				Action: command(relayer.ADD_SIDECHAIN),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "router",
+						Usage: "target chain router",
+					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+					&cli.StringFlag{
+						Name:  "ccm",
+						Usage: "ccm data address",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.INIT_GENESIS,
+				Usage:  "Init genesis for contract",
+				Action: command(relayer.INIT_GENESIS),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target poly height",
+					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+					&cli.StringFlag{
+						Name:  "ccm",
+						Usage: "ccm address",
+					},
+				},
+			},
 		},
 	}
 
