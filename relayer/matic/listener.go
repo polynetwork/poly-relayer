@@ -159,10 +159,15 @@ func (l *Listener) GetBorSpanId(height uint64) (id uint64, err error) {
 			}
 		} else {
 			// new span
+			old := span
 			span, start, end, err = l.FetchLatestSpan()
 			log.Debug("GetBorSpanId get span range", "height", height, "span", span, "start", start, "end", end, "err", err)
 			if err != nil {
 				return
+			}
+			if span == old {
+				log.Warn("Span id too old", "span", span, "start", start, "end", end, "bor", height)
+				time.Sleep(time.Second * 5)
 			}
 		}
 	}
