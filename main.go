@@ -87,6 +87,13 @@ func main() {
 				Name:   relayer.STATUS,
 				Usage:  "Check side chain header/tx sync height",
 				Action: command(relayer.STATUS),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "target side chain",
+						Required: true,
+					},
+				},
 			},
 			&cli.Command{
 				Name:   relayer.TEST,
