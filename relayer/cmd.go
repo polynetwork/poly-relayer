@@ -261,7 +261,11 @@ func (h *StatusHandler) LenSorted(chain uint64, ty msg.TxType) (uint64, error) {
 
 func Status(ctx *cli.Context) (err error) {
 	h := NewStatusHandler(config.CONFIG.Bus.Redis)
+	targetChain := ctx.Uint64("chain")
 	for _, chain := range base.CHAINS {
+		if targetChain != 0 && targetChain != chain {
+			continue
+		}
 		fmt.Printf("Status %s:\n", base.GetChainName(chain))
 
 		latest, _ := h.Height(chain, bus.KEY_HEIGHT_CHAIN)
