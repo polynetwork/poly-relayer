@@ -99,7 +99,7 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 			return
 		case <-timer.C:
 			switch h.config.ChainId {
-			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3, base.PIXIE, base.HSC, base.BYTOM:
+			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3, base.PIXIE, base.HSC, base.BYTOM, base.STARCOIN:
 				height, err := h.submitter.GetSideChainHeight(h.config.ChainId)
 				if err == nil {
 					ch <- height
@@ -113,7 +113,7 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint64 {
 	log.Warn("Rolling header sync back to common ancestor", "current", height, "goal", target, "chain", h.config.ChainId)
 	switch h.config.ChainId {
-	case base.ETH, base.HECO, base.BSC, base.O3, base.PIXIE, base.HSC, base.BYTOM:
+	case base.ETH, base.HECO, base.BSC, base.O3, base.PIXIE, base.HSC, base.BYTOM, base.STARCOIN:
 	case base.HARMONY:
 		for {
 			height, err := h.submitter.Poly().Node().GetSideChainHeight(h.config.ChainId)
@@ -174,7 +174,7 @@ func (h *HeaderSyncHandler) watch() {
 			}
 
 			switch h.config.ChainId {
-			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3, base.PIXIE, base.HSC, base.BYTOM:
+			case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3, base.PIXIE, base.HSC, base.BYTOM, base.STARCOIN:
 				height, err = h.submitter.GetSideChainHeight(h.config.ChainId)
 				if err != nil {
 					log.Error("Watch chain sync height error", "chain", h.config.ChainId, "err", err)
