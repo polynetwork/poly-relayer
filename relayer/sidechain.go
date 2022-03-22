@@ -154,7 +154,8 @@ func AddSideChain(ctx *cli.Context) (err error) {
 		c.ExtraInfo = []byte{}
 		c.ChainId = chainID
 		if c.ChainId == 0 || c.Name == "" {
-			log.Info("Missing chainID or chain name")
+			log.Error("Missing chainID or chain name")
+			return
 		}
 	}
 	if router > 0 {
