@@ -22,6 +22,7 @@ Reimplement poly relayer
 |Metis    |main |:x:|:x:|:white_check_mark:|
 |Boba     |main |:x:|:x:|:white_check_mark:|
 |HSC     |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|KCC      |main |:x:|:x:|:white_check_mark:|
 
 ## TODOs
 - [x] metrics, height, height_diff, queue length

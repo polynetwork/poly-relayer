@@ -286,7 +286,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp = time.Now().Unix() + 60*3
 			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM, base.RINKEBY, base.BOBA, base.OASIS:
 				tsp = time.Now().Unix() + 60*25
-			case base.BSC, base.HECO, base.OK, base.PIXIE, base.HSC, base.BYTOM:
+			case base.BSC, base.HECO, base.OK, base.PIXIE, base.HSC, base.BYTOM, base.KCC:
 				tsp = time.Now().Unix() + 60*4
 			case base.ETH:
 				tsp = time.Now().Unix() + 60*6
