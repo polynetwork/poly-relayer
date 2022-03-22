@@ -288,9 +288,33 @@ func main() {
 						Name:  "chain",
 						Usage: "chain id",
 					},
+					&cli.Int64Flag{
+						Name:  "blocks",
+						Usage: "blocks to wait",
+					},
 					&cli.StringFlag{
 						Name:  "ccm",
 						Usage: "ccm data address",
+					},
+					&cli.StringFlag{
+						Name:  "name",
+						Usage: "chain name",
+					},
+					&cli.BoolFlag{
+						Name: "vote",
+						Usage: "whether using votes",
+						Value: false,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.GET_SIDE_CHAIN,
+				Usage:  "Get side chain instance",
+				Action: command(relayer.GET_SIDE_CHAIN),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
 					},
 				},
 			},
