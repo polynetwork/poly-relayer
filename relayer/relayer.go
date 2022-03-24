@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 	"sync"
 	"time"
 
@@ -88,6 +89,9 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(po.Listener)
 	case base.HARMONY:
 		listener = new(harmony.Listener)
+	case base.STARCOIN:
+		listener = new(starcoin.Listener)
+
 	default:
 	}
 	return
