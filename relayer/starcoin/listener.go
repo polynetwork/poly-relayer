@@ -97,11 +97,15 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 }
 
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
-	block, err := l.sdk.Node().GetBlockByHash(context.Background(), hash)
+	tx, err := l.sdk.Node().GetTransactionInfoByHash(context.Background(), hash)
 	if err != nil {
-		return
+		return 0, err
 	}
-	height, err = strconv.ParseUint(block.BlockHeader.Height, 10, 64)
+	if tx == nil {
+		err = fmt.Errorf("starcoin cannot get transaction info by hash %s", hash)
+		return 0, err
+	}
+	height, err = strconv.ParseUint(tx.BlockNumber, 10, 64)
 	return
 }
 
