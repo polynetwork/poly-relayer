@@ -19,6 +19,7 @@ package relayer
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -395,10 +396,16 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 				continue
 			}
 			fmt.Println(util.Json(tx))
-			value, _, _, _ := sub.GetPolyParams(tx)
-			if value != nil {
-				log.Info("SRC", "ccid", value.MakeTxParam.CrossChainID, "to", value.MakeTxParam.ToChainID,
-					"method", value.MakeTxParam.Method)
+			for {
+				value, _, _, e := sub.GetPolyParams(tx)
+				if value != nil {
+					log.Info("SRC", "ccid", hex.EncodeToString(value.MakeTxParam.CrossChainID), "to", value.MakeTxParam.ToChainID,
+						"method", value.MakeTxParam.Method)
+					break
+				} else {
+					log.Error("Fetc SRC failed", "err", e)
+					time.Sleep(time.Second)
+				}
 			}
 		}
 		start++
