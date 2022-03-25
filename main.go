@@ -219,6 +219,23 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.SCAN_POLY_TX,
+				Usage:  "Scan poly txs in range",
+				Action: command(relayer.SCAN_POLY_TX),
+				Flags: []cli.Flag{
+					&cli.Uint64Flag{
+						Name:     "chain",
+						Usage:    "src_chain",
+						Required: true,
+					},
+					&cli.Uint64Flag{
+						Name:     "height",
+						Usage:    "scan start height",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.CREATE_ACCOUNT,
 				Usage:  "Create a new eth keystore account",
 				Action: command(relayer.CREATE_ACCOUNT),

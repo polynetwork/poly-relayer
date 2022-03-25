@@ -54,6 +54,7 @@ const (
 	INIT_GENESIS      = "initgenesis"
 	SYNC_HEADER       = "syncheader"
 	GET_SIDE_CHAIN    = "getsidechain"
+	SCAN_POLY_TX      = "scanpolytx"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -75,7 +76,7 @@ func init() {
 	_Handlers[APPROVE_SIDECHAIN] = ApproveSideChain
 	_Handlers[INIT_GENESIS] = SyncContractGenesis
 	_Handlers[GET_SIDE_CHAIN] = FetchSideChain
-
+	_Handlers[SCAN_POLY_TX] = ScanPolyTxs
 }
 
 func CheckWallet(ctx *cli.Context) (err error) {
@@ -372,4 +373,35 @@ func CreateAccount(ctx *cli.Context) (err error) {
 		}
 	*/
 	return nil
+}
+
+func ScanPolyTxs(ctx *cli.Context) (err error) {
+	chain := ctx.Uint64("chain")
+	start := ctx.Uint64("height")
+	lis, err := PolyListener()
+	if err != nil { return }
+	sub, err := PolySubmitter()
+	if err != nil { return }
+	for {
+		txs, err := lis.Scan(start)
+		if err != nil {
+			log.Error("Scan poly block failured", "err", err, "height", start)
+			time.Sleep(time.Second)
+			continue
+		}
+		log.Info("Scanned poly block", "size", len(txs), "block", start)
+		for _, tx := range txs {
+			if tx.SrcChainId != chain {
+				continue
+			}
+			fmt.Println(util.Json(tx))
+			value, _, _, _ := sub.GetPolyParams(tx)
+			if value != nil {
+				log.Info("SRC", "ccid", value.MakeTxParam.CrossChainID, "to", value.MakeTxParam.ToChainID,
+					"method", value.MakeTxParam.Method)
+			}
+		}
+		start++
+	}
+	return
 }
