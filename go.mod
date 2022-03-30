@@ -11,16 +11,13 @@ require (
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/gogo/protobuf v1.3.1
 	github.com/joeqian10/neo-gogogo v1.4.0
-	github.com/okex/exchain-go-sdk v0.18.2 // indirect
 	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.0.9
 	github.com/ontio/ontology-go-sdk v1.11.4
-	github.com/polynetwork/bridge-common v0.0.51-v2-ok
+	github.com/polynetwork/bridge-common v0.0.52-v2-ok
 	github.com/polynetwork/poly v1.7.3-0.20210804073726-5d4f4d4a9371
 	github.com/tendermint/tendermint v0.33.9
 	github.com/urfave/cli/v2 v2.3.0
-	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
-	golang.org/x/mod v0.5.0 // indirect
 )
 
 replace (
