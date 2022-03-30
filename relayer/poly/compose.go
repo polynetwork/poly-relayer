@@ -33,7 +33,11 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (err error) {
 		return
 	}
 
-	tx.AnchorHeight = s.sdk.Height()
+	tx.AnchorHeight, err = s.sdk.Node().GetLatestHeight()
+	if err != nil { return }
+	if tx.AnchorHeight - 1 > tx.PolyHeight {
+		tx.AnchorHeight--
+	}
 	tx.AnchorHeader, err = s.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(tx.AnchorHeight)))
 	if err != nil {
 		return err
