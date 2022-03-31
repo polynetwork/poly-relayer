@@ -6,7 +6,7 @@ require (
 	github.com/KSlashh/poly-abi v0.0.0-20211223100118-850e8abcc4f4
 	github.com/btcsuite/btcd v0.21.0-beta
 	github.com/cosmos/cosmos-sdk v0.39.2
-	github.com/devfans/zion-sdk v0.0.3
+	github.com/devfans/zion-sdk v0.0.4
 	github.com/ethereum/go-ethereum v1.10.7
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/gogo/protobuf v1.3.1

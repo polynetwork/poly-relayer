@@ -29,6 +29,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/store/rootmulti"
 	ethcom "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 
@@ -40,12 +41,11 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
-	"github.com/polynetwork/poly/common"
 	pcom "github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/okex"
 	okex2 "github.com/polynetwork/poly/native/service/header_sync/okex"
 
-	"github.com/polynetwork/poly/native/service/header_sync/cosmos"
+	cosmos "github.com/devfans/zion-sdk/contracts/native/header_sync/okex"
 )
 
 type Listener struct {
@@ -105,12 +105,14 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 		return
 	}
 
-	info := &cosmos.CosmosEpochSwitchInfo{}
-	err = info.Deserialization(common.NewZeroCopySource(epoch))
+	info := new(cosmos.CosmosEpochSwitchInfo)
+	err = rlp.DecodeBytes(epoch, info)
 	if err != nil {
+		err = fmt.Errorf("failed to deserialize CosmosEpochSwitchInfo: %v", err)
 		return
 	}
-	height = uint64(info.Height)
+
+	height = info.Height
 	if last > height {
 		height = last
 	}
