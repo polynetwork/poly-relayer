@@ -472,7 +472,7 @@ func Validate(ctx *cli.Context) (err error) {
 	outputs := make(chan tools.CardEvent, 100)
 	go watchAlarms(outputs)
 
-	for _, chain := range config.CONFIG.Validators.Src {
+	for _, chain := range config.CONFIG.Validators.Dst {
 		err = StartValidator(func(uint64) IValidator { return pl }, listeners[chain], outputs)
 		if err != nil {
 			log.Fatal("Start validator failure", "chain", chain, "err", err)
@@ -480,9 +480,8 @@ func Validate(ctx *cli.Context) (err error) {
 	}
 
 	err = StartValidator(func(id uint64) IValidator {
-		v := listeners[id]
-		for _, c := range config.CONFIG.Validators.Dst {
-			if c == id { return v }
+		for _, c := range config.CONFIG.Validators.Src {
+			if c == id { return listeners[id] }
 		}
 		return nil
 	}, pl, outputs)

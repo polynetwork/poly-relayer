@@ -1,6 +1,7 @@
 package msg
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"time"
@@ -24,9 +25,9 @@ type InvalidUnlockEvent struct {
 }
 
 func (o *InvalidUnlockEvent) Format() (title string, keys []string, values []interface{}, buttons []map[string]string) {
-	keys = []string{"Amount", "Asset", "To", "DstChain", "PolyHash", "DstHash", "Error"}
-	values = []interface{}{o.DstAmount.String(), o.DstAsset, o.DstAddress, o.DstChainId, o.PolyHash, o.DstHash, o.Error}
-	title = fmt.Sprintf("Suspicious unlock on chain %d", o.DstChainId)
+	keys = []string{"DstProxy", "SrcChain", "DstChain", "PolyHash", "DstHash", "Error"}
+	values = []interface{}{o.DstProxy, o.SrcChainId, o.DstAddress, o.DstChainId, o.PolyHash, o.DstHash, o.Error}
+	title = fmt.Sprintf("Suspicious execute on chain %d", o.DstChainId)
 	return
 }
 
@@ -108,4 +109,30 @@ func (o *BindAssetEvent) Format() (title string, keys []string, values []interfa
 	keys = []string{"Hash", "Contract", "ChainId", "FromAsset", "ToChainId", "ToAsset", "InitialAmount"}
 	values = []interface{}{o.TxHash, o.Contract, o.ChainId, o.FromAsset, o.ToChainId, o.Asset, o.InitialAmount}
 	return
+}
+
+
+func ParseInt(value, ty string) (v *big.Int) {
+	switch ty {
+	case "Integer":
+		v, _ = new(big.Int).SetString(value, 10)
+	default:
+		v, _ = new(big.Int).SetString(HexStringReverse(value), 16)
+	}
+	return
+}
+
+func HexReverse(arr []byte) []byte {
+	l := len(arr)
+	x := make([]byte, 0)
+	for i := l - 1; i >= 0; i-- {
+		x = append(x, arr[i])
+	}
+	return x
+}
+
+func HexStringReverse(value string) string {
+	aa, _ := hex.DecodeString(value)
+	bb := HexReverse(aa)
+	return hex.EncodeToString(bb)
 }

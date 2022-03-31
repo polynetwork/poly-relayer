@@ -18,6 +18,7 @@
 package poly
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -42,6 +43,17 @@ func (l *Listener) Init(config *config.ListenerConfig, sdk *poly.SDK) (err error
 		l.sdk = sdk
 	} else {
 		l.sdk, err = poly.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+	}
+	return
+}
+
+func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
+	txs, err = l.Scan(height)
+	if err != nil { return }
+	sub := &Submitter{sdk:l.sdk}
+	for _, tx := range txs {
+		tx.MerkleValue, _, _, err = sub.GetProof(tx.PolyHeight, tx.PolyKey)
+		if err != nil { return }
 	}
 	return
 }
@@ -174,6 +186,28 @@ func (l *Listener) LatestHeight() (uint64, error) {
 }
 
 func (l *Listener) Validate(tx *msg.Tx) (err error) {
+	t, err := l.ScanTx(tx.PolyHash)
+	if err != nil { return }
+	if t == nil {
+		return msg.ERR_TX_PROOF_MISSING
+	}
+	if tx.SrcChainId != t.SrcChainId {
+		return fmt.Errorf("%w SrcChainID does not match: %v, was %v", msg.ERR_TX_VOILATION, tx.SrcChainId, t.SrcChainId)
+	}
+	if tx.DstChainId != t.DstChainId {
+		return fmt.Errorf("%w DstChainID does not match: %v, was %v", msg.ERR_TX_VOILATION, tx.DstChainId, t.DstChainId)
+	}
+	sub := &Submitter{sdk:l.sdk}
+	value, _, _, err := sub.GetProof(tx.PolyHeight, tx.PolyKey)
+	if err != nil { return }
+	if value == nil {
+		return msg.ERR_TX_PROOF_MISSING
+	}
+	a := util.LowerHex(hex.EncodeToString(value.MakeTxParam.ToContractAddress))
+	b := util.LowerHex(tx.DstProxy)
+	if a != b {
+		return fmt.Errorf("%w ToContract does not match: %v, was %v", msg.ERR_TX_VOILATION, b, a)
+	}
 	return
 }
 

@@ -18,6 +18,7 @@
 package eth
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -27,6 +28,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/light"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
@@ -176,6 +181,39 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	return
 }
 
+func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
+	ccm, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
+	if err != nil {
+		return nil, err
+	}
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+	events, err := ccm.FilterVerifyHeaderAndExecuteTxEvent(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	if events == nil {
+		return
+	}
+
+	txs = []*msg.Tx{}
+	for events.Next() {
+		ev := events.Event
+		tx := &msg.Tx{
+			SrcChainId: ev.FromChainID,
+			DstProxy: msg.HexStringReverse(hex.EncodeToString(ev.ToContract)),
+			DstHeight: ev.Raw.BlockNumber,
+			PolyHash: msg.HexStringReverse(hex.EncodeToString(ev.CrossChainTxHash)),
+		}
+		txs = append(txs, tx)
+	}
+	return
+}
+
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	ccm, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
 	if err != nil {
@@ -280,6 +318,54 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 }
 
 func (l *Listener) Validate(tx *msg.Tx) (err error) {
+	txId, err := hex.DecodeString(tx.TxId)
+	if err != nil {
+		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
+	}
+	id := msg.EncodeTxId(txId)
+	bytes, err := ceth.MappingKeyAt(id, "01")
+	if err != nil {
+		err = fmt.Errorf("%s scan event mapping key error %v", l.name, err)
+		return
+	}
+	proofKey := hexutil.Encode(bytes)
+	height, err := l.sdk.Node().GetLatestHeight()
+	if err != nil {
+		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
+		return
+	}
+	proof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
+	if err != nil {
+		return
+	}
+
+	// Verify storage proof
+	if len(proof.StorageProofs) != 1 {
+		err = fmt.Errorf("invalid storage proof size, %v", proof.StorageProofs)
+		return
+	}
+	sp := proof.StorageProofs[0]
+	nodeList := new(light.NodeList)
+	storageKey := crypto.Keccak256(common.HexToHash(sp.Key).Bytes())
+	for _, p := range sp.Proof {
+		nodeList.Put(nil, common.Hex2Bytes(ccom.Replace0x(p)))
+	}
+
+	storageHash := common.HexToHash(proof.StorageHash)
+	storageValue, err := trie.VerifyProof(storageHash, storageKey, nodeList.NodeSet())
+	if err != nil {
+		err = fmt.Errorf("account storage VerifyProof failure, err: %v", err)
+		return
+	}
+
+	sink := pcom.NewZeroCopySink(nil)
+	tx.MerkleValue.MakeTxParam.Serialization(sink)
+	value := sink.Bytes()
+	err = CheckProofResult(storageValue, crypto.Keccak256(value))
+	if err != nil {
+		err = fmt.Errorf("%w CheckProofResult failed, err: %v", msg.ERR_TX_VOILATION, err)
+		return
+	}
 	return
 }
 
@@ -345,6 +431,26 @@ func (l *Listener) ScanEvents(height uint64, ch chan tools.CardEvent) (err error
 
 	for _, ev := range events {
 		ch <- ev
+	}
+	return
+}
+
+// Check proof storage value hash
+func CheckProofResult(result, value []byte) (err error) {
+	var temp []byte
+	err = rlp.DecodeBytes(result, &temp)
+	if err != nil {
+		err = fmt.Errorf("rlp decode proof result failed, err: %v", err)
+		return
+	}
+	var hash []byte
+	for i := len(temp); i< 32; i++ {
+		hash = append(hash, 0)
+	}
+	hash = append(hash, temp...)
+	if !bytes.Equal(hash, value) {
+		err = fmt.Errorf("storage value does not match with proof result, wanted %x, got %x", result, value)
+		return
 	}
 	return
 }

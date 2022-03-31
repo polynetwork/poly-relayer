@@ -27,8 +27,9 @@ import (
 	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
-	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly-relayer/relayer/poly"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 )
 
 type IValidator interface{
@@ -60,7 +61,17 @@ func (v *Validator) start() (err error) {
 
 	var (
 		latest uint64
+		listener *eth.Listener
+		scan func(uint64) ([]*msg.Tx, error)
 	)
+
+	if chainID > 0 {
+		listener = v.listener.(*eth.Listener)
+		scan = listener.ScanDst
+	} else {
+		scan = v.listener.(*poly.Listener).ScanDst
+	}
+
 
 	for {
 		height++
@@ -68,7 +79,7 @@ func (v *Validator) start() (err error) {
 			latest, _ = v.listener.Nodes().WaitTillHeight(context.Background(), height, v.listener.ListenCheck())
 		}
 		log.Info("Validating txs in block", "height", height, "chain", chainID)
-		txs, err := v.listener.Scan(height)
+		txs, err := scan(height)
 		if err == nil {
 			for _, tx := range txs {
 				hash := tx.PolyHash
@@ -92,7 +103,7 @@ func (v *Validator) start() (err error) {
 				}
 				if err != nil {
 					if chainID > 0 {
-						v.outputs <- &msg.InvalidUnlockEvent{Tx: tx, Error: fmt.Errorf("invalid unlock event on chain %d, %v", tx.DstChainId, err)}
+						v.outputs <- &msg.InvalidUnlockEvent{Tx: tx, Error: fmt.Errorf("invalid VerifyHeaderAndExecuteTxEvent event on chain %d, %v", tx.DstChainId, err)}
 					} else {
 						v.outputs <- &msg.InvalidPolyCommitEvent{Tx: tx, Error: fmt.Errorf("invalid poly commit tx from chain %d, %v", tx.SrcChainId, err)}
 					}
@@ -101,8 +112,7 @@ func (v *Validator) start() (err error) {
 			if height % 100 == 0 {
 				status.SetHeight(chainID, bus.KEY_HEIGHT_VALIDATOR, height)
 			}
-			listener, ok := v.listener.(*eth.Listener)
-			if ok {
+			if listener != nil {
 				// Scan proxy events
 				listener.ScanEvents(height, v.outputs)
 			}
