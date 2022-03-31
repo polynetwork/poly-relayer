@@ -93,6 +93,8 @@ type Tx struct {
 	SkipCheckFee            bool                  `json:",omitempty"`
 	Skipped                 bool                  `json:",omitempty"`
 	CheckFeeStatus          bridge.CheckFeeStatus `json:",omitempty"`
+	DstAsset                string                `json:"-"`
+	DstAmount               *big.Int              `json:"-"`
 
 	Extra interface{} `json:"-"`
 }

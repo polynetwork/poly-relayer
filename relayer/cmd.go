@@ -19,8 +19,16 @@ package relayer
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os/exec"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -31,6 +39,8 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/tools"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -56,6 +66,8 @@ const (
 	SYNC_HEADER       = "syncheader"
 	GET_SIDE_CHAIN    = "getsidechain"
 	SCAN_POLY_TX      = "scanpolytx"
+	VALIDATE          = "validate"
+	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -78,6 +90,8 @@ func init() {
 	_Handlers[INIT_GENESIS] = SyncContractGenesis
 	_Handlers[GET_SIDE_CHAIN] = FetchSideChain
 	_Handlers[SCAN_POLY_TX] = ScanPolyTxs
+	_Handlers[VALIDATE] = Validate
+	_Handlers[SET_VALIDATOR_HEIGHT] = SetTxValidatorHeight
 }
 
 func CheckWallet(ctx *cli.Context) (err error) {
@@ -323,6 +337,12 @@ func SetTxSyncHeight(ctx *cli.Context) (err error) {
 	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(chain, bus.KEY_HEIGHT_TX, height)
 }
 
+func SetTxValidatorHeight(ctx *cli.Context) (err error) {
+	height := uint64(ctx.Int("height"))
+	chain := uint64(ctx.Int("chain"))
+	return NewStatusHandler(config.CONFIG.Bus.Redis).SetHeight(chain, bus.KEY_HEIGHT_VALIDATOR, height)
+}
+
 func Skip(ctx *cli.Context) (err error) {
 	hash := ctx.String("hash")
 	return NewStatusHandler(config.CONFIG.Bus.Redis).Skip(hash)
@@ -412,3 +432,129 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 	}
 	return
 }
+
+func Validate(ctx *cli.Context) (err error) {
+	pl, err := PolyListener()
+	if err != nil { return }
+	listeners := make(map[uint64]*eth.Listener)
+
+	setup := func(chains []uint64) []uint64 {
+		ids := make([]uint64, 0)
+		for _, c := range chains {
+			if !base.SameAsETH(c) {
+				log.Error("Unsupported validation chain", "chain", c)
+				continue
+			}
+			conf, ok := config.CONFIG.Chains[c]
+			if !ok || conf.SrcTxSync == nil || conf.SrcTxSync.ListenerConfig == nil {
+				log.Error("Missing config for chain", "chain", c)
+				continue
+			}
+
+			ids = append(ids, c)
+			if listeners[c] != nil {
+				continue
+			}
+
+			lis := new(eth.Listener)
+			err = lis.Init(conf.SrcTxSync.ListenerConfig, pl.SDK())
+			if err != nil {
+				log.Fatal("Failed to initialize listener", "chain", c, "err", err)
+			}
+			listeners[c] = lis
+		}
+		return ids
+	}
+
+	config.CONFIG.Validators.Src = setup(config.CONFIG.Validators.Src)
+	config.CONFIG.Validators.Dst = setup(config.CONFIG.Validators.Dst)
+
+	outputs := make(chan tools.CardEvent, 100)
+	go watchAlarms(outputs)
+
+	for _, chain := range config.CONFIG.Validators.Src {
+		err = StartValidator(func(uint64) IValidator { return pl }, listeners[chain], outputs)
+		if err != nil {
+			log.Fatal("Start validator failure", "chain", chain, "err", err)
+		}
+	}
+
+	err = StartValidator(func(id uint64) IValidator {
+		v := listeners[id]
+		for _, c := range config.CONFIG.Validators.Dst {
+			if c == id { return v }
+		}
+		return nil
+	}, pl, outputs)
+	if err != nil {
+		log.Fatal("Start validator failure", "chain", 0, "err", err)
+	}
+	return
+}
+
+func watchAlarms(outputs chan tools.CardEvent) {
+	c := 0
+	for o := range outputs {
+		c++
+		fmt.Printf("!!!!!!! Alarm(%v): %v \n", c, o)
+		err := tools.PostCardEvent(o)
+		if err != nil {
+			log.Error("Post dingtalk failure", "err", err)
+		}
+		handleAlarm(o)
+		time.Sleep(time.Second)
+	}
+}
+
+func handleAlarm(o tools.CardEvent) {
+	ev, ok := o.(*msg.InvalidUnlockEvent)
+	if !ok {
+		return
+	}
+	go func() {
+		cmd := exec.Command(config.CONFIG.Validators.PauseCommand[0], config.CONFIG.Validators.PauseCommand[1:]...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stdout
+		err := cmd.Run()
+		if err != nil {
+			log.Error("Run handle event command error %v %v", err, *ev)
+		}
+	}()
+	go Notify(fmt.Sprintf(config.CONFIG.Validators.DialTemplate, "Poly", "Invalid Unlock"))
+}
+
+func Notify(content string) {
+	for _, target := range config.CONFIG.Validators.DialTargets {
+		go Dial(target, content)
+	}
+}
+
+func Dial(target, content string) error {
+	v := url.Values{}
+	now := strconv.FormatInt(time.Now().Unix(), 10)
+	h := md5.New()
+	h.Write([]byte(config.CONFIG.Validators.HuyiAccount + config.CONFIG.Validators.HuyiPassword + target + content + now))
+	v.Set("account", config.CONFIG.Validators.HuyiAccount)
+	v.Set("password", hex.EncodeToString(h.Sum(nil)))
+	v.Set("mobile", target)
+	v.Set("content", content)
+	v.Set("time", now)
+	//body := ioutil.NopCloser(strings.NewReader(v.Encode())) //把form数据编下码
+	body := strings.NewReader(v.Encode())
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", config.CONFIG.Validators.HuyiUrl, body)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
+	resp, err := client.Do(req)
+	defer resp.Body.Close()
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	log.Info("Dail success", "to", target, "content", content, "data", string(data))
+	return nil
+}
+

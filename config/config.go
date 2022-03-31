@@ -50,6 +50,18 @@ type Config struct {
 	validMethods map[string]bool
 	chains       map[uint64]bool
 	Bridge       []string
+
+	Validators struct {
+		Src []uint64
+		Dst []uint64
+		PauseCommand []string
+		DialTargets  []string
+		DialTemplate string
+		DingUrl         string
+		HuyiUrl         string
+		HuyiAccount     string
+		HuyiPassword    string
+	}
 }
 
 // Parse file path, if path is empty, use config file directory path

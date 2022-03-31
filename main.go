@@ -84,6 +84,28 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.VALIDATE,
+				Usage:  "Validate txs",
+				Action: command(relayer.VALIDATE),
+			},
+			&cli.Command{
+				Name:   relayer.SET_VALIDATOR_HEIGHT,
+				Usage:  "Set chain tx validator height",
+				Action: command(relayer.SET_VALIDATOR_HEIGHT),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "height",
+						Usage:    "target block height",
+						Required: true,
+					},
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "target chain",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.STATUS,
 				Usage:  "Check side chain header/tx sync height",
 				Action: command(relayer.STATUS),

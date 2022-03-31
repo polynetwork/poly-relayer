@@ -30,11 +30,13 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
+	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -275,4 +277,74 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 		return force, nil
 	}
 	return l.poly.Node().GetSideChainHeight(l.config.ChainId)
+}
+
+func (l *Listener) Validate(tx *msg.Tx) (err error) {
+	return
+}
+
+
+func (l *Listener) ScanEvents(height uint64, ch chan tools.CardEvent) (err error) {
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+
+	events := []tools.CardEvent{}
+	for _, address := range l.config.LockProxyContract {
+		p, err := lock_proxy_abi.NewLockProxy(common.HexToAddress(address), l.sdk.Node().Client)
+		if err != nil { return err }
+
+		setManagerProxyEvents, err := p.FilterSetManagerProxyEvent(opt)
+		if err != nil {
+			return err
+		}
+		bindProxyEvents, err := p.FilterBindProxyEvent(opt)
+		if err != nil {
+			return err
+		}
+		bindAssetEvents, err := p.FilterBindAssetEvent(opt)
+		if err != nil {
+			return err
+		}
+		for setManagerProxyEvents.Next() {
+			ev := setManagerProxyEvents.Event
+			events = append(events, &msg.SetManagerProxyEvent{
+				TxHash:   ev.Raw.TxHash.String()[2:],
+				Contract: ev.Raw.Address.String(),
+				ChainId:  l.ChainId(),
+				Manager:  ev.Manager.String(),
+			})
+		}
+
+		for bindProxyEvents.Next() {
+			ev := bindProxyEvents.Event
+			events = append(events, &msg.BindProxyEvent{
+				TxHash:    ev.Raw.TxHash.String()[2:],
+				Contract:  ev.Raw.Address.String(),
+				ChainId:   l.ChainId(),
+				ToChainId: ev.ToChainId,
+				ToProxy:   hex.EncodeToString(ev.TargetProxyHash),
+			})
+		}
+
+		for bindAssetEvents.Next() {
+			ev := bindAssetEvents.Event
+			events = append(events, &msg.BindAssetEvent{
+				TxHash:        ev.Raw.TxHash.String()[2:],
+				Contract:      ev.Raw.Address.String(),
+				ChainId:       l.ChainId(),
+				FromAsset:     ev.FromAssetHash.String(),
+				ToChainId:     ev.ToChainId,
+				Asset:         hex.EncodeToString(ev.TargetProxyHash),
+				InitialAmount: ev.InitialAmount,
+			})
+		}
+	}
+
+	for _, ev := range events {
+		ch <- ev
+	}
+	return
 }

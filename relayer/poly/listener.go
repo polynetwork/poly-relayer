@@ -172,3 +172,11 @@ func (l *Listener) LastHeaderSync(uint64, uint64) (uint64, error) {
 func (l *Listener) LatestHeight() (uint64, error) {
 	return l.sdk.Node().GetLatestHeight()
 }
+
+func (l *Listener) Validate(tx *msg.Tx) (err error) {
+	return
+}
+
+func (l *Listener) SDK() *poly.SDK {
+	return l.sdk
+}
