@@ -137,7 +137,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	param := &ccom.MakeTxParam{}
 	err = param.Deserialization(pcom.NewZeroCopySource(event))
 	if err != nil {
-		return
+		return fmt.Errorf("deserialize make tx param failure %v", err)
 	}
 	tx.Param = param
 
@@ -149,7 +149,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	var mp merkle.Proof
 	err = proto.UnmarshalText(proof.StorageProofs[0].Proof[0], &mp)
 	if err != nil {
-		return
+		return fmt.Errorf("unmarshal  merkle proof failed %v", err)
 	}
 	path := "/"
 	for i := range mp.Ops {
@@ -167,11 +167,11 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	}
 	cr, err := l.tm.Node().Tendermint().QueryCommitResult(int64(tx.SrcProofHeight))
 	if err != nil {
-		return
+		return fmt.Errorf("QueryCommitResult failure %v", err)
 	}
 	vs, err := l.tm.Node().GetValidators(tx.SrcProofHeight)
 	if err != nil {
-		return
+		return fmt.Errorf("get validators failure %v", err)
 	}
 	tx.SrcStateRoot, err = l.codec.MarshalBinaryBare(&okex2.CosmosHeader{
 		Header:  *cr.Header,
@@ -184,7 +184,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 
 	err = l.verifyMerkleProof(&mp)
 	if err != nil {
-		return
+		return fmt.Errorf("verify merkle proof  failure %v", err)
 	}
 
 	prt := rootmulti.DefaultProofRuntime()
