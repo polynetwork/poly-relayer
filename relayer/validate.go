@@ -27,6 +27,7 @@ import (
 	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
@@ -99,6 +100,11 @@ func (v *Validator) start() (err error) {
 			}
 			if height % 100 == 0 {
 				status.SetHeight(chainID, bus.KEY_HEIGHT_VALIDATOR, height)
+			}
+			listener, ok := v.listener.(*eth.Listener)
+			if ok {
+				// Scan proxy events
+				listener.ScanEvents(height, v.outputs)
 			}
 		} else {
 			log.Error("Failed to scan txs in block", "chain", chainID, "err", err)
