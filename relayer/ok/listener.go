@@ -33,7 +33,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 
-	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/ok"
 	"github.com/polynetwork/bridge-common/chains/zion"
@@ -41,7 +40,6 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
-	pcom "github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/okex"
 	okex2 "github.com/polynetwork/poly/native/service/header_sync/okex"
 
@@ -134,8 +132,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	if err != nil {
 		return fmt.Errorf("%v failed to decode src txid %s, err %v", l.ChainId(), tx.TxId, err)
 	}
-	param := &ccom.MakeTxParam{}
-	err = param.Deserialization(pcom.NewZeroCopySource(event))
+	param, err := msg.DecodeTxParam(event)
 	if err != nil {
 		return fmt.Errorf("deserialize make tx param failure %v", err)
 	}
