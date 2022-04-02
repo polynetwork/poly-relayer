@@ -25,8 +25,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os/exec"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -39,13 +39,13 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
-	"github.com/polynetwork/bridge-common/tools"
-	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 )
 
 const (
@@ -494,6 +494,9 @@ func Validate(ctx *cli.Context) (err error) {
 func watchAlarms(outputs chan tools.CardEvent) {
 	c := 0
 	for o := range outputs {
+		if len(tools.DingUrl) == 0 {
+			continue
+		}
 		c++
 		fmt.Printf("!!!!!!! Alarm(%v): %v \n", c, o)
 		err := tools.PostCardEvent(o)
@@ -506,8 +509,13 @@ func watchAlarms(outputs chan tools.CardEvent) {
 }
 
 func handleAlarm(o tools.CardEvent) {
-	ev, ok := o.(*msg.InvalidUnlockEvent)
-	if !ok {
+	switch o.(type) {
+	case *msg.InvalidUnlockEvent, *msg.InvalidPolyCommitEvent:
+	default:
+		return
+	}
+
+	if len(config.CONFIG.Validators.PauseCommand) == 0 {
 		return
 	}
 	go func() {
@@ -516,7 +524,7 @@ func handleAlarm(o tools.CardEvent) {
 		cmd.Stderr = os.Stdout
 		err := cmd.Run()
 		if err != nil {
-			log.Error("Run handle event command error %v %v", err, *ev)
+			log.Error("Run handle event command error %v %v", err, util.Json(o))
 		}
 	}()
 	go Notify(fmt.Sprintf(config.CONFIG.Validators.DialTemplate, "Poly", "Invalid Unlock"))

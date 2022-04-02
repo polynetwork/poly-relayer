@@ -26,6 +26,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 )
@@ -268,6 +269,8 @@ func (c *Config) Init() (err error) {
 			return
 		}
 	}
+
+	tools.DingUrl = c.Validators.DingUrl
 
 	CONFIG = c
 	return
