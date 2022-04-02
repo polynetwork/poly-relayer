@@ -248,11 +248,9 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
-		if err != nil {
-			log.Error("eth ProcessTx poly tx for error", "poly_hash", tx.PolyHash, "err", err)
-			continue
+		if err == nil {
+			err = s.SubmitTx(tx)
 		}
-		err = s.SubmitTx(tx)
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash, "err", err)
 			log.Json(log.ERROR, tx)
