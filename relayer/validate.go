@@ -27,9 +27,9 @@ import (
 	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
-	"github.com/polynetwork/poly-relayer/relayer/poly"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly-relayer/relayer/poly"
 )
 
 type IValidator interface{
@@ -50,6 +50,7 @@ func StartValidator(vs func(uint64) IValidator, listener IChainListener, outputs
 
 func (v *Validator) start() (err error) {
 	chainID := v.listener.ChainId()
+	log.Info("Starting validator for events", "chain", chainID)
 	status := NewStatusHandler(config.CONFIG.Bus.Redis)
 	height, _ := status.Height(chainID, bus.KEY_HEIGHT_VALIDATOR)
 	if height == 0 {

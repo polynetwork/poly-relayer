@@ -488,6 +488,7 @@ func Validate(ctx *cli.Context) (err error) {
 	if err != nil {
 		log.Fatal("Start validator failure", "chain", 0, "err", err)
 	}
+	<- make(chan bool)
 	return
 }
 
