@@ -205,6 +205,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 		ev := events.Event
 		tx := &msg.Tx{
 			DstChainId: l.ChainId(),
+			DstHash:    ev.Raw.TxHash.String(),
 			SrcChainId: ev.FromChainID,
 			DstProxy: msg.HexStringReverse(hex.EncodeToString(ev.ToContract)),
 			DstHeight: ev.Raw.BlockNumber,
