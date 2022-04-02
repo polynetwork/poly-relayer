@@ -479,14 +479,18 @@ func Validate(ctx *cli.Context) (err error) {
 		}
 	}
 
-	err = StartValidator(func(id uint64) IValidator {
-		for _, c := range config.CONFIG.Validators.Src {
-			if c == id { return listeners[id] }
+	if len(config.CONFIG.Validators.Src) > 0 {
+		err = StartValidator(func(id uint64) IValidator {
+			for _, c := range config.CONFIG.Validators.Src {
+				if c == id {
+					return listeners[id]
+				}
+			}
+			return nil
+		}, pl, outputs)
+		if err != nil {
+			log.Fatal("Start validator failure", "chain", 0, "err", err)
 		}
-		return nil
-	}, pl, outputs)
-	if err != nil {
-		log.Fatal("Start validator failure", "chain", 0, "err", err)
 	}
 	<- make(chan bool)
 	return

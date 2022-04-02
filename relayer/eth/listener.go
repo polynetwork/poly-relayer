@@ -28,11 +28,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/light"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
@@ -334,9 +334,9 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
 		return
 	}
-	proof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
+	proof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height - 1)
 	if err != nil {
-		return
+		return fmt.Errorf("get proof failure", "err", err)
 	}
 
 	// Verify storage proof
@@ -366,6 +366,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		err = fmt.Errorf("%w CheckProofResult failed, err: %v", msg.ERR_TX_VOILATION, err)
 		return
 	}
+	log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
 	return
 }
 

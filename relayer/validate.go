@@ -98,7 +98,7 @@ func (v *Validator) start() (err error) {
 					if err != nil {
 						print = log.Error
 					}
-					print("Validating tx", "chain", chainID, "hash", hash, "err", err)
+					print("Validating tx", "chain", chainID, "origin", tx.SrcChainId, "hash", hash, "err", err)
 					if err == nil || errors.Is(err, msg.ERR_TX_VOILATION) { break }
 					time.Sleep(time.Second)
 				}
