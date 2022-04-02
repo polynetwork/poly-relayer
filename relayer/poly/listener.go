@@ -198,7 +198,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		return fmt.Errorf("%w DstChainID does not match: %v, was %v", msg.ERR_TX_VOILATION, tx.DstChainId, t.DstChainId)
 	}
 	sub := &Submitter{sdk:l.sdk}
-	value, _, _, err := sub.GetProof(tx.PolyHeight, tx.PolyKey)
+	value, _, _, err := sub.GetProof(t.PolyHeight, t.PolyKey)
 	if err != nil { return }
 	if value == nil {
 		return msg.ERR_TX_PROOF_MISSING
