@@ -338,7 +338,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 	}
 	proof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height - 1)
 	if err != nil {
-		return fmt.Errorf("get proof failure", "err", err)
+		return fmt.Errorf("get proof failure %v", err)
 	}
 
 	// Verify storage proof

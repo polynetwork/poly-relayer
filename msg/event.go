@@ -13,8 +13,15 @@ type InvalidPolyCommitEvent struct {
 }
 
 func (o *InvalidPolyCommitEvent) Format() (title string, keys []string, values []interface{}, buttons []map[string]string) {
-	keys = []string{"Amount", "Asset", "To", "SrcChain", "PolyHash", "SrcHash", "Error"}
-	values = []interface{}{o.DstAmount.String(), o.DstAsset, o.DstAddress, o.SrcChainId, o.PolyHash, o.SrcHash, o.Error}
+	keys = []string{"TxID", "DstProxy", "Method", "DstChain", "SrcChain", "PolyHash", "PolyKey", "Error"}
+	var (
+		method, dstProxy string
+	)
+	if o.MerkleValue != nil && o.MerkleValue.MakeTxParam != nil {
+		method = o.MerkleValue.MakeTxParam.Method
+		dstProxy = hex.EncodeToString(o.MerkleValue.MakeTxParam.ToContractAddress)
+	}
+	values = []interface{}{o.TxId, dstProxy, method, o.DstChainId, o.SrcChainId, o.PolyHash, o.PolyKey, o.Error}
 	title = fmt.Sprintf("Suspicious poly commit from chain %d", o.SrcChainId)
 	return
 }
