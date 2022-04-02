@@ -28,11 +28,11 @@ Reimplement poly relayer
 - [x] graceful shutdown
 - [x] state consistent across restart
 - [x] configurable roles to run
-- [x] Delayed retry queue for failed transactions
-- [x] Transaction listen filters: methods, lockproxy contracts
-- [x] Bridge check fee
-- [x] Tx patching
-- [x] Tx validation
+- [x] delayed retry queue for failed transactions
+- [x] transaction listen filters: methods, lockproxy contracts
+- [x] bridge check fee
+- [x] cross chain transaction patching
+- [x] cross chain transaction validation
 
 
 
