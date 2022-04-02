@@ -32,7 +32,7 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/poly"
 )
 
-type IValidator interface{
+type IValidator interface {
 	Validate(*msg.Tx) error
 }
 
@@ -85,11 +85,11 @@ func (v *Validator) start() (err error) {
 			for _, tx := range txs {
 				hash := tx.PolyHash
 				if chainID > 0 {
-					hash = tx.SrcHash
+					hash = tx.DstHash
 				}
 				validator := v.vs(tx.SrcChainId)
 				if validator == nil {
-					log.Info("Skipping validating tx", "chain", chainID, "hash", hash, "err", err)
+					log.Info("Skipping validating tx", "chain", chainID, "origin", tx.SrcChainId, "hash", hash)
 					continue
 				}
 				for i := 0; i < 100; i++ {
