@@ -93,6 +93,13 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 		}
 		height = height - 2
 	case base.PLT:
+		height, err = l.sdk.Node().GetLatestHeight()
+		if err != nil {
+			return 0, err
+		}
+		if height - base.BlocksToWait(base.PLT) > txHeight {
+			return height - base.BlocksToWait(base.PLT), nil
+		}
 		return txHeight, nil
 	default:
 		return 0, fmt.Errorf("getProofHeight unsupported chain %s", l.name)
