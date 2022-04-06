@@ -27,7 +27,7 @@ import (
 	ontocommon "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/merkle"
 	ccom "github.com/ontio/ontology/smartcontract/service/native/cross_chain/common"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
+	eccm_abi "github.com/polynetwork/bridge-common/abi/now_eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/ontevm"

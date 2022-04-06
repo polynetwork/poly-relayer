@@ -18,5 +18,5 @@ require (
 
 replace (
 	github.com/ontio/ontology-go-sdk v1.12.6-0.20220406074604-83d34f3f46ab => github.com/ontio/ontology-go-sdk v1.12.6-0.20220406074604-83d34f3f46ab
-	github.com/polynetwork/bridge-common v0.0.19-ont => github.com/rain-zxn/bridge-common v1.0.0-ont
+	github.com/polynetwork/bridge-common v0.0.19-ont => github.com/rain-zxn/bridge-common v1.0.2-ont
 )

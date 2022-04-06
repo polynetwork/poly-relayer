@@ -612,8 +612,8 @@ github.com/prometheus/tsdb v0.6.2-0.20190402121629-4f204dcbc150/go.mod h1:qhTCs0
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/prometheus/tsdb v0.9.1 h1:IWaAmWkYlgG7/S4iw4IpAQt5Y35QaZM6/GsZ7GsjAuk=
 github.com/prometheus/tsdb v0.9.1/go.mod h1:oi49uRhEe9dPUTlS3JRZOwJuVi6tmh10QSgwXEyGCt4=
-github.com/rain-zxn/bridge-common v1.0.0-ont h1:STHJq4MC7MuezZgssiA5cOTVraBFSFQpgT7UK1A2VO8=
-github.com/rain-zxn/bridge-common v1.0.0-ont/go.mod h1:375cml9RqS3WWN0c/1YnFYWvqoiV5IsUowwBs3FUmBg=
+github.com/rain-zxn/bridge-common v1.0.2-ont h1:j2Ka1yvbV+CfUsUUEwsv2fv4wIMqk+m0k0d5RAo3pJs=
+github.com/rain-zxn/bridge-common v1.0.2-ont/go.mod h1:375cml9RqS3WWN0c/1YnFYWvqoiV5IsUowwBs3FUmBg=
 github.com/rakyll/statik v0.1.6/go.mod h1:OEi9wJV/fMUAGx1eNjq75DKDsJVuEv1U0oYdX6GX8Zs=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
