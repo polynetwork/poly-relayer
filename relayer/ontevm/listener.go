@@ -27,7 +27,7 @@ import (
 	ontocommon "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/merkle"
 	ccom "github.com/ontio/ontology/smartcontract/service/native/cross_chain/common"
-	eccm_abi "github.com/polynetwork/bridge-common/abi/now_eccm_abi"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/ontevm"
@@ -42,12 +42,13 @@ import (
 )
 
 type Listener struct {
-	sdk    *ontevm.SDK
-	poly   *poly.SDK
-	ccm    string
-	ccd    string
-	config *config.ListenerConfig
-	name   string
+	sdk       *ontevm.SDK
+	poly      *poly.SDK
+	ccm       string
+	ccd       string
+	config    *config.ListenerConfig
+	name      string
+	abiParsed abi.ABI
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
@@ -60,6 +61,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	l.ccd = common.HexToAddress(config.CCDContract).String()
 	l.poly = poly
 	l.sdk, err = ontevm.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	l.abiParsed, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
 	return
 }
 
@@ -229,13 +231,11 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("ONTEVM failed to fetch smart contract events for height %d, err %v", height, err)
 	}
-	flag := 0
 	txs = []*msg.Tx{}
 	eccmAddr := HexStringReverse((l.ccm)[2:])
 	for _, event0 := range events {
 		for _, notify := range event0.Notify {
 			if notify.ContractAddress == eccmAddr {
-				flag++
 				states, ok := notify.States.(string)
 				if !ok {
 					continue
@@ -252,13 +252,8 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 				if err != nil {
 					return nil, err
 				}
-				var parsed abi.ABI
-				parsed, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
-				if err != nil {
-					return nil, err
-				}
 				var event eccm_abi.EthCrossChainManagerCrossChainEvent
-				err = parsed.UnpackIntoInterface(&event, "CrossChainEvent", storageLog.Data)
+				err = l.abiParsed.UnpackIntoInterface(&event, "CrossChainEvent", storageLog.Data)
 				if err != nil {
 					return nil, err
 				}
@@ -316,7 +311,7 @@ func (l *Listener) Defer() int {
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
 	if l.poly == nil {
-		err = fmt.Errorf("No poly sdk provided for NEO FetchLastConsensus")
+		err = fmt.Errorf("No poly sdk provided for ONTEVM FetchLastConsensus")
 		return
 	}
 	if force != 0 {
