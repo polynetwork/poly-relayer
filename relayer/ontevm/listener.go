@@ -61,7 +61,13 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	l.ccd = common.HexToAddress(config.CCDContract).String()
 	l.poly = poly
 	l.sdk, err = ontevm.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	if err != nil {
+		return fmt.Errorf("ontevm.WithOptions err:%v", err)
+	}
 	l.abiParsed, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
+	if err != nil {
+		return fmt.Errorf("ontevm init abiParsed err:%v", err)
+	}
 	return
 }
 
@@ -99,7 +105,7 @@ type MakeTxParamWithSender struct {
 
 func (this *MakeTxParamWithSender) Serialization() (data []byte, err error) {
 	sink := ontocommon.NewZeroCopySink(nil)
-	sink.WriteAddress(ontocommon.Address(this.Sender))
+	sink.WriteAddress(this.Sender)
 	this.MakeTxParam.Serialization(sink)
 	data = sink.Bytes()
 	return
@@ -123,7 +129,6 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 			return fmt.Errorf("err tx.SrcStateRoot hex.DecodeString(msg):%s", err)
 		}
 	}
-	l.sdk.Node().ClientMgr.GetRpcClient()
 	hashes, err := l.sdk.Node().GetCrossStatesLeafHashes(float64(tx.SrcHeight))
 	if err != nil {
 		return fmt.Errorf("GetCrossStatesLeafHashes:%s", err)
