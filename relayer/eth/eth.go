@@ -282,9 +282,9 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			// Retry to verify a successful submit
 			tsp := int64(0)
 			switch s.config.ChainId {
-			case base.MATIC, base.PLT:
+			case base.MATIC, base.PLT, base.ONTEVM:
 				tsp = time.Now().Unix() + 60*3
-			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM, base.RINKEBY, base.BOBA, base.OASIS, uint64(5555):
+			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM, base.RINKEBY, base.BOBA, base.OASIS:
 				tsp = time.Now().Unix() + 60*25
 			case base.BSC, base.HECO, base.OK:
 				tsp = time.Now().Unix() + 60*4
