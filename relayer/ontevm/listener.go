@@ -99,7 +99,7 @@ type MakeTxParamWithSender struct {
 
 func (this *MakeTxParamWithSender) Serialization() (data []byte, err error) {
 	sink := ontocommon.NewZeroCopySink(nil)
-	sink.WriteAddress(ontocommon.Address(this.Sender))
+	sink.WriteAddress(this.Sender)
 	this.MakeTxParam.Serialization(sink)
 	data = sink.Bytes()
 	return
@@ -123,7 +123,6 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 			return fmt.Errorf("err tx.SrcStateRoot hex.DecodeString(msg):%s", err)
 		}
 	}
-	l.sdk.Node().ClientMgr.GetRpcClient()
 	hashes, err := l.sdk.Node().GetCrossStatesLeafHashes(float64(tx.SrcHeight))
 	if err != nil {
 		return fmt.Errorf("GetCrossStatesLeafHashes:%s", err)
