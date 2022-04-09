@@ -134,14 +134,19 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 		return fmt.Errorf("GetCrossStatesLeafHashes:%s", err)
 	}
 	param := ccom.MakeTxParam{}
-	par, _ := hex.DecodeString(tx.SrcParam)
+	par, err := hex.DecodeString(tx.SrcParam)
+	if err != nil {
+		return fmt.Errorf("err hexDecodeString SrcParam:%s", err)
+	}
 	err = param.Deserialization(ontocommon.NewZeroCopySource(par))
 	if err != nil {
 		return fmt.Errorf("err param.Deserialization::%s", err)
 	}
 	eccmAddr := HexStringReverse((l.ccm)[2:])
 	ontEccmAddr, err := ontocommon.AddressFromHexString(eccmAddr)
-
+	if err != nil {
+		return fmt.Errorf("err addressFromHexString eccmAddr:%s", err)
+	}
 	makeTxParamWithSender := &MakeTxParamWithSender{
 		ontEccmAddr,
 		param,
@@ -152,7 +157,10 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	}
 	hashesx := make([]ontocommon.Uint256, 0)
 	for _, v := range hashes.Hashes {
-		uint256v, _ := ontocommon.Uint256FromHexString(v)
+		uint256v, err := ontocommon.Uint256FromHexString(v)
+		if err != nil {
+			return fmt.Errorf("err Uint256FromHexString hashes.Hashes:%s", err)
+		}
 		hashesx = append(hashesx, uint256v)
 	}
 	path, err := merkle.MerkleLeafPath(itemValue, hashesx)
@@ -215,12 +223,21 @@ func (self *StorageLog) Serialization(sink *polycommon.ZeroCopySink) {
 }
 
 func (self *StorageLog) Deserialization(source *polycommon.ZeroCopySource) error {
-	address, _ := source.NextAddress()
+	address, eof := source.NextAddress()
+	if eof {
+		return fmt.Errorf("StorageLog.address eof")
+	}
 	self.Address = common.Address(address)
-	l, _ := source.NextUint32()
+	l, eof := source.NextUint32()
+	if eof {
+		return fmt.Errorf("StorageLog.l eof")
+	}
 	self.Topics = make([]common.Hash, 0, l)
 	for i := uint32(0); i < l; i++ {
 		h, _ := source.NextHash()
+		if eof {
+			return fmt.Errorf("StorageLog.h eof")
+		}
 		self.Topics = append(self.Topics, common.Hash(h))
 	}
 	data, eof := source.NextVarBytes()
