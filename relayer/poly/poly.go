@@ -206,7 +206,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 
 	var account []byte
 	switch tx.SrcChainId {
-	case base.NEO, base.ONT:
+	case base.NEO, base.ONT, base.ONTEVM:
 		account = s.signer.Address[:]
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
 			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
@@ -466,7 +466,7 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
 	var hash []byte
-	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT {
+	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT || s.sync.ChainId == base.ONTEVM {
 		hash, err = s.sdk.Node().GetSideChainHeaderIndex(s.sync.ChainId, header.Height)
 		if err != nil {
 			return
