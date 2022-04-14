@@ -110,6 +110,16 @@ func (this *MakeTxParamWithSender) Serialization() (data []byte, err error) {
 	data = sink.Bytes()
 	return
 }
+func (this *MakeTxParamWithSender) Deserialization(data []byte) (err error) {
+	source := ontocommon.NewZeroCopySource(data)
+	addr, eof := source.NextAddress()
+	if eof {
+		err = fmt.Errorf("MakeTxParamWithSender NextAddress fail")
+		return
+	}
+	this.Sender = ontocommon.Address(addr)
+	return this.MakeTxParam.Deserialization(source)
+}
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	if tx.SrcHeight == 0 {
@@ -140,7 +150,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	}
 	err = param.Deserialization(ontocommon.NewZeroCopySource(par))
 	if err != nil {
-		return fmt.Errorf("err param.Deserialization::%s", err)
+		return fmt.Errorf("err param.Deserialization par:%s", err)
 	}
 	eccmAddr := HexStringReverse((l.ccm)[2:])
 	ontEccmAddr, err := ontocommon.AddressFromHexString(eccmAddr)
@@ -174,10 +184,10 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 		if len(value) == 0 {
 			return fmt.Errorf("ParseAuditPath got null param")
 		}
-		param := &ccom.MakeTxParam{}
-		err = param.Deserialization(ontocommon.NewZeroCopySource(value))
+		param := &MakeTxParamWithSender{}
+		err = param.Deserialization(value)
 		if err != nil {
-			return fmt.Errorf("err param.Deserialization:%s", err)
+			return fmt.Errorf("err param.Deserialization value:%s", err)
 		}
 		tx.Param = &pcom.MakeTxParam{
 			TxHash:              param.TxHash,
