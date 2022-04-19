@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"golang.org/x/term"
 
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
@@ -442,6 +445,12 @@ func command(method string) func(*cli.Context) error {
 		walletsPath := c.String("wallets")
 		if walletsPath != "" {
 			conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
+			fmt.Println("Enter Password: ")
+			password, err := term.ReadPassword(int(syscall.Stdin))
+			if err != nil {
+				return err
+			}
+			conf.Poly.ExtraWallets.Password = string(password)
 		}
 
 		err = relayer.HandleCommand(method, c)
