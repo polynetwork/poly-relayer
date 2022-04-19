@@ -34,6 +34,11 @@ func main() {
 				Value: "",
 				Usage: "wallet path",
 			},
+			&cli.StringFlag{
+				Name:  "wallets",
+				Value: "",
+				Usage: "poly wallets path",
+			},
 		},
 		Before: Init,
 		Commands: []*cli.Command{
@@ -423,16 +428,22 @@ func start(c *cli.Context) error {
 
 func command(method string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		config, err := config.New(c.String("config"))
+		conf, err := config.New(c.String("config"))
 		if err != nil {
 			log.Error("Failed to parse config file", "err", err)
 			os.Exit(2)
 		}
-		err = config.Init()
+		err = conf.Init()
 		if err != nil {
 			log.Error("Failed to initialize configuration", "err", err)
 			os.Exit(2)
 		}
+		// poly wallets
+		walletsPath := c.String("wallets")
+		if walletsPath != "" {
+			conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
+		}
+
 		err = relayer.HandleCommand(method, c)
 		if err != nil {
 			log.Error("Failure", "command", method, "err", err)
