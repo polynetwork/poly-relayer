@@ -102,7 +102,7 @@ func ApproveSideChain(ctx *cli.Context) (err error) {
 		}
 		log.Info("Confirming approve side chain", "chain", chainID,
 			"index", i, "account", a.Address.ToHexString(), "hash", hash.ToHexString())
-		height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 0)
+		height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 30)
 		if err != nil {
 			panic(fmt.Errorf("No%d ApproveRegisterSideChain failed: %v", i, err))
 		}
@@ -178,7 +178,7 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	hash, err := ps.SDK().Node().Native.Scm.RegisterSideChainExt(
 		account.Address, chainID, c.Router, c.Name, c.BlocksToWait, c.CCMCAddress, c.ExtraInfo, account)
 	if err != nil { return }
-	height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 0)
+	height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 30)
 	if err != nil { return }
 	log.Info("Add side chain succeed", "height", height)
 	return
@@ -215,7 +215,7 @@ func SyncGenesis(ctx *cli.Context) (err error) {
 	if err != nil { return }
 	hash, err := ps.SDK().Node().Native.Hs.SyncGenesisHeader(chainID, header, accounts)
 	if err != nil { return }
-	height, err = ps.SDK().Node().Confirm(hash.ToHexString(), 1, 0)
+	height, err = ps.SDK().Node().Confirm(hash.ToHexString(), 1, 30)
 	if err != nil { return }
 	log.Info("SyncGenesis succeed", "height", height)
 	return
