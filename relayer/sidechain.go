@@ -39,14 +39,14 @@ import (
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	poly_go_sdk "github.com/polynetwork/poly-go-sdk"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
-	"github.com/polynetwork/bridge-common/util"
 	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
-	"github.com/polynetwork/poly/native/service/utils"
 	"github.com/polynetwork/poly/native/service/governance/side_chain_manager"
+	"github.com/polynetwork/poly/native/service/utils"
 
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/relayer/harmony"
@@ -162,7 +162,7 @@ func AddSideChain(ctx *cli.Context) (err error) {
 		c.Router = router
 	}
 	if ccm != "" {
-		c.CCMCAddress, err = common.HexToBytes(ccm)
+		c.CCMCAddress, err = common.HexToBytes(util.LowerHex(ccm))
 		if err != nil { return }
 	}
 	ps, err := PolySubmitter()

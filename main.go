@@ -11,6 +11,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/relayer"
 	"github.com/urfave/cli/v2"
@@ -444,6 +445,9 @@ func command(method string) func(*cli.Context) error {
 		// poly wallets
 		walletsPath := c.String("wallets")
 		if walletsPath != "" {
+			if conf.Poly.ExtraWallets == nil {
+				conf.Poly.ExtraWallets = new(wallet.Config)
+			}
 			conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
 			fmt.Println("Enter Password: ")
 			password, err := term.ReadPassword(int(syscall.Stdin))
