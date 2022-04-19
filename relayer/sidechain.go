@@ -31,6 +31,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/ontio/ontology-crypto/sm2"
 	"github.com/urfave/cli/v2"
+	"github.com/polynetwork/poly/core/types"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ecom "github.com/ethereum/go-ethereum/common"
@@ -197,6 +198,114 @@ func SyncHeader(ctx *cli.Context) (err error) {
 	hash, err := ps.SubmitHeaders(chainID, [][]byte{header})
 	if err != nil { return }
 	log.Info("Sync header succeed", "hash", hash)
+	return
+}
+
+func SendPolyTx(ctx *cli.Context) (err error) {
+	raw := ctx.String("tx")
+	tx := &types.Transaction{}
+	data, err := hex.DecodeString(raw)
+	if err != nil {
+		return err
+	}
+	if err := tx.Deserialization(common.NewZeroCopySource(data)); err != nil {
+		return err
+	}
+
+	log.Info("MultiSigned tx", "progress", len(tx.Sigs[0].SigData), "required", tx.Sigs[0].M)
+	if uint16(len(tx.Sigs[0].SigData)) < tx.Sigs[0].M {
+		log.Error("Still missing signatures", "progress", len(tx.Sigs[0].SigData), "required", tx.Sigs[0].M)
+		return fmt.Errorf("MultiSign lack, progress %v/%v", len(tx.Sigs[0].SigData), tx.Sigs[0].M)
+	}
+
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
+	log.Info("Sending poly tx to node...")
+	hash, err := ps.SDK().Node().SendTransaction(tx)
+	if err != nil { return }
+	log.Info("Waiting poly tx to be confirmed")
+	height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 30)
+	if err != nil { return }
+	log.Info("SendMultiSignTx succeed", "height", height)
+	return
+}
+
+func SignPolyTx(ctx *cli.Context) (err error) {
+	raw := ctx.String("tx")
+	tx := &types.Transaction{}
+	data, err := hex.DecodeString(raw)
+	if err != nil {
+		return err
+	}
+	if err := tx.Deserialization(common.NewZeroCopySource(data)); err != nil {
+		return err
+	}
+
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
+
+	accounts, err := GetPolyWallets()
+	if err != nil { return }
+
+	for i, acc := range accounts {
+		err = ps.Poly().Node().MultiSignToTransaction(tx, tx.Sigs[0].M, tx.Sigs[0].PubKeys, acc)
+		if err != nil {
+			return fmt.Errorf("multi sign failed, err: %s", err)
+		}
+		log.Info("MultiSigned tx", "index", i, "account", acc.Address.ToHexString())
+	}
+
+	sink := common.NewZeroCopySink(nil)
+	err = tx.Serialization(sink)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%x\n", sink.Bytes())
+	log.Info("MultiSigned tx", "progress", len(tx.Sigs[0].SigData), "required", tx.Sigs[0].M)
+	return
+}
+
+func CreateGenesis(ctx *cli.Context) (err error) {
+	chainID := ctx.Uint64("chain")
+	height := ctx.Uint64("height")
+	pubKeys := strings.Split(ctx.String("keys"), ",")
+	sc := GetSideChain(chainID)
+	header, err := sc.GenesisHeader(height)
+	if err != nil { return }
+
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
+
+	tx, err := ps.SDK().Node().Native.Hs.NewSyncGenesisHeaderTransaction(chainID, header)
+	if err != nil { return }
+
+	keys := make([]keypair.PublicKey, len(pubKeys))
+	for i, v := range pubKeys {
+		pk, err := vconfig.Pubkey(v)
+		if err != nil {
+			return fmt.Errorf("failed to parse no%d pubkey: %v", i, err)
+		}
+		keys[i] = pk
+	}
+
+	tx.Sigs = append(tx.Sigs, types.Sig{
+		SigData: make([][]byte, 0),
+		M:       uint16(len(pubKeys) - (len(pubKeys)-1)/3),
+		PubKeys: keys,
+	})
+	sink := common.NewZeroCopySink(nil)
+	if err := tx.Serialization(sink); err != nil {
+		return err
+	}
+	fmt.Printf("%x\n", sink.Bytes())
+	log.Info("SyncGenesis raw tx created", "keys", ctx.String("keys"))
 	return
 }
 

@@ -305,6 +305,52 @@ func main() {
 					&cli.Int64Flag{
 						Name:  "chain",
 						Usage: "chain id",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.CREATE_GENESIS,
+				Usage:  "Create raw tx to sync side chain genesis ",
+				Action: command(relayer.CREATE_GENESIS),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target block height",
+					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "keys",
+						Usage: "public keys seperated by ','",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.SIGN_POLY_TX,
+				Usage:  "Sign raw poly multi-sig tx",
+				Action: command(relayer.SIGN_POLY_TX),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "tx",
+						Usage: "raw tx hex",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.SEND_POLY_TX,
+				Usage:  "Send poly multi-sig tx",
+				Action: command(relayer.SEND_POLY_TX),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "tx",
+						Usage: "raw tx hex",
+						Required: true,
 					},
 				},
 			},

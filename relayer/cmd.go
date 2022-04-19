@@ -61,6 +61,9 @@ const (
 	CHECK_WALLET      = "wallet"
 	ADD_SIDECHAIN     = "addsidechain"
 	SYNC_GENESIS      = "syncgenesis"
+	CREATE_GENESIS    = "creategenesis"
+	SIGN_POLY_TX   	  = "signpolytx"
+	SEND_POLY_TX      = "sendpolytx"
 	APPROVE_SIDECHAIN = "approvesidechain"
 	INIT_GENESIS      = "initgenesis"
 	SYNC_HEADER       = "syncheader"
@@ -85,6 +88,9 @@ func init() {
 	_Handlers[CREATE_ACCOUNT] = CreateAccount
 	_Handlers[ADD_SIDECHAIN] = AddSideChain
 	_Handlers[SYNC_GENESIS] = SyncGenesis
+	_Handlers[CREATE_GENESIS] = CreateGenesis
+	_Handlers[SIGN_POLY_TX] = SignPolyTx
+	_Handlers[SEND_POLY_TX] = SendPolyTx
 	_Handlers[SYNC_HEADER] = SyncHeader
 	_Handlers[APPROVE_SIDECHAIN] = ApproveSideChain
 	_Handlers[INIT_GENESIS] = SyncContractGenesis
