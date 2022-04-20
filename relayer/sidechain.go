@@ -208,14 +208,14 @@ func SendPolyTx(ctx *cli.Context) (err error) {
 	if raw == "" {
 		data, err := ioutil.ReadAll(os.Stdin)
 		if err != nil { return err }
-		raw = string(data)
+		raw = strings.TrimSpace(string(data))
 	}
 	data, err := hex.DecodeString(util.LowerHex(raw))
 	if err != nil {
 		log.Info("Failed to decode hex, will treat as file")
 		body, err := ioutil.ReadFile(raw)
 		if err != nil { return err }
-		raw = string(body)
+		raw = strings.TrimSpace(string(body))
 		data, err = hex.DecodeString(util.LowerHex(raw))
 		if err != nil { return err }
 	}
@@ -249,14 +249,14 @@ func SignPolyTx(ctx *cli.Context) (err error) {
 	if raw == "" {
 		data, err := ioutil.ReadAll(os.Stdin)
 		if err != nil { return err }
-		raw = string(data)
+		raw = strings.TrimSpace(string(data))
 	}
 	data, err := hex.DecodeString(util.LowerHex(raw))
 	if err != nil {
 		log.Info("Failed to decode hex, will treat as file")
 		body, err := ioutil.ReadFile(raw)
 		if err != nil { return err }
-		raw = string(body)
+		raw = strings.TrimSpace(string(body))
 		data, err = hex.DecodeString(util.LowerHex(raw))
 		if err != nil { return err }
 	}
