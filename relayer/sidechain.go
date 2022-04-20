@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -204,9 +205,19 @@ func SyncHeader(ctx *cli.Context) (err error) {
 func SendPolyTx(ctx *cli.Context) (err error) {
 	raw := ctx.String("tx")
 	tx := &types.Transaction{}
-	data, err := hex.DecodeString(raw)
+	if raw == "" {
+		data, err := ioutil.ReadAll(os.Stdin)
+		if err != nil { return err }
+		raw = string(data)
+	}
+	data, err := hex.DecodeString(util.LowerHex(raw))
 	if err != nil {
-		return err
+		log.Info("Failed to decode hex, will treat as file")
+		body, err := ioutil.ReadFile(raw)
+		if err != nil { return err }
+		raw = string(body)
+		data, err = hex.DecodeString(util.LowerHex(raw))
+		if err != nil { return err }
 	}
 	if err := tx.Deserialization(common.NewZeroCopySource(data)); err != nil {
 		return err
@@ -235,9 +246,19 @@ func SendPolyTx(ctx *cli.Context) (err error) {
 func SignPolyTx(ctx *cli.Context) (err error) {
 	raw := ctx.String("tx")
 	tx := &types.Transaction{}
-	data, err := hex.DecodeString(raw)
+	if raw == "" {
+		data, err := ioutil.ReadAll(os.Stdin)
+		if err != nil { return err }
+		raw = string(data)
+	}
+	data, err := hex.DecodeString(util.LowerHex(raw))
 	if err != nil {
-		return err
+		log.Info("Failed to decode hex, will treat as file")
+		body, err := ioutil.ReadFile(raw)
+		if err != nil { return err }
+		raw = string(body)
+		data, err = hex.DecodeString(util.LowerHex(raw))
+		if err != nil { return err }
 	}
 	if err := tx.Deserialization(common.NewZeroCopySource(data)); err != nil {
 		return err

@@ -337,8 +337,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "tx",
-						Usage: "raw tx hex",
-						Required: true,
+						Usage: "raw tx hex or path to hex file",
 					},
 				},
 			},
@@ -349,8 +348,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "tx",
-						Usage: "raw tx hex",
-						Required: true,
+						Usage: "raw tx hex for path to hex file",
 					},
 				},
 			},
