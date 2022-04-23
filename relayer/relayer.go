@@ -75,7 +75,7 @@ type IChainSubmitter interface {
 
 func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.BYTOM:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.BYTOM, base.HSC:
 		listener = new(eth.Listener)
 	case base.OK:
 		listener = new(ok.Listener)
@@ -100,7 +100,7 @@ func GetListener(chain uint64) (listener IChainListener) {
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA,
-		base.METIS, base.RINKEBY, base.BOBA, base.OASIS, base.HARMONY, base.KCC, base.BYTOM:
+		base.METIS, base.RINKEBY, base.BOBA, base.OASIS, base.HARMONY, base.KCC, base.BYTOM, base.HSC:
 		submitter = new(eth.Submitter)
 	case base.NEO:
 		submitter = new(neo.Submitter)
