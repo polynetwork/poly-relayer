@@ -147,8 +147,8 @@ func (b *CommitFilter) Pop(ctx context.Context) (tx *msg.Tx, err error) {
 
 func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	// Check fee here:
-	// Pass -> send to submitter
-	// NotPass -> send to delay queue
+	// FullPaid || ForceFree || OnlyPaid -> send to submitter
+	// Skip -> delete
 	// Missing -> send to delay queue
 	state := map[string]*bridge.CheckFeeRequest{}
 	for _, tx := range txs {
@@ -166,27 +166,30 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	for _, tx := range txs {
 		feeMin := float32(0)
 		feePaid := float32(0)
+		paidGas := float64(0)
 		check := state[tx.PolyHash]
 		if check != nil {
 			tx.CheckFeeStatus = state[tx.PolyHash].Status
 			feeMin = float32(check.Min)
 			feePaid = float32(check.Paid)
+			paidGas = float64(check.PaidGas)
+			tx.PaidGas = paidGas
 		}
 
-		if check.Pass() {
+		if check.ForceFree() || check.Pass() || check.OnlyPaid() {
 			b.ch <- tx
-			log.Info("CheckFee pass", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+			log.Info("CheckFee paid", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid, "paidGas", paidGas)
 		} else if check.Skip() {
 			log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
 		} else if check.Missing() {
 			tx.Attempts++
-			log.Info("CheckFee tx missing in bridge, delay for 2 seconds", "poly_hash", tx.PolyHash)
-			tsp := time.Now().Unix() + 5
+			log.Info("CheckFee tx missing in bridge, delay for 10 seconds", "poly_hash", tx.PolyHash)
+			tsp := time.Now().Unix() + 10
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 
 		} else {
 			tx.Attempts++
-			log.Info("CheckFee tx not paid, delay for 10 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+			log.Info("CheckFee tx others, delay for 10 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
 			tsp := time.Now().Unix() + 600
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 		}
@@ -225,7 +228,7 @@ LOOP:
 				if tx.SkipFee() {
 					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
 					b.ch <- tx
-				} else if tx.CheckFeeStatus == bridge.PAID {
+				} else if tx.CheckFeeStatus == bridge.FREE || tx.CheckFeeStatus == bridge.FULLPAID || tx.CheckFeeStatus == bridge.ONLYPAID{
 					b.ch <- tx
 				} else {
 					txs = append(txs, tx)

@@ -464,7 +464,9 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 }
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
-	if s.sync.ChainId == base.HARMONY { return }
+	if s.sync.ChainId == base.HARMONY {
+		return
+	}
 
 	var hash []byte
 	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT {
@@ -476,7 +478,9 @@ func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error
 		return
 	} else if s.sync.ChainId == base.HARMONY {
 		height, err := s.sdk.Node().GetSideChainHeight(s.sync.ChainId)
-		if err != nil { return false, err }
+		if err != nil {
+			return false, err
+		}
 		if height >= header.Height {
 			return true, nil
 		}

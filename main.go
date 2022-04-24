@@ -84,9 +84,38 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.VALIDATE,
+				Usage:  "Validate txs",
+				Action: command(relayer.VALIDATE),
+			},
+			&cli.Command{
+				Name:   relayer.SET_VALIDATOR_HEIGHT,
+				Usage:  "Set chain tx validator height",
+				Action: command(relayer.SET_VALIDATOR_HEIGHT),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "height",
+						Usage:    "target block height",
+						Required: true,
+					},
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "target chain",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.STATUS,
 				Usage:  "Check side chain header/tx sync height",
 				Action: command(relayer.STATUS),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "target side chain",
+						Required: true,
+					},
+				},
 			},
 			&cli.Command{
 				Name:   relayer.RELAY_TX,
@@ -212,6 +241,23 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.SCAN_POLY_TX,
+				Usage:  "Scan poly txs in range",
+				Action: command(relayer.SCAN_POLY_TX),
+				Flags: []cli.Flag{
+					&cli.Uint64Flag{
+						Name:     "chain",
+						Usage:    "src_chain",
+						Required: true,
+					},
+					&cli.Uint64Flag{
+						Name:     "height",
+						Usage:    "scan start height",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.CREATE_ACCOUNT,
 				Usage:  "Create a new eth keystore account",
 				Action: command(relayer.CREATE_ACCOUNT),
@@ -281,9 +327,33 @@ func main() {
 						Name:  "chain",
 						Usage: "chain id",
 					},
+					&cli.Int64Flag{
+						Name:  "blocks",
+						Usage: "blocks to wait",
+					},
 					&cli.StringFlag{
 						Name:  "ccm",
 						Usage: "ccm data address",
+					},
+					&cli.StringFlag{
+						Name:  "name",
+						Usage: "chain name",
+					},
+					&cli.BoolFlag{
+						Name: "vote",
+						Usage: "whether using votes",
+						Value: false,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.GET_SIDE_CHAIN,
+				Usage:  "Get side chain instance",
+				Action: command(relayer.GET_SIDE_CHAIN),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
 					},
 				},
 			},

@@ -43,7 +43,9 @@ import (
 	poly_go_sdk "github.com/polynetwork/poly-go-sdk"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly/common"
+	"github.com/polynetwork/bridge-common/util"
 	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
+	"github.com/polynetwork/poly/native/service/utils"
 	"github.com/polynetwork/poly/native/service/governance/side_chain_manager"
 
 	"github.com/polynetwork/poly-relayer/config"
@@ -110,15 +112,52 @@ func ApproveSideChain(ctx *cli.Context) (err error) {
 	}
 	return
 }
+func FetchSideChain(ctx *cli.Context) (err error) {
+	chainID := ctx.Uint64("chain")
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
+	data, err := ps.SDK().Node().GetStorage(utils.SideChainManagerContractAddress.ToHexString(),
+		append([]byte(side_chain_manager.SIDE_CHAIN), utils.GetUint64Bytes(chainID)...))
+	if err != nil { return }
+	if data == nil {
+		log.Info("No such chain", "id", chainID)
+	} else {
+		chain := new(side_chain_manager.SideChain)
+		err = chain.Deserialization(common.NewZeroCopySource(data))
+		if err != nil {
+			return
+		}
+		fmt.Println(util.Verbose(chain))
+	}
+	return
+}
 
 func AddSideChain(ctx *cli.Context) (err error) {
 	chainID := ctx.Uint64("chain")
 	router := ctx.Uint64("router")
 	ccm := ctx.String("ccm")
+	isVoting := ctx.Bool("vote")
 
-	sc := GetSideChain(chainID)
-	c, err := sc.SideChain()
-	if err != nil { return }
+	var c *side_chain_manager.SideChain
+	if !isVoting {
+		sc := GetSideChain(chainID)
+		c, err = sc.SideChain()
+		if err != nil {
+			return
+		}
+	} else {
+		c = new(side_chain_manager.SideChain)
+		c.Name = ctx.String("name")
+		c.BlocksToWait = ctx.Uint64("blocks")
+		c.ExtraInfo = []byte{}
+		c.ChainId = chainID
+		if c.ChainId == 0 || c.Name == "" {
+			log.Error("Missing chainID or chain name")
+			return
+		}
+	}
 	if router > 0 {
 		c.Router = router
 	}

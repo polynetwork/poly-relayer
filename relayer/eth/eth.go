@@ -17,6 +17,7 @@ import (
 	"github.com/polynetwork/bridge-common/abi/eccd_abi"
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
@@ -75,6 +76,19 @@ func (s *Submitter) Submit(msg msg.Message) error {
 func (s *Submitter) submit(tx *msg.Tx) error {
 	if len(tx.DstData) == 0 {
 		return nil
+	}
+	if tx.CheckFeeStatus != bridge.FREE && !tx.SkipFee() {
+		needGasPrice,needGasLimit, err := s.wallet.EstimateGas(s.ccm, tx.DstData)
+		if err != nil {
+			log.Info("err get EstimateGas", "tx.PolyHash", tx.PolyHash)
+			return fmt.Errorf("get EstimateGas err")
+		}
+		paidGas := uint64(tx.PaidGas)
+		needGas := new(big.Int).Mul(needGasPrice,new(big.Int).SetUint64(needGasLimit)).Uint64()
+		if paidGas < needGas {
+			log.Info("err checkgas", "paidGas", paidGas, "needGas", needGas, "tx.PolyHash", tx.PolyHash)
+			return fmt.Errorf("checkgas err")
+		}
 	}
 	var (
 		gasPrice  *big.Int
@@ -212,6 +226,10 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_ALWAYS_FAIL, err)
 		} else if strings.Contains(info, "insufficient funds") || strings.Contains(info, "exceeds allowance") {
 			err = msg.ERR_LOW_BALANCE
+		} else if strings.Contains(info, "get EstimateGas err") {
+			err = msg.ERR_TX_CHECK_ESTIMATEGAS
+		} else if strings.Contains(info, "checkgas err") {
+			err = msg.ERR_TX_CHECK_GAS
 		}
 	}
 	return
@@ -248,11 +266,9 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
-		if err != nil {
-			log.Error("eth ProcessTx poly tx for error", "poly_hash", tx.PolyHash, "err", err)
-			continue
+		if err == nil {
+			err = s.SubmitTx(tx)
 		}
-		err = s.SubmitTx(tx)
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash, "err", err)
 			log.Json(log.ERROR, tx)
@@ -262,7 +278,13 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			}
 			tx.Attempts++
 			// TODO: retry with increased gas price?
-			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) || errors.Is(err, msg.ERR_TX_EXEC_ALWAYS_FAIL) {
+			if errors.Is(err, msg.ERR_TX_CHECK_ESTIMATEGAS) {
+				tsp := time.Now().Unix() + 10
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else if errors.Is(err, msg.ERR_TX_CHECK_GAS) {
+				tsp := time.Now().Unix() + 60*10
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) || errors.Is(err, msg.ERR_TX_EXEC_ALWAYS_FAIL) {
 				tsp := time.Now().Unix() + 60*3
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) {

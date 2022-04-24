@@ -92,7 +92,10 @@ type Tx struct {
 	DstProxy                string                `json:",omitempty"`
 	SkipCheckFee            bool                  `json:",omitempty"`
 	Skipped                 bool                  `json:",omitempty"`
+	PaidGas                 float64               `json:",omitempty"`
 	CheckFeeStatus          bridge.CheckFeeStatus `json:",omitempty"`
+	DstAsset                string                `json:"-"`
+	DstAmount               *big.Int              `json:"-"`
 
 	Extra interface{} `json:"-"`
 }

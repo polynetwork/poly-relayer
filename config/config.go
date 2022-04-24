@@ -26,6 +26,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 )
@@ -50,6 +51,18 @@ type Config struct {
 	validMethods map[string]bool
 	chains       map[uint64]bool
 	Bridge       []string
+
+	Validators struct {
+		Src []uint64
+		Dst []uint64
+		PauseCommand []string
+		DialTargets  []string
+		DialTemplate string
+		DingUrl         string
+		HuyiUrl         string
+		HuyiAccount     string
+		HuyiPassword    string
+	}
 }
 
 // Parse file path, if path is empty, use config file directory path
@@ -256,6 +269,8 @@ func (c *Config) Init() (err error) {
 			return
 		}
 	}
+
+	tools.DingUrl = c.Validators.DingUrl
 
 	CONFIG = c
 	return

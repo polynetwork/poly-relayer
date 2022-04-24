@@ -21,17 +21,20 @@ Reimplement poly relayer
 |Avalanche|main |:x:|:x:|:white_check_mark:|
 |Metis    |main |:x:|:x:|:white_check_mark:|
 |Boba     |main |:x:|:x:|:white_check_mark:|
-|HSC     |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |KCC      |main |:x:|:x:|:white_check_mark:|
+|HSC     |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 
 ## TODOs
 - [x] metrics, height, height_diff, queue length
 - [x] graceful shutdown
 - [x] state consistent across restart
 - [x] configurable roles to run
-- [x] Delayed retry queue for failed transactions
-- [x] Transaction listen filters: methods, lockproxy contracts
-- [x] Bridge check fee
+- [x] delayed retry queue for failed transactions
+- [x] transaction listen filters: methods, lockproxy contracts
+- [x] bridge check fee
+- [x] cross chain transaction patching
+- [x] cross chain transaction validation
+
 
 
 ## Docs
