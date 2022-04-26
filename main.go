@@ -291,6 +291,10 @@ func main() {
 						Name:  "chain",
 						Usage: "chain id",
 					},
+					&cli.BoolFlag{
+						Name: "update",
+						Usage: "updating side chain or not",
+					},
 				},
 			},
 			&cli.Command{
@@ -396,6 +400,10 @@ func main() {
 						Name: "vote",
 						Usage: "whether using votes",
 						Value: false,
+					},
+					&cli.BoolFlag{
+						Name: "update",
+						Usage: "updating side chain or not",
 					},
 				},
 			},

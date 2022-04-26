@@ -31,8 +31,8 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/ontio/ontology-crypto/sm2"
-	"github.com/urfave/cli/v2"
 	"github.com/polynetwork/poly/core/types"
+	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ecom "github.com/ethereum/go-ethereum/common"
@@ -90,6 +90,7 @@ func GetPolyWallets() (accounts []*poly_go_sdk.Account, err error) {
 
 func ApproveSideChain(ctx *cli.Context) (err error) {
 	chainID := ctx.Uint64("chain")
+	update := ctx.Bool("update")
 	ps, err := PolySubmitter()
 	if err != nil {
 		return
@@ -98,7 +99,12 @@ func ApproveSideChain(ctx *cli.Context) (err error) {
 	accounts, err := GetPolyWallets()
 	if err != nil { return }
 	for i, a := range accounts {
-		hash, err := ps.SDK().Node().Native.Scm.ApproveRegisterSideChain(chainID, a)
+		var hash common.Uint256
+		if update {
+			hash, err = ps.SDK().Node().Native.Scm.ApproveUpdateSideChain(chainID, a)
+		} else {
+			hash, err = ps.SDK().Node().Native.Scm.ApproveRegisterSideChain(chainID, a)
+		}
 		if err != nil {
 			panic(fmt.Errorf("No%d ApproveRegisterSideChain failed: %v", i, err))
 		}
@@ -132,6 +138,8 @@ func FetchSideChain(ctx *cli.Context) (err error) {
 			return
 		}
 		fmt.Println(util.Verbose(chain))
+		fmt.Println("extra:", string(chain.ExtraInfo))
+		fmt.Printf("ccm: %x\n", chain.CCMCAddress)
 	}
 	return
 }
@@ -141,6 +149,7 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	router := ctx.Uint64("router")
 	ccm := ctx.String("ccm")
 	isVoting := ctx.Bool("vote")
+	update := ctx.Bool("update")
 
 	var c *side_chain_manager.SideChain
 	if !isVoting {
@@ -177,8 +186,14 @@ func AddSideChain(ctx *cli.Context) (err error) {
 		return fmt.Errorf("No valid poly wallet is provided")
 	}
 	account := accounts[0]
-	hash, err := ps.SDK().Node().Native.Scm.RegisterSideChainExt(
-		account.Address, chainID, c.Router, c.Name, c.BlocksToWait, c.CCMCAddress, c.ExtraInfo, account)
+	var hash common.Uint256
+	if update {
+		hash, err = ps.SDK().Node().Native.Scm.UpdateSideChainExt(
+			account.Address, chainID, c.Router, c.Name, c.BlocksToWait, c.CCMCAddress, c.ExtraInfo, account)
+	} else {
+		hash, err = ps.SDK().Node().Native.Scm.RegisterSideChainExt(
+			account.Address, chainID, c.Router, c.Name, c.BlocksToWait, c.CCMCAddress, c.ExtraInfo, account)
+	}
 	if err != nil { return }
 	height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 30)
 	if err != nil { return }
