@@ -70,6 +70,7 @@ const (
 	GET_SIDE_CHAIN    = "getsidechain"
 	SCAN_POLY_TX      = "scanpolytx"
 	VALIDATE          = "validate"
+	VALIDATE_BLOCK    = "validateblock"
 	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
 )
 
@@ -97,6 +98,7 @@ func init() {
 	_Handlers[GET_SIDE_CHAIN] = FetchSideChain
 	_Handlers[SCAN_POLY_TX] = ScanPolyTxs
 	_Handlers[VALIDATE] = Validate
+	_Handlers[VALIDATE_BLOCK] = ValidateBlock
 	_Handlers[SET_VALIDATOR_HEIGHT] = SetTxValidatorHeight
 }
 
@@ -437,6 +439,58 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 		start++
 	}
 	return
+}
+
+func ValidateBlock(ctx *cli.Context) (err error) {
+	height := ctx.Uint64("height")
+	chain := ctx.Uint64("chain")
+	pl, err := PolyListener()
+	if err != nil { return }
+	getListener := func(id uint64) *eth.Listener {
+		if !base.SameAsETH(chain) {
+			log.Error("Unsupported chain", "chain", chain)
+			return nil
+		}
+		conf := config.CONFIG.Chains[id]
+		if conf == nil || conf.SrcTxSync == nil || conf.SrcTxSync.ListenerConfig == nil {
+			log.Error("Missing config for chain", "chain", id)
+			return nil
+		}
+		lis := new(eth.Listener)
+		err = lis.Init(conf.SrcTxSync.ListenerConfig, pl.SDK())
+		if err != nil {
+			log.Error("Failed to initialize listener", "chain", id, "err", err)
+			return nil
+		}
+		return lis
+	}
+	if chain > 0 {
+		lis := getListener(chain)
+		if lis == nil {
+			log.Fatal("Failed to validate this block")
+		}
+		txs, err := lis.ScanDst(height)
+		if err != nil { return err }
+		for i, tx := range txs {
+			err = pl.Validate(tx)
+			log.Info("Validating tx", "index", i, "err", err)
+			fmt.Println(util.Json(tx))
+		}
+		return nil
+	}
+	txs, err := pl.ScanDst(height)
+	if err != nil { return }
+	for i, tx := range txs {
+		lis := getListener(tx.SrcChainId)
+		if lis == nil {
+			err = fmt.Errorf("Chain validator missing")
+		} else {
+			err = lis.Validate(tx)
+		}
+		log.Info("Validating poly tx", "index", i, "err", err)
+		fmt.Println(util.Json(tx))
+	}
+	return nil
 }
 
 func Validate(ctx *cli.Context) (err error) {

@@ -98,6 +98,21 @@ func main() {
 				Action: command(relayer.VALIDATE),
 			},
 			&cli.Command{
+				Name:   relayer.VALIDATE_BLOCK,
+				Usage:  "Validate txs in block",
+				Action: command(relayer.VALIDATE_BLOCK),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target poly height",
+					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.SET_VALIDATOR_HEIGHT,
 				Usage:  "Set chain tx validator height",
 				Action: command(relayer.SET_VALIDATOR_HEIGHT),
