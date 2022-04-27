@@ -447,8 +447,8 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 	pl, err := PolyListener()
 	if err != nil { return }
 	getListener := func(id uint64) *eth.Listener {
-		if !base.SameAsETH(chain) {
-			log.Error("Unsupported chain", "chain", chain)
+		if !base.SameAsETH(id) {
+			log.Error("Unsupported chain", "chain", id)
 			return nil
 		}
 		conf := config.CONFIG.Chains[id]
