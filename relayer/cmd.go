@@ -505,11 +505,11 @@ func Validate(ctx *cli.Context) (err error) {
 func watchAlarms(outputs chan tools.CardEvent) {
 	c := 0
 	for o := range outputs {
+		c++
+		fmt.Printf("!!!!!!! Alarm(%v): %s \n", c, util.Json(o))
 		if len(tools.DingUrl) == 0 {
 			continue
 		}
-		c++
-		fmt.Printf("!!!!!!! Alarm(%v): %v \n", c, o)
 		err := tools.PostCardEvent(o)
 		if err != nil {
 			log.Error("Post dingtalk failure", "err", err)
