@@ -88,7 +88,7 @@ func New(path string) (config *Config, err error) {
 		fmt.Println("Enter Passphrase: ")
 		passphrase, err := term.ReadPassword(int(syscall.Stdin))
 		if err != nil {
-			return
+			return nil, err
 		}
 		data = msg.Decrypt(data, passphrase)
 	}
