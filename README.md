@@ -24,7 +24,7 @@ Reimplement poly relayer
 |Metis    |main |:x:|:x:|:white_check_mark:|
 |Boba     |main |:x:|:x:|:white_check_mark:|
 |KCC      |main |:x:|:x:|:white_check_mark:|
-|MILKOMEDA|main |:x:|:x:|:white_check_mark:|
+|Milkomeda|main |:x:|:x:|:white_check_mark:|
 
 
 ## TODOs
