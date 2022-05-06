@@ -107,6 +107,9 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	case base.ONT:
 		submitter = new(ont.Submitter)
 	default:
+		if base.SameAsETH(chain) {
+			return new(eth.Submitter)
+		}
 	}
 	return
 }
