@@ -20,11 +20,9 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/term"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
@@ -85,11 +83,8 @@ func New(path string) (config *Config, err error) {
 		return nil, fmt.Errorf("Read config file error %v", err)
 	}
 	if ENCRYPTED {
-		fmt.Println("Enter Passphrase: ")
-		passphrase, err := term.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			return nil, err
-		}
+		passphrase, err := msg.ReadPassword("passphrase")
+		if err != nil { return nil, err }
 		data = msg.Decrypt(data, passphrase)
 	}
 	config = &Config{chains: map[uint64]bool{}}

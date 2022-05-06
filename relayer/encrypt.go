@@ -25,8 +25,9 @@ import (
 
 func EncryptFile(ctx *cli.Context) (err error) {
 	file := ctx.String("file")
-	pass := ctx.String("pass")
 	data, err := ioutil.ReadFile(file)
+	if err != nil { return }
+	pass, err := msg.ReadPassword("passphrase")
 	if err != nil { return }
 	cipherData := msg.Encrypt(data, []byte(pass))
 	err = ioutil.WriteFile(file + ".encrypted", cipherData, 0644)
@@ -35,8 +36,9 @@ func EncryptFile(ctx *cli.Context) (err error) {
 
 func DecryptFile(ctx *cli.Context) (err error) {
 	file := ctx.String("file")
-	pass := ctx.String("pass")
 	cipherData, err := ioutil.ReadFile(file)
+	if err != nil { return }
+	pass, err := msg.ReadPassword("passphrase")
 	if err != nil { return }
 	data := msg.Decrypt(cipherData, []byte(pass))
 	err = ioutil.WriteFile(file + ".decrypted", data, 0644)

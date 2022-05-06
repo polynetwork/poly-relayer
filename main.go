@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"github.com/polynetwork/poly-relayer/msg"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-
-	"golang.org/x/term"
 
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/wallet"
@@ -294,10 +292,6 @@ func main() {
 						Usage:    "wallet path",
 						Required: true,
 					},
-					&cli.StringFlag{
-						Name:  "pass",
-						Usage: "wallet password",
-					},
 				},
 			},
 			&cli.Command{
@@ -308,15 +302,6 @@ func main() {
 					&cli.StringFlag{
 						Name:     "path",
 						Usage:    "wallet path",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:  "pass",
-						Usage: "wallet password",
-					},
-					&cli.StringFlag{
-						Name:  "newpass",
-						Usage: "new wallet password",
 						Required: true,
 					},
 				},
@@ -331,11 +316,6 @@ func main() {
 						Usage:    "file path",
 						Required: true,
 					},
-					&cli.StringFlag{
-						Name:  "pass",
-						Usage: "wallet password",
-						Required: true,
-					},
 				},
 			},
 			&cli.Command{
@@ -346,11 +326,6 @@ func main() {
 					&cli.StringFlag{
 						Name:     "file",
 						Usage:    "file path",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:  "pass",
-						Usage: "wallet password",
 						Required: true,
 					},
 				},
@@ -576,8 +551,7 @@ func command(method string) func(*cli.Context) error {
 				conf.Poly.ExtraWallets = new(wallet.Config)
 			}
 			conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
-			fmt.Println("Enter Password: ")
-			password, err := term.ReadPassword(int(syscall.Stdin))
+			password, err := msg.ReadPassword("passphrase")
 			if err != nil {
 				return err
 			}

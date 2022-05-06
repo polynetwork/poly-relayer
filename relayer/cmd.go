@@ -381,15 +381,15 @@ func HandleCommand(method string, ctx *cli.Context) error {
 
 func UpdateAccount(ctx *cli.Context) (err error) {
 	path := ctx.String("path")
-	password := ctx.String("pass")
-	newPassword := ctx.String("newpass")
+	pass, err := msg.ReadPassword("passphrase")
+	if err != nil { return }
+	newPass, err := msg.ReadPassword("new passphrase")
+	if err != nil { return }
+	password := string(pass)
+	newPassword := string(newPass)
 	if path == "" {
 		log.Error("Wallet patch can not be empty")
 		return
-	}
-	if password == "" {
-		log.Warn("Using default password: test")
-		password = "test"
 	}
 	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
 	for i, a := range ks.Accounts() {
@@ -404,17 +404,14 @@ func UpdateAccount(ctx *cli.Context) (err error) {
 
 func CreateAccount(ctx *cli.Context) (err error) {
 	path := ctx.String("path")
-	password := ctx.String("pass")
 	if path == "" {
 		log.Error("Wallet patch can not be empty")
 		return
 	}
-	if password == "" {
-		log.Warn("Using default password: test")
-		password = "test"
-	}
+	pass, err := msg.ReadPassword("passphrase")
+	if err != nil { return }
 	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
-	account, err := ks.NewAccount(password)
+	account, err := ks.NewAccount(string(pass))
 	if err != nil {
 		return
 	}

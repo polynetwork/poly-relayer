@@ -21,8 +21,20 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"fmt"
+	"golang.org/x/term"
 	"io"
+	"syscall"
 )
+
+func ReadPassword(name string) ([]byte, error) {
+	fmt.Printf("Enter %s: \n", name)
+	passphrase, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return nil, err
+	}
+	return passphrase, nil
+}
 
 func Decrypt(cipherText, key []byte) []byte {
 	// Create the AES cipher
