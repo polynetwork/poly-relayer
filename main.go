@@ -298,6 +298,27 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.UPDATE_ACCOUNT,
+				Usage:  "Update keystore accounts with new passphrase",
+				Action: command(relayer.UPDATE_ACCOUNT),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "path",
+						Usage:    "wallet path",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "pass",
+						Usage: "wallet password",
+					},
+					&cli.StringFlag{
+						Name:  "newpass",
+						Usage: "new wallet password",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.APPROVE_SIDECHAIN,
 				Usage:  "Approve side chain",
 				Action: command(relayer.APPROVE_SIDECHAIN),

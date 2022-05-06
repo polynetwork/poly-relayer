@@ -58,6 +58,7 @@ const (
 	SKIP              = "skip"
 	CHECK_SKIP        = "checkskip"
 	CREATE_ACCOUNT    = "createaccount"
+	UPDATE_ACCOUNT    = "updateaccount"
 	CHECK_WALLET      = "wallet"
 	ADD_SIDECHAIN     = "addsidechain"
 	SYNC_GENESIS      = "syncgenesis"
@@ -87,6 +88,7 @@ func init() {
 	_Handlers[RELAY_TX] = RelayTx
 	_Handlers[CHECK_WALLET] = CheckWallet
 	_Handlers[CREATE_ACCOUNT] = CreateAccount
+	_Handlers[UPDATE_ACCOUNT] = UpdateAccount
 	_Handlers[ADD_SIDECHAIN] = AddSideChain
 	_Handlers[SYNC_GENESIS] = SyncGenesis
 	_Handlers[CREATE_GENESIS] = CreateGenesis
@@ -371,6 +373,29 @@ func HandleCommand(method string, ctx *cli.Context) error {
 		return fmt.Errorf("Unsupported subcommand %s", method)
 	}
 	return h(ctx)
+}
+
+func UpdateAccount(ctx *cli.Context) (err error) {
+	path := ctx.String("path")
+	password := ctx.String("pass")
+	newPassword := ctx.String("newpass")
+	if path == "" {
+		log.Error("Wallet patch can not be empty")
+		return
+	}
+	if password == "" {
+		log.Warn("Using default password: test")
+		password = "test"
+	}
+	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
+	for i, a := range ks.Accounts() {
+		err = ks.Update(a, password, newPassword)
+		log.Info("Updating passphrase", "index", i, "account", a.Address.String(), "newer", newPassword, "err", err)
+		if err != nil {
+			log.Fatal("Failed to update password")
+		}
+	}
+	return
 }
 
 func CreateAccount(ctx *cli.Context) (err error) {
