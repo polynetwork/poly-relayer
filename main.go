@@ -28,6 +28,9 @@ func main() {
 				Value: "config.json",
 				Usage: "configuration file",
 			},
+			&cli.BoolFlag{
+				Name: "encrypted",
+			},
 			&cli.StringFlag{
 				Name:  "roles",
 				Value: "roles.json",
@@ -319,6 +322,40 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.ENCRYPT_FILE,
+				Usage:  "Encrypt a single file with passphrase",
+				Action: command(relayer.ENCRYPT_FILE),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "file",
+						Usage:    "file path",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "pass",
+						Usage: "wallet password",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.DECRYPT_FILE,
+				Usage:  "Decrypt a single file with passphrase",
+				Action: command(relayer.DECRYPT_FILE),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "file",
+						Usage:    "file path",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "pass",
+						Usage: "wallet password",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.APPROVE_SIDECHAIN,
 				Usage:  "Approve side chain",
 				Action: command(relayer.APPROVE_SIDECHAIN),
@@ -483,6 +520,7 @@ func main() {
 }
 
 func start(c *cli.Context) error {
+	config.ENCRYPTED = c.Bool("encrypted")
 	config, err := config.New(c.String("config"))
 	if err != nil {
 		log.Error("Failed to parse config file", "err", err)
@@ -520,6 +558,7 @@ func start(c *cli.Context) error {
 
 func command(method string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
+		config.ENCRYPTED = c.Bool("encrypted")
 		conf, err := config.New(c.String("config"))
 		if err != nil {
 			log.Error("Failed to parse config file", "err", err)

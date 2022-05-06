@@ -59,6 +59,8 @@ const (
 	CHECK_SKIP        = "checkskip"
 	CREATE_ACCOUNT    = "createaccount"
 	UPDATE_ACCOUNT    = "updateaccount"
+	ENCRYPT_FILE      = "encryptfile"
+	DECRYPT_FILE      = "decryptfile"
 	CHECK_WALLET      = "wallet"
 	ADD_SIDECHAIN     = "addsidechain"
 	SYNC_GENESIS      = "syncgenesis"
@@ -89,6 +91,8 @@ func init() {
 	_Handlers[CHECK_WALLET] = CheckWallet
 	_Handlers[CREATE_ACCOUNT] = CreateAccount
 	_Handlers[UPDATE_ACCOUNT] = UpdateAccount
+	_Handlers[ENCRYPT_FILE] = EncryptFile
+	_Handlers[DECRYPT_FILE] = DecryptFile
 	_Handlers[ADD_SIDECHAIN] = AddSideChain
 	_Handlers[SYNC_GENESIS] = SyncGenesis
 	_Handlers[CREATE_GENESIS] = CreateGenesis

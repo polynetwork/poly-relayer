@@ -20,21 +20,26 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/term"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
+
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 var (
 	CONFIG      *Config
 	WALLET_PATH string
 	CONFIG_PATH string
+	ENCRYPTED   bool
 )
 
 type Config struct {
@@ -78,6 +83,14 @@ func New(path string) (config *Config, err error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("Read config file error %v", err)
+	}
+	if ENCRYPTED {
+		fmt.Println("Enter Passphrase: ")
+		passphrase, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			return
+		}
+		data = msg.Decrypt(data, passphrase)
 	}
 	config = &Config{chains: map[uint64]bool{}}
 	err = json.Unmarshal(data, config)
