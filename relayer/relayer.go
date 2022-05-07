@@ -25,10 +25,12 @@ import (
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/plt"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
 )
@@ -45,6 +47,7 @@ type IChainListener interface {
 	ScanTx(string) (*msg.Tx, error)
 	GetTxBlock(string) (uint64, error)
 	Compose(*msg.Tx) error
+	LatestHeight() (uint64, error)
 }
 
 type Handler interface {
@@ -61,6 +64,7 @@ type IChainSubmitter interface {
 	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
 	Process(msg.Message, msg.PolyComposer) error
 	ProcessTx(*msg.Tx, msg.PolyComposer) error
+	SubmitTx(*msg.Tx) error
 	Stop() error
 }
 
@@ -80,6 +84,9 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	case base.PLT:
 		submitter = new(plt.Submitter)
 	default:
+		if base.SameAsETH(chain) {
+			return new(eth.Submitter)
+		}
 	}
 	return
 }
@@ -93,6 +100,25 @@ func PolySubmitter() (sub *po.Submitter, err error) {
 func PolyListener() (l *po.Listener, err error) {
 	l = new(po.Listener)
 	err = l.Init(config.CONFIG.Poly.PolyTxSync.ListenerConfig, nil)
+	return
+}
+
+func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
+	for _, v := range base.ETH_CHAINS {
+		if v == chain {
+			sub = new(eth.Submitter)
+			break
+		}
+	}
+	if sub == nil {
+		err = fmt.Errorf("No submitter for chain %d available", chain)
+		return
+	}
+	conf := config.CONFIG.Chains[chain]
+	if conf == nil || conf.PolyTxCommit == nil {
+		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
+	}
+	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
 	return
 }
 
@@ -123,4 +149,8 @@ func ChainListener(chain uint64, poly *poly.SDK) (l IChainListener, err error) {
 
 	err = l.Init(conf.SrcTxSync.ListenerConfig, poly)
 	return
+}
+
+func Bridge() (sdk *bridge.SDK, err error) {
+	return bridge.WithOptions(0, config.CONFIG.Bridge, time.Minute, 100)
 }

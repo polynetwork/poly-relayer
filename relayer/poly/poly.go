@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"strings"
 	"sync"
 	"time"
@@ -42,14 +41,14 @@ import (
 
 type Submitter struct {
 	context.Context
-	wg      *sync.WaitGroup
-	config  *config.PolySubmitterConfig
-	sdk     *poly.SDK
-	signer  *sdk.Account
-	name    string
-	sync    *config.HeaderSyncConfig
-	compose msg.PolyComposer
-	state   bus.ChainStore // Header sync marking
+	wg       *sync.WaitGroup
+	config   *config.PolySubmitterConfig
+	sdk      *poly.SDK
+	signer   *sdk.Account
+	name     string
+	sync     *config.HeaderSyncConfig
+	composer msg.SrcComposer
+	state    bus.ChainStore // Header sync marking
 
 	// Check last header commit
 	lastCommit   uint64
@@ -59,9 +58,13 @@ type Submitter struct {
 
 func (s *Submitter) Init(config *config.PolySubmitterConfig) (err error) {
 	s.config = config
-	s.signer, err = wallet.NewPolySigner(config.Wallet)
-	if err != nil {
-		return
+	if config.Wallet != nil && config.Wallet.Path != "" {
+		s.signer, err = wallet.NewPolySigner(config.Wallet)
+		if err != nil {
+			return
+		}
+	} else {
+		log.Warn("Skipping poly wallet init")
 	}
 	s.name = base.GetChainName(config.ChainId)
 	s.blocksToWait = base.BlocksToWait(config.ChainId)
@@ -94,7 +97,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if s.lastCommit > 0 && s.lastCheck > 3 {
 				s.lastCheck = 0
 				switch chainId {
-				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3:
+				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3, base.STARCOIN, base.BYTOM, base.HSC:
 					height, e := s.GetSideChainHeight(chainId)
 					if e != nil {
 						log.Error("Get side chain header height failure", "err", e)
@@ -159,7 +162,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
 			return nil
 		default:
-			if attempt > 30 {
+			if attempt > 30 || (attempt > 3 && chainId == base.HARMONY) {
 				log.Error("Header submit too many failed attempts", "chain", chainId, "attempts", attempt)
 				return msg.ERR_HEADER_SUBMIT_FAILURE
 			}
@@ -176,7 +179,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return "", err
 	}
 	hash = tx.ToHexString()
-	_, err = s.sdk.Node().Confirm(hash, 0, 10)
+	_, err = s.sdk.Node().Confirm(hash, 0, 300)
 	if err == nil {
 		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
 	}
@@ -184,7 +187,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 }
 
 func (s *Submitter) submit(tx *msg.Tx) error {
-	err := s.compose(tx)
+	err := s.composer.Compose(tx)
 	if err != nil {
 		if strings.Contains(err.Error(), "missing trie node") {
 			return msg.ERR_PROOF_UNAVAILABLE
@@ -243,11 +246,11 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	return nil
 }
 
-func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.PolyComposer) (err error) {
+func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.SrcComposer) (err error) {
 	if m.Type() != msg.SRC {
 		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
 	}
-	s.compose = composer
+	s.composer = composer
 	return s.submit(m)
 }
 
@@ -284,14 +287,10 @@ func (s *Submitter) CollectSigs(tx *msg.Tx) (err error) {
 func (s *Submitter) ReadyBlock() (height uint64) {
 	var err error
 	switch s.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.STARCOIN, base.BYTOM, base.HSC:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
-	case base.NEO:
-		tx := new(msg.Tx)
-		s.compose(tx)
-		return tx.SrcProofHeight
 	default:
-		height = math.MaxInt32
+		height, err = s.composer.LatestHeight()
 	}
 	if height > s.blocksToWait {
 		height -= s.blocksToWait
@@ -417,8 +416,8 @@ func (s *Submitter) run(mq bus.TxBus) error {
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.PolyComposer) error {
-	s.compose = composer
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTxBus, composer msg.SrcComposer) error {
+	s.composer = composer
 	s.Context = ctx
 	s.wg = wg
 
@@ -465,6 +464,10 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 }
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
+	if s.sync.ChainId == base.HARMONY {
+		return
+	}
+
 	var hash []byte
 	if s.sync.ChainId == base.PLT {
 		return
@@ -476,6 +479,14 @@ func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error
 		}
 		ok = len(hash) != 0
 		return
+	} else if s.sync.ChainId == base.HARMONY {
+		height, err := s.sdk.Node().GetSideChainHeight(s.sync.ChainId)
+		if err != nil {
+			return false, err
+		}
+		if height >= header.Height {
+			return true, nil
+		}
 	}
 	hash, err = s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
 	if err != nil {
@@ -524,6 +535,10 @@ COMMIT:
 		case header, ok := <-ch:
 			if ok {
 				hdr = &header
+				if len(headers) > 0 && height != header.Height-1 {
+					log.Info("Resetting header set", "chain", s.sync.ChainId, "height", height, "current_height", header.Height)
+					headers = [][]byte{}
+				}
 				height = header.Height
 				if hdr.Data == nil {
 					// Update header sync height
