@@ -128,7 +128,7 @@ func PolyListener() (l *po.Listener, err error) {
 
 func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if chain == base.ONT {
-		sub = new(eth.Submitter)
+		sub = new(ont.Submitter)
 	} else if chain == base.NEO {
 		sub = new(neo.Submitter)
 	} else {
