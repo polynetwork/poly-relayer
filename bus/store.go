@@ -20,6 +20,7 @@ const (
 	KEY_HEIGHT_HEADER_RESET ChainHeightType = "header_sync_reset" // chain sync reset
 	KEY_HEIGHT_CHAIN        ChainHeightType = "chain_height"      // chain node height
 	KEY_HEIGHT_TX           ChainHeightType = "tx_sync"           // tx sync mark
+	KEY_HEIGHT_VALIDATOR    ChainHeightType = "tx_validator"      // tx validator reset
 )
 
 type ChainHeightType string

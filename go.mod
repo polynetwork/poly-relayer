@@ -9,6 +9,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/gogo/protobuf v1.3.1
 	github.com/joeqian10/neo-gogogo v0.0.0-20201214075916-44b70d175579
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.0.9
 	github.com/ontio/ontology-go-sdk v1.11.4
@@ -18,6 +19,7 @@ require (
 	github.com/tendermint/tendermint v0.33.9
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 )
 
 replace (

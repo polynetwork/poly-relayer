@@ -169,10 +169,6 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
 			return nil
 		default:
-			if attempt > 30 {
-				log.Error("Header submit too many failed attempts", "chain", chainId, "attempts", attempt)
-				return msg.ERR_HEADER_SUBMIT_FAILURE
-			}
 			time.Sleep(time.Second)
 		}
 	}
@@ -186,7 +182,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return "", err
 	}
 	hash = tx.ToHexString()
-	_, err = s.sdk.Node().Confirm(hash, 0, 10)
+	_, err = s.sdk.Node().Confirm(hash, 0, 300)
 	if err == nil {
 		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
 	}
@@ -533,6 +529,10 @@ COMMIT:
 		case header, ok := <-ch:
 			if ok {
 				hdr = &header
+				if len(headers) > 0 && height != header.Height-1 {
+					log.Info("Resetting header set", "chain", s.sync.ChainId, "height", height, "current_height", header.Height)
+					headers = [][]byte{}
+				}
 				height = header.Height
 				if hdr.Data == nil {
 					// Update header sync height
