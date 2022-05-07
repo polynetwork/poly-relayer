@@ -29,4 +29,8 @@ var (
 	ERR_FEE_CHECK_FAILURE     = errors.New("Tx fee check failure")
 	ERR_HEADER_SUBMIT_FAILURE = errors.New("Header submit failure")
 	ERR_TX_EXEC_ALWAYS_FAIL   = errors.New("Tx exec always fail")
+	ERR_LOW_BALANCE           = errors.New("Insufficient balance")
+
+	ERR_TX_VOILATION          = errors.New("Possible cross chain voilation")
+	ERR_TX_PROOF_MISSING      = errors.New("Possible cross chain proof missing")
 )

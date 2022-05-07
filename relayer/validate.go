@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The poly network Authors
+ * Copyright (C) 2022 The poly network Authors
  * This file is part of The poly network library.
  *
  * The  poly network  is free software: you can redistribute it and/or modify
@@ -15,9 +15,29 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package heco
+package relayer
 
-import "github.com/polynetwork/poly-relayer/relayer/eth"
+import (
+	"github.com/polynetwork/bridge-common/tools"
+	"github.com/polynetwork/poly-relayer/msg"
+)
 
-type Listener = eth.Listener
-type Submitter = eth.Submitter
+type IValidator interface {
+	Validate(*msg.Tx) error
+}
+
+type Validator struct {
+	vs       func(uint64) IValidator
+	listener IChainListener
+	outputs  chan tools.CardEvent
+}
+
+func StartValidator(vs func(uint64) IValidator, listener IChainListener, outputs chan tools.CardEvent) (err error) {
+	v := &Validator{vs, listener, outputs}
+	go v.start()
+	return
+}
+
+func (v *Validator) start() (err error) {
+	return
+}

@@ -56,11 +56,16 @@ func Http(ctx *cli.Context) (err error) {
 	// Init patcher
 	_PATCHER = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0)
 	_SKIP = bus.NewRedisSkipCheck(bus.New(config.CONFIG.Bus.Redis))
+	err = SetupController()
+	if err != nil {
+		return
+	}
 
 	go recordMetrics()
 	http.HandleFunc("/api/v1/patch", PatchTx)
 	http.HandleFunc("/api/v1/skip", SkipTx)
 	http.HandleFunc("/api/v1/skipcheck", SkipCheckTx)
+	http.HandleFunc("/api/v1/composetx", controller.ComposeDstTx)
 	http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil)
 	return
 }
@@ -157,6 +162,9 @@ func PatchTx(w http.ResponseWriter, r *http.Request) {
 }
 
 func Patch(ctx *cli.Context) (err error) {
+	if ctx.Bool("auto") {
+		return AutoPatch()
+	}
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
 	hash := ctx.String("hash")

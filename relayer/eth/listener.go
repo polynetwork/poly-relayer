@@ -18,6 +18,7 @@
 package eth
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -28,13 +29,19 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/light"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
+	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -76,22 +83,23 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 
 func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	switch l.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.BYTOM, base.HSC:
 		h, err := l.poly.Node().GetSideChainHeight(l.config.ChainId)
 		if err != nil {
 			return 0, err
 		}
 		height = h - base.BlocksToWait(l.config.ChainId)
-	case base.OK:
+	case base.OK, base.HARMONY:
 		height, _ = l.state.GetHeight(context.Background())
 		if height > 0 {
-			return
+			return height - 2, nil
 		}
 		height, err = l.sdk.Node().GetLatestHeight()
 		if err != nil {
 			return 0, err
 		}
 		height = height - 2
+
 	case base.PLT:
 		return txHeight, nil
 	default:
@@ -173,6 +181,41 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	return
 }
 
+func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
+	ccm, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
+	if err != nil {
+		return nil, err
+	}
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+	events, err := ccm.FilterVerifyHeaderAndExecuteTxEvent(opt)
+	if err != nil {
+		return nil, err
+	}
+
+	if events == nil {
+		return
+	}
+
+	txs = []*msg.Tx{}
+	for events.Next() {
+		ev := events.Event
+		tx := &msg.Tx{
+			DstChainId: l.ChainId(),
+			DstHash:    ev.Raw.TxHash.String(),
+			SrcChainId: ev.FromChainID,
+			DstProxy: hex.EncodeToString(ev.ToContract),
+			DstHeight: ev.Raw.BlockNumber,
+			PolyHash: msg.HexStringReverse(hex.EncodeToString(ev.CrossChainTxHash)),
+		}
+		txs = append(txs, tx)
+	}
+	return
+}
+
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	ccm, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
 	if err != nil {
@@ -210,6 +253,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			SrcChainId: l.config.ChainId,
 			SrcProxy:   ev.ProxyOrAssetContract.String(),
 			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
+			SrcAddress: ev.Sender.String(),
 		}
 		l.Compose(tx)
 		txs = append(txs, tx)
@@ -259,6 +303,10 @@ func (l *Listener) SDK() *eth.SDK {
 	return l.sdk
 }
 
+func (l *Listener) LatestHeight() (uint64, error) {
+	return l.sdk.Node().GetLatestHeight()
+}
+
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
 	if l.poly == nil {
 		err = fmt.Errorf("No poly sdk provided for listener", "chain", l.name)
@@ -269,4 +317,143 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 		return force, nil
 	}
 	return l.poly.Node().GetSideChainHeight(l.config.ChainId)
+}
+
+func (l *Listener) Validate(tx *msg.Tx) (err error) {
+	txId, err := hex.DecodeString(tx.TxId)
+	if err != nil {
+		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
+	}
+	id := msg.EncodeTxId(txId)
+	bytes, err := ceth.MappingKeyAt(id, "01")
+	if err != nil {
+		err = fmt.Errorf("%s scan event mapping key error %v", l.name, err)
+		return
+	}
+	proofKey := hexutil.Encode(bytes)
+	height, err := l.sdk.Node().GetLatestHeight()
+	if err != nil {
+		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
+		return
+	}
+	proof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height - 1)
+	if err != nil {
+		return fmt.Errorf("get proof failure %v", err)
+	}
+
+	// Verify storage proof
+	if len(proof.StorageProofs) != 1 {
+		err = fmt.Errorf("invalid storage proof size, %v", proof.StorageProofs)
+		return
+	}
+	sp := proof.StorageProofs[0]
+	nodeList := new(light.NodeList)
+	storageKey := crypto.Keccak256(common.HexToHash(sp.Key).Bytes())
+	for _, p := range sp.Proof {
+		nodeList.Put(nil, common.Hex2Bytes(ccom.Replace0x(p)))
+	}
+
+	storageHash := common.HexToHash(proof.StorageHash)
+	storageValue, err := trie.VerifyProof(storageHash, storageKey, nodeList.NodeSet())
+	if err != nil {
+		err = fmt.Errorf("account storage VerifyProof failure, err: %v", err)
+		return
+	}
+
+	sink := pcom.NewZeroCopySink(nil)
+	tx.MerkleValue.MakeTxParam.Serialization(sink)
+	value := sink.Bytes()
+	err = CheckProofResult(storageValue, crypto.Keccak256(value))
+	if err != nil {
+		err = fmt.Errorf("%w CheckProofResult failed, err: %v", msg.ERR_TX_VOILATION, err)
+		return
+	}
+	log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
+	return
+}
+
+
+func (l *Listener) ScanEvents(height uint64, ch chan tools.CardEvent) (err error) {
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+
+	events := []tools.CardEvent{}
+	for _, address := range l.config.LockProxyContract {
+		p, err := lock_proxy_abi.NewLockProxy(common.HexToAddress(address), l.sdk.Node().Client)
+		if err != nil { return err }
+
+		setManagerProxyEvents, err := p.FilterSetManagerProxyEvent(opt)
+		if err != nil {
+			return err
+		}
+		bindProxyEvents, err := p.FilterBindProxyEvent(opt)
+		if err != nil {
+			return err
+		}
+		bindAssetEvents, err := p.FilterBindAssetEvent(opt)
+		if err != nil {
+			return err
+		}
+		for setManagerProxyEvents.Next() {
+			ev := setManagerProxyEvents.Event
+			events = append(events, &msg.SetManagerProxyEvent{
+				TxHash:   ev.Raw.TxHash.String()[2:],
+				Contract: ev.Raw.Address.String(),
+				ChainId:  l.ChainId(),
+				Manager:  ev.Manager.String(),
+			})
+		}
+
+		for bindProxyEvents.Next() {
+			ev := bindProxyEvents.Event
+			events = append(events, &msg.BindProxyEvent{
+				TxHash:    ev.Raw.TxHash.String()[2:],
+				Contract:  ev.Raw.Address.String(),
+				ChainId:   l.ChainId(),
+				ToChainId: ev.ToChainId,
+				ToProxy:   hex.EncodeToString(ev.TargetProxyHash),
+			})
+		}
+
+		for bindAssetEvents.Next() {
+			ev := bindAssetEvents.Event
+			events = append(events, &msg.BindAssetEvent{
+				TxHash:        ev.Raw.TxHash.String()[2:],
+				Contract:      ev.Raw.Address.String(),
+				ChainId:       l.ChainId(),
+				FromAsset:     ev.FromAssetHash.String(),
+				ToChainId:     ev.ToChainId,
+				Asset:         hex.EncodeToString(ev.TargetProxyHash),
+				InitialAmount: ev.InitialAmount,
+			})
+		}
+	}
+
+	for _, ev := range events {
+		ch <- ev
+	}
+	return
+}
+
+// Check proof storage value hash
+func CheckProofResult(result, value []byte) (err error) {
+	var temp []byte
+	err = rlp.DecodeBytes(result, &temp)
+	if err != nil {
+		err = fmt.Errorf("rlp decode proof result failed, err: %v", err)
+		return
+	}
+	var hash []byte
+	for i := len(temp); i< 32; i++ {
+		hash = append(hash, 0)
+	}
+	hash = append(hash, temp...)
+	if !bytes.Equal(hash, value) {
+		err = fmt.Errorf("storage value does not match with proof result, wanted %x, got %x", result, value)
+		return
+	}
+	return
 }

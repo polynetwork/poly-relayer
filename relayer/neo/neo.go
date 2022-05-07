@@ -136,7 +136,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		return
 	}
 	scriptHash := helper.HexToBytes(s.ccm)
-	var anchor []byte
+	anchor := make([]byte, 0)
 	if tx.AnchorHeader != nil {
 		anchor = tx.AnchorHeader.GetMessage()
 	}
@@ -149,12 +149,16 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	}
 	builder := sc.NewScriptBuilder()
 	builder.MakeInvocationScript(scriptHash, VERIFY_AND_EXECUTE_TX, args)
-	script := builder.ToArray()
+	tx.DstData = builder.ToArray()
+	return
+}
+
+func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	if tx.DstSender == nil {
-		tx.DstHash, err = s.wallet.Invoke(script, nil)
+		tx.DstHash, err = s.wallet.Invoke(tx.DstData, nil)
 	} else {
 		account := tx.DstSender.(*nw.Account)
-		tx.DstHash, err = s.wallet.InvokeWithAccount(account, script, nil)
+		tx.DstHash, err = s.wallet.InvokeWithAccount(account, tx.DstData, nil)
 	}
 	return
 }
@@ -215,6 +219,9 @@ func (s *Submitter) run(account *nw.Account, mq bus.TxBus, delay bus.DelayedTxBu
 		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 		tx.DstSender = account
 		err = s.ProcessTx(tx, compose)
+		if err == nil {
+			err = s.SubmitTx(tx)
+		}
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
 			log.Json(log.ERROR, tx)
