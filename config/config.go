@@ -22,17 +22,22 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
+
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 var (
 	CONFIG      *Config
 	WALLET_PATH string
 	CONFIG_PATH string
+	ENCRYPTED   bool
 )
 
 type Config struct {
@@ -49,10 +54,23 @@ type Config struct {
 	validMethods map[string]bool
 	chains       map[uint64]bool
 	Bridge       []string
+
+	Validators struct {
+		Src []uint64
+		Dst []uint64
+		PauseCommand []string
+		DialTargets  []string
+		DialTemplate string
+		DingUrl         string
+		HuyiUrl         string
+		HuyiAccount     string
+		HuyiPassword    string
+	}
 }
 
 // Parse file path, if path is empty, use config file directory path
 func GetConfigPath(path, file string) string {
+	if strings.HasPrefix(file, "/") { return file }
 	if path == "" {
 		path = filepath.Dir(CONFIG_PATH)
 	}
@@ -63,6 +81,11 @@ func New(path string) (config *Config, err error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("Read config file error %v", err)
+	}
+	if ENCRYPTED {
+		passphrase, err := msg.ReadPassword("passphrase")
+		if err != nil { return nil, err }
+		data = msg.Decrypt(data, passphrase)
 	}
 	config = &Config{chains: map[uint64]bool{}}
 	err = json.Unmarshal(data, config)
@@ -88,6 +111,7 @@ func New(path string) (config *Config, err error) {
 type PolyChainConfig struct {
 	PolySubmitterConfig `json:",inline"`
 	PolyTxSync          *PolyTxSyncConfig
+	ExtraWallets 		*wallet.Config
 }
 
 type ChainConfig struct {
@@ -254,6 +278,8 @@ func (c *Config) Init() (err error) {
 		}
 	}
 
+	tools.DingUrl = c.Validators.DingUrl
+
 	CONFIG = c
 	return
 }
@@ -278,6 +304,9 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 	}
 	if c.Wallet != nil {
 		c.Wallet.Path = GetConfigPath(WALLET_PATH, c.Wallet.Path)
+	}
+	if c.ExtraWallets != nil {
+		c.ExtraWallets.Path = GetConfigPath(WALLET_PATH, c.ExtraWallets.Path)
 	}
 	return
 }

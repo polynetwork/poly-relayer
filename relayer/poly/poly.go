@@ -97,7 +97,7 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			if s.lastCommit > 0 && s.lastCheck > 3 {
 				s.lastCheck = 0
 				switch chainId {
-				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3:
+				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3, base.STARCOIN, base.BYTOM, base.HSC:
 					height, e := s.GetSideChainHeight(chainId)
 					if e != nil {
 						log.Error("Get side chain header height failure", "err", e)
@@ -167,7 +167,7 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
 			return nil
 		default:
-			if attempt > 30 {
+			if attempt > 30 || (attempt > 3 && chainId == base.HARMONY) {
 				log.Error("Header submit too many failed attempts", "chain", chainId, "attempts", attempt)
 				return msg.ERR_HEADER_SUBMIT_FAILURE
 			}
@@ -184,7 +184,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return "", err
 	}
 	hash = tx.ToHexString()
-	_, err = s.sdk.Node().Confirm(hash, 0, 10)
+	_, err = s.sdk.Node().Confirm(hash, 0, 300)
 	if err == nil {
 		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
 	}
@@ -292,7 +292,7 @@ func (s *Submitter) CollectSigs(tx *msg.Tx) (err error) {
 func (s *Submitter) ReadyBlock() (height uint64) {
 	var err error
 	switch s.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.STARCOIN, base.BYTOM, base.HSC:
 		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
 	default:
 		height, err = s.composer.LatestHeight()
@@ -469,6 +469,10 @@ func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error
 }
 
 func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
+	if s.sync.ChainId == base.HARMONY {
+		return
+	}
+
 	var hash []byte
 	switch s.sync.ChainId {
 	case base.NEO, base.ONT:
@@ -533,6 +537,10 @@ COMMIT:
 		case header, ok := <-ch:
 			if ok {
 				hdr = &header
+				if len(headers) > 0 && height != header.Height-1 {
+					log.Info("Resetting header set", "chain", s.sync.ChainId, "height", height, "current_height", header.Height)
+					headers = [][]byte{}
+				}
 				height = header.Height
 				if hdr.Data == nil {
 					// Update header sync height
