@@ -391,8 +391,15 @@ func UpdateAccount(ctx *cli.Context) (err error) {
 		log.Error("Wallet patch can not be empty")
 		return
 	}
+	account := ctx.String("account")
+	if account != "" {
+		account = util.LowerHex(account)
+	}
 	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
 	for i, a := range ks.Accounts() {
+		if account != "" && util.LowerHex(a.Address.String()) != account {
+			continue
+		}
 		err = ks.Update(a, password, newPassword)
 		log.Info("Updating passphrase", "index", i, "account", a.Address.String(), "newer", newPassword, "err", err)
 		if err != nil {

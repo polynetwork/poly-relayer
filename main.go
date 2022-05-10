@@ -304,6 +304,10 @@ func main() {
 						Usage:    "wallet path",
 						Required: true,
 					},
+					&cli.StringFlag{
+						Name:     "account",
+						Usage:    "wallet account to update",
+					},
 				},
 			},
 			&cli.Command{
