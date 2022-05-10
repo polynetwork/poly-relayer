@@ -89,6 +89,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			log.Info("err checkgas", "paidGas", paidGas, "needGas", needGas, "tx.PolyHash", tx.PolyHash)
 			return fmt.Errorf("checkgas err")
 		}
+		tx.SkipCheckFee = true
 	}
 	var (
 		gasPrice  *big.Int
