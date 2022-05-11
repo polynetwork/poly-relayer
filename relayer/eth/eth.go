@@ -173,16 +173,6 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
 	}
 
-	switch v := m.DstSender.(type) {
-	case string:
-		for _, a := range s.wallet.Accounts() {
-			if util.LowerHex(a.Address.String()) == util.LowerHex(v) {
-				m.DstSender = &a
-				break
-			}
-		}
-	}
-
 	if m.DstChainId != s.config.ChainId {
 		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
 	}
@@ -203,6 +193,15 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 }
 
 func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	switch v := tx.DstSender.(type) {
+	case string:
+		for _, a := range s.wallet.Accounts() {
+			if util.LowerHex(a.Address.String()) == util.LowerHex(v) {
+				tx.DstSender = &a
+				break
+			}
+		}
+	}
 	err = s.submit(tx)
 	if err != nil {
 		info := err.Error()
