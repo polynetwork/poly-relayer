@@ -147,6 +147,7 @@ func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if conf == nil || conf.PolyTxCommit == nil {
 		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
 	}
+	conf.PolyTxCommit.SubmitterConfig.Wallet = nil
 	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
 	return
 }
