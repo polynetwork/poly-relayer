@@ -340,7 +340,7 @@ func main() {
 						Usage: "chain name",
 					},
 					&cli.BoolFlag{
-						Name: "vote",
+						Name:  "vote",
 						Usage: "whether using votes",
 						Value: false,
 					},
@@ -373,6 +373,21 @@ func main() {
 					&cli.StringFlag{
 						Name:  "ccm",
 						Usage: "ccm address",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.HTTP_SUBMIT,
+				Usage:  "Run http_submit server",
+				Action: command(relayer.HTTP_SUBMIT),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "port",
+						Usage: "http_submit endpoint port",
+					},
+					&cli.StringFlag{
+						Name:  "host",
+						Usage: "http_submit endpoint host",
 					},
 				},
 			},

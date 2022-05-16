@@ -1,6 +1,7 @@
 package relayer
 
 import (
+	"fmt"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/urfave/cli/v2"
@@ -19,6 +20,7 @@ func HttpSubmit(c *cli.Context) (err error) {
 		host = config.CONFIG.SubmitHost
 	}
 	http.HandleFunc("/api/v1/httpsubmit", SubmitTx)
+	http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil)
 	return
 }
 

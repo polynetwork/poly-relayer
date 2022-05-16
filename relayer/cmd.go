@@ -187,7 +187,7 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 			txHash = tx.PolyHash
 		}
 		if hash == "" || util.LowerHex(hash) == util.LowerHex(txHash) {
-			txslog[txHash] += fmt.Sprintf("Found patch target tx", "hash", txHash, "height", height)
+			txslog[txHash] += fmt.Sprintf("Found patch target tx hash: %v height: %v ", txHash, height)
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
@@ -195,26 +195,22 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 					if bridge == nil {
 						bridge, err = Bridge()
 						if err != nil {
-							txslog[txHash] += fmt.Sprintf("\nFailed to init bridge sdk")
+							txslog[txHash] += fmt.Sprintf("Failed to init bridge sdk. ")
 							log.Error("Failed to init bridge sdk")
 							continue
 						}
 					}
 					res, err := CheckFee(bridge, tx)
 					if err != nil {
-						txslog[txHash] += fmt.Sprintf("\nFailed to call check fee", "poly_hash", tx.PolyHash)
+						txslog[txHash] += fmt.Sprintf("Failed to call check fee ")
 						log.Error("Failed to call check fee", "poly_hash", tx.PolyHash)
 						continue
 					}
-					tx.PaidGas = res.PaidGas
-					if res.Pass() || res.ForceFree() {
-						txslog[txHash] += fmt.Sprintf("\nCheck fee pass", "poly_hash", tx.PolyHash)
+					if res.Pass() {
+						txslog[txHash] += fmt.Sprintf("Check fee pass ")
 						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
-					} else if res.OnlyPaid() {
-						log.Info("Check fee not pass but paid", "poly_hash", tx.PolyHash)
-						txslog[txHash] += fmt.Sprintf("\nCheck fee not pass but paid", "poly_hash", tx.PolyHash)
 					} else {
-						txslog[txHash] += fmt.Sprintf("\nCheck fee failed", "poly_hash", tx.PolyHash)
+						txslog[txHash] += fmt.Sprintf("Check fee failed ")
 						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
 						fmt.Println(util.Verbose(tx))
 						fmt.Println(res)
@@ -223,30 +219,30 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 				}
 				sub, err := ChainSubmitter(tx.DstChainId)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("\nFailed to init chain submitter", "chain", tx.DstChainId, "err", err)
+					txslog[txHash] += fmt.Sprintf("Failed to init chain submitter, chain: %v, err: %v ", tx.DstChainId, err)
 					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.ProcessTx(tx, ps.ComposeTx)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("\nFailed to process tx", "chain", tx.DstChainId, "err", err)
+					txslog[txHash] += fmt.Sprintf("Failed to process tx, chain: %v, err:%v ", tx.DstChainId, err)
 					log.Error("Failed to process tx", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.SubmitTx(tx)
-				txslog[txHash] += fmt.Sprintf("\nSubmtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
+				txslog[txHash] += fmt.Sprintf("Submtter patching poly tx, chain: %v, err: %v ", tx.DstChainId, err)
 				log.Info("Submtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
 			} else {
 				err = ps.ProcessTx(tx, listener)
-				txslog[txHash] += fmt.Sprintf("\nSubmtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
+				txslog[txHash] += fmt.Sprintf("Submtter patching src tx, chain: %v, err: %v ", tx.SrcChainId, err)
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
 			VerboseTx := util.Verbose(tx)
 			fmt.Println(VerboseTx)
-			txslog[txHash] += fmt.Sprintf("\n", "VerboseTx", VerboseTx)
+			txslog[txHash] += fmt.Sprintf(VerboseTx)
 			count++
 		} else {
-			txslog[txHash] += fmt.Sprintf("\nFound tx in block not targeted", "hash", txHash, "height", height)
+			txslog[txHash] += fmt.Sprintf("Found tx in block not targeted, height: %v", height)
 			log.Info("Found tx in block not targeted", "hash", txHash, "height", height)
 		}
 	}
