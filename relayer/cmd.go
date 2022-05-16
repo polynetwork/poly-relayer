@@ -161,7 +161,7 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 		height, err = listener.GetTxBlock(hash)
 		if err != nil {
 			log.Error("Failed to get tx block", "hash", hash)
-			err = fmt.Errorf("Failed to get tx block", "hash", hash, "err", err)
+			err = fmt.Errorf("Failed to get tx block hash", "hash", hash, "err", err.Error())
 			return
 		}
 	}
@@ -219,30 +219,35 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 				}
 				sub, err := ChainSubmitter(tx.DstChainId)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("Failed to init chain submitter, chain: %v, err: %v ", tx.DstChainId, err)
+					txslog[txHash] += fmt.Sprintf("Failed to init chain submitter, chain: %v, err: %v ", tx.DstChainId, err.Error())
 					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.ProcessTx(tx, ps.ComposeTx)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("Failed to process tx, chain: %v, err:%v ", tx.DstChainId, err)
+					txslog[txHash] += fmt.Sprintf("Failed to process tx, chain: %v, err:%v ", tx.DstChainId, err.Error())
 					log.Error("Failed to process tx", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.SubmitTx(tx)
-				txslog[txHash] += fmt.Sprintf("Submtter patching poly tx, chain: %v, err: %v ", tx.DstChainId, err)
+				txslog[txHash] += fmt.Sprintf("Submtter patching poly tx, chain: %v ", tx.DstChainId)
+				if err != nil {
+					txslog[txHash] += fmt.Sprintf("err: %v ", err.Error())
+				}
 				log.Info("Submtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
 			} else {
 				err = ps.ProcessTx(tx, listener)
-				txslog[txHash] += fmt.Sprintf("Submtter patching src tx, chain: %v, err: %v ", tx.SrcChainId, err)
+				txslog[txHash] += fmt.Sprintf("Submtter patching src tx, chain: %v ", tx.SrcChainId)
+				if err != nil {
+					txslog[txHash] += fmt.Sprintf("err: %v ", err.Error())
+				}
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
-			VerboseTx := util.Verbose(tx)
-			fmt.Println(VerboseTx)
-			txslog[txHash] += fmt.Sprintf(VerboseTx)
+			fmt.Println(util.Verbose(tx))
+			txslog[txHash] += fmt.Sprintf(util.Json(tx))
 			count++
 		} else {
-			txslog[txHash] += fmt.Sprintf("Found tx in block not targeted, height: %v", height)
+			txslog[txHash] += fmt.Sprintf("Found tx in block not targeted, height: %v ", height)
 			log.Info("Found tx in block not targeted", "hash", txHash, "height", height)
 		}
 	}
