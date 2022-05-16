@@ -305,8 +305,8 @@ func main() {
 						Required: true,
 					},
 					&cli.StringFlag{
-						Name:     "account",
-						Usage:    "wallet account to update",
+						Name:  "account",
+						Usage: "wallet account to update",
 					},
 				},
 			},
@@ -344,7 +344,7 @@ func main() {
 						Usage: "chain id",
 					},
 					&cli.BoolFlag{
-						Name: "update",
+						Name:  "update",
 						Usage: "updating side chain or not",
 					},
 				},
@@ -359,8 +359,8 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:  "chain",
-						Usage: "chain id",
+						Name:     "chain",
+						Usage:    "chain id",
 						Required: true,
 					},
 				},
@@ -375,13 +375,13 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:  "chain",
-						Usage: "chain id",
+						Name:     "chain",
+						Usage:    "chain id",
 						Required: true,
 					},
 					&cli.StringFlag{
-						Name:  "keys",
-						Usage: "public keys seperated by ','",
+						Name:     "keys",
+						Usage:    "public keys seperated by ','",
 						Required: true,
 					},
 				},
@@ -449,12 +449,12 @@ func main() {
 						Usage: "chain name",
 					},
 					&cli.BoolFlag{
-						Name: "vote",
+						Name:  "vote",
 						Usage: "whether using votes",
 						Value: false,
 					},
 					&cli.BoolFlag{
-						Name: "update",
+						Name:  "update",
 						Usage: "updating side chain or not",
 					},
 				},
@@ -486,6 +486,21 @@ func main() {
 					&cli.StringFlag{
 						Name:  "ccm",
 						Usage: "ccm address",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.HTTP_SUBMIT,
+				Usage:  "Run http_submit server",
+				Action: command(relayer.HTTP_SUBMIT),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "port",
+						Usage: "http_submit endpoint port",
+					},
+					&cli.StringFlag{
+						Name:  "host",
+						Usage: "http_submit endpoint host",
 					},
 				},
 			},
