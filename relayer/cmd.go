@@ -75,6 +75,7 @@ const (
 	VALIDATE             = "validate"
 	VALIDATE_BLOCK       = "validateblock"
 	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
+	HTTP_SUBMIT          = "httpsubmit"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -106,6 +107,7 @@ func init() {
 	_Handlers[VALIDATE] = Validate
 	_Handlers[VALIDATE_BLOCK] = ValidateBlock
 	_Handlers[SET_VALIDATOR_HEIGHT] = SetTxValidatorHeight
+	_Handlers[HTTP_SUBMIT] = HttpSubmit
 }
 
 func CheckWallet(ctx *cli.Context) (err error) {
@@ -150,7 +152,12 @@ func RelayTx(ctx *cli.Context) (err error) {
 		Relay(params)
 		return
 	}
+	_, err = relayTx(height, chain, hash, free, params)
+	return
+}
 
+func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txslog map[string]string, err error) {
+	txslog = make(map[string]string)
 	ps, err := PolySubmitter()
 	if err != nil {
 		return
@@ -168,18 +175,21 @@ func RelayTx(ctx *cli.Context) (err error) {
 		height, err = listener.GetTxBlock(hash)
 		if err != nil {
 			log.Error("Failed to get tx block", "hash", hash)
+			err = fmt.Errorf("Failed to get tx block hash", "hash", hash, "err", err.Error())
 			return
 		}
 	}
 
 	if height == 0 {
 		log.Error("Failed to patch tx for height is invalid")
+		err = fmt.Errorf("Failed to patch tx for height is invalid", "hash", hash)
 		return
 	}
 
 	txs, err := listener.Scan(height)
 	if err != nil {
 		log.Error("Fetch block txs error", "height", height, "err", err)
+		err = fmt.Errorf("Fetch block txs error", "height", height, "err", err)
 		return
 	}
 
@@ -191,6 +201,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 			txHash = tx.PolyHash
 		}
 		if hash == "" || util.LowerHex(hash) == util.LowerHex(txHash) {
+			txslog[txHash] += fmt.Sprintf("Found patch target tx hash: %v height: %v ", txHash, height)
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
@@ -198,18 +209,22 @@ func RelayTx(ctx *cli.Context) (err error) {
 					if bridge == nil {
 						bridge, err = Bridge()
 						if err != nil {
+							txslog[txHash] += fmt.Sprintf("Failed to init bridge sdk. ")
 							log.Error("Failed to init bridge sdk")
 							continue
 						}
 					}
 					res, err := CheckFee(bridge, tx)
 					if err != nil {
+						txslog[txHash] += fmt.Sprintf("Failed to call check fee ")
 						log.Error("Failed to call check fee", "poly_hash", tx.PolyHash)
 						continue
 					}
 					if res.Pass() {
+						txslog[txHash] += fmt.Sprintf("Check fee pass ")
 						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
 					} else {
+						txslog[txHash] += fmt.Sprintf("Check fee failed ")
 						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
 						fmt.Println(util.Verbose(tx))
 						fmt.Println(res)
@@ -218,23 +233,35 @@ func RelayTx(ctx *cli.Context) (err error) {
 				}
 				sub, err := ChainSubmitter(tx.DstChainId)
 				if err != nil {
+					txslog[txHash] += fmt.Sprintf("Failed to init chain submitter, chain: %v, err: %v ", tx.DstChainId, err.Error())
 					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.ProcessTx(tx, ps.ComposeTx)
 				if err != nil {
+					txslog[txHash] += fmt.Sprintf("Failed to process tx, chain: %v, err:%v ", tx.DstChainId, err.Error())
 					log.Error("Failed to process tx", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.SubmitTx(tx)
+				txslog[txHash] += fmt.Sprintf("Submtter patching poly tx, chain: %v ", tx.DstChainId)
+				if err != nil {
+					txslog[txHash] += fmt.Sprintf("err: %v ", err.Error())
+				}
 				log.Info("Submtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
 			} else {
 				err = ps.ProcessTx(tx, listener)
+				txslog[txHash] += fmt.Sprintf("Submtter patching src tx, chain: %v ", tx.SrcChainId)
+				if err != nil {
+					txslog[txHash] += fmt.Sprintf("err: %v ", err.Error())
+				}
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
-			log.Json(log.INFO, tx)
+			fmt.Println(util.Verbose(tx))
+			txslog[txHash] += fmt.Sprintf(util.Json(tx))
 			count++
 		} else {
+			txslog[txHash] += fmt.Sprintf("Found tx in block not targeted, height: %v ", height)
 			log.Info("Found tx in block not targeted", "hash", txHash, "height", height)
 		}
 	}
@@ -395,8 +422,15 @@ func UpdateAccount(ctx *cli.Context) (err error) {
 		log.Error("Wallet patch can not be empty")
 		return
 	}
+	account := ctx.String("account")
+	if account != "" {
+		account = util.LowerHex(account)
+	}
 	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
 	for i, a := range ks.Accounts() {
+		if account != "" && util.LowerHex(a.Address.String()) != account {
+			continue
+		}
 		err = ks.Update(a, password, newPassword)
 		log.Info("Updating passphrase", "index", i, "account", a.Address.String(), "newer", newPassword, "err", err)
 		if err != nil {

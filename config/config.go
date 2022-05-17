@@ -50,27 +50,32 @@ type Config struct {
 	Host string
 	Port int
 
+	SubmitHost string
+	SubmitPort int
+
 	ValidMethods []string
 	validMethods map[string]bool
 	chains       map[uint64]bool
 	Bridge       []string
 
 	Validators struct {
-		Src []uint64
-		Dst []uint64
+		Src          []uint64
+		Dst          []uint64
 		PauseCommand []string
 		DialTargets  []string
 		DialTemplate string
-		DingUrl         string
-		HuyiUrl         string
-		HuyiAccount     string
-		HuyiPassword    string
+		DingUrl      string
+		HuyiUrl      string
+		HuyiAccount  string
+		HuyiPassword string
 	}
 }
 
 // Parse file path, if path is empty, use config file directory path
 func GetConfigPath(path, file string) string {
-	if strings.HasPrefix(file, "/") { return file }
+	if strings.HasPrefix(file, "/") {
+		return file
+	}
 	if path == "" {
 		path = filepath.Dir(CONFIG_PATH)
 	}
@@ -84,7 +89,9 @@ func New(path string) (config *Config, err error) {
 	}
 	if ENCRYPTED {
 		passphrase, err := msg.ReadPassword("passphrase")
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		data = msg.Decrypt(data, passphrase)
 	}
 	config = &Config{chains: map[uint64]bool{}}
@@ -111,7 +118,7 @@ func New(path string) (config *Config, err error) {
 type PolyChainConfig struct {
 	PolySubmitterConfig `json:",inline"`
 	PolyTxSync          *PolyTxSyncConfig
-	ExtraWallets 		*wallet.Config
+	ExtraWallets        *wallet.Config
 }
 
 type ChainConfig struct {
@@ -259,6 +266,12 @@ func (c *Config) Init() (err error) {
 	}
 	if c.Port == 0 {
 		c.Port = 6500
+	}
+	if c.SubmitHost == "" {
+		c.Host = "0.0.0.0"
+	}
+	if c.SubmitPort == 0 {
+		c.Port = 6501
 	}
 	if c.Bus != nil {
 		c.Bus.Init()
