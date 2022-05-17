@@ -114,6 +114,16 @@ func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint
 	log.Warn("Rolling header sync back to common ancestor", "current", height, "goal", target, "chain", h.config.ChainId)
 	switch h.config.ChainId {
 	case base.ETH, base.HECO, base.BSC, base.O3:
+	case base.OK:
+		for {
+			height, err := h.listener.LastHeaderSync(0, 0)
+			if height > 0 {
+				log.Info("Rolling ok chain header sync", "height", height)
+				return height
+			}
+			log.Warn("Get last header sync failure for ok chain", "err", err)
+			time.Sleep(time.Second * 2)
+		}
 	default:
 		return target
 	}

@@ -151,6 +151,9 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 				if strings.Contains(info, "no header you commited is useful") {
 					log.Warn("Sync ok chain header to poly not commited", "reason", info)
 					return nil
+				} else if strings.Contains(info, "validator is not right") {
+					log.Warn("Ok chain header/epoch inconsistent detected")
+					return msg.ERR_HEADER_INCONSISTENT
 				}
 			}
 			if strings.Contains(info, "parent header not exist") ||
