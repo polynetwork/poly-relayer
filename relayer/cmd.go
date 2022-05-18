@@ -243,6 +243,9 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 					log.Error("Failed to process tx", "chain", tx.DstChainId, "err", err)
 					continue
 				}
+				if tx.DstHash == "" {
+					txslog[txHash] += fmt.Sprintf("***Tx already imported to dstchain.*** ")
+				}
 				err = sub.SubmitTx(tx)
 				txslog[txHash] += fmt.Sprintf("Submtter patching poly tx, chain: %v ", tx.DstChainId)
 				if err != nil {
@@ -254,6 +257,9 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 				txslog[txHash] += fmt.Sprintf("Submtter patching src tx, chain: %v ", tx.SrcChainId)
 				if err != nil {
 					txslog[txHash] += fmt.Sprintf("err: %v ", err.Error())
+				}
+				if tx.PolyHash == "" {
+					txslog[txHash] += fmt.Sprintf("***Tx already imported to poly.*** ")
 				}
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
