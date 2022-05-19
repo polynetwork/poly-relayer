@@ -42,10 +42,10 @@ var (
 )
 
 func Http(ctx *cli.Context) (err error) {
-	metrics.Init("relayer")
 	// Insert web config
 	port := ctx.Int("port")
 	host := ctx.String("host")
+	submit := ctx.Bool("submit")
 	if port == 0 {
 		port = config.CONFIG.Port
 	}
@@ -61,11 +61,16 @@ func Http(ctx *cli.Context) (err error) {
 		return
 	}
 
-	go recordMetrics()
-	http.HandleFunc("/api/v1/patch", PatchTx)
-	http.HandleFunc("/api/v1/skip", SkipTx)
-	http.HandleFunc("/api/v1/skipcheck", SkipCheckTx)
-	http.HandleFunc("/api/v1/composetx", controller.ComposeDstTx)
+	if submit {
+		http.HandleFunc("/api/v1/submit", controller.SubmitTx)
+	} else {
+		metrics.Init("relayer")
+		go recordMetrics()
+		http.HandleFunc("/api/v1/patch", PatchTx)
+		http.HandleFunc("/api/v1/skip", SkipTx)
+		http.HandleFunc("/api/v1/skipcheck", SkipCheckTx)
+		http.HandleFunc("/api/v1/composetx", controller.ComposeDstTx)
+	}
 	http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil)
 	return
 }
