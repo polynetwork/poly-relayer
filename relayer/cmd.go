@@ -130,16 +130,28 @@ func RelayTx(ctx *cli.Context) (err error) {
 	hash := ctx.String("hash")
 	free := ctx.Bool("free")
 	sender := ctx.String("sender")
+	auto := ctx.Bool("auto")
+	limit := ctx.Uint64("limit")
+	price := ctx.String("price")
+	pricex := ctx.String("pricex")
+	url := ctx.String("url")
+	if url != "" {
+		// TODO, POST to http service
+	}
+	return relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
+}
+
+func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex string, limit uint64, auto bool) (err error) {
 	params := &msg.Tx{
 		SkipCheckFee: free,
-		DstGasPrice:  ctx.String("price"),
-		DstGasPriceX: ctx.String("pricex"),
-		DstGasLimit:  uint64(ctx.Int("limit")),
+		DstGasPrice:  price,
+		DstGasPriceX: pricex,
+		DstGasLimit:  limit,
 	}
 	if len(sender) > 0 {
 		params.DstSender = sender
 	}
-	if ctx.Bool("auto") {
+	if auto {
 		params.SrcChainId = chain
 		if chain == base.POLY {
 			params.PolyHash = hash
