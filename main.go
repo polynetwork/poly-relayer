@@ -184,9 +184,13 @@ func main() {
 						Usage: "submit will try to find the proper bin",
 						Value: false,
 					},
-					&cli.StringFlag{
-						Name: "url",
+					&cli.BoolFlag{
+						Name:  "httpservice",
 						Usage: "submit to local http service",
+					},
+					&cli.StringFlag{
+						Name:  "dstchain",
+						Usage: "submit poly to dstchain",
 					},
 				},
 			},
@@ -545,7 +549,7 @@ func start(c *cli.Context) error {
 
 func command(method string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		if !(method == relayer.RELAY_TX && c.String("url") != "") {
+		if !(method == relayer.RELAY_TX && c.Bool("httpservice")) {
 			config.ENCRYPTED = c.Bool("encrypted")
 			conf, err := config.New(c.String("config"))
 			if err != nil {
