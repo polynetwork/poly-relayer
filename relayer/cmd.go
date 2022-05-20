@@ -147,12 +147,12 @@ func RelayTx(ctx *cli.Context) (err error) {
 			return
 		}
 		params := make(map[string]string)
-		params["height"] = fmt.Sprintf("%s", height)
-		params["chain"] = fmt.Sprintf("%s", chain)
+		params["height"] = fmt.Sprintf("%v", height)
+		params["chain"] = fmt.Sprintf("%v", chain)
 		params["hash"] = hash
-		params["free"] = fmt.Sprintf("%s", free)
+		params["free"] = fmt.Sprintf("%v", free)
 		params["sender"] = sender
-		params["limit"] = fmt.Sprintf("%s", limit)
+		params["limit"] = fmt.Sprintf("%v", limit)
 		params["price"] = price
 		params["pricex"] = pricex
 		data, err := json.Marshal(params)
@@ -203,7 +203,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 		return nil
 	}
 	_, err = relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
-	return nil
+	return err
 }
 
 func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex string, limit uint64, auto bool) (txslog map[string]string, err error) {
