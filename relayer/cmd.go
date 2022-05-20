@@ -190,20 +190,20 @@ func RelayTx(ctx *cli.Context) (err error) {
 		res, err := client.Do(req)
 		if err != nil {
 			fmt.Println(err)
-			return
+			return err
 		}
 		defer res.Body.Close()
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			fmt.Println(err)
-			return
+			return err
 		}
 		fmt.Println(string(body))
-		return
+		return nil
 	}
 	_, err = relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
-	return
+	return nil
 }
 
 func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex string, limit uint64, auto bool) (txslog map[string]string, err error) {
