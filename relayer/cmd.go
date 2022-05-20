@@ -251,7 +251,7 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 
 	if height == 0 {
 		log.Error("Failed to patch tx for height is invalid")
-		err = fmt.Errorf("Failed to patch tx for height is invalid", "hash", hash)
+		err = fmt.Errorf("Failed to patch tx for height is invalid, hash: %v", hash)
 		return
 	}
 
