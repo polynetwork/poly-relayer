@@ -184,6 +184,14 @@ func main() {
 						Usage: "submit will try to find the proper bin",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:  "httpservice",
+						Usage: "submit to local http service",
+					},
+					&cli.StringFlag{
+						Name:  "dstchain",
+						Usage: "submit poly to dstchain",
+					},
 				},
 			},
 			&cli.Command{
@@ -238,6 +246,10 @@ func main() {
 					&cli.StringFlag{
 						Name:  "host",
 						Usage: "http endpoint host",
+					},
+					&cli.BoolFlag{
+						Name:  "submit",
+						Usage: "enable http submit tx",
 					},
 				},
 			},
@@ -305,8 +317,8 @@ func main() {
 						Required: true,
 					},
 					&cli.StringFlag{
-						Name:     "account",
-						Usage:    "wallet account to update",
+						Name:  "account",
+						Usage: "wallet account to update",
 					},
 				},
 			},
@@ -344,7 +356,7 @@ func main() {
 						Usage: "chain id",
 					},
 					&cli.BoolFlag{
-						Name: "update",
+						Name:  "update",
 						Usage: "updating side chain or not",
 					},
 				},
@@ -359,8 +371,8 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:  "chain",
-						Usage: "chain id",
+						Name:     "chain",
+						Usage:    "chain id",
 						Required: true,
 					},
 				},
@@ -375,13 +387,13 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:  "chain",
-						Usage: "chain id",
+						Name:     "chain",
+						Usage:    "chain id",
 						Required: true,
 					},
 					&cli.StringFlag{
-						Name:  "keys",
-						Usage: "public keys seperated by ','",
+						Name:     "keys",
+						Usage:    "public keys seperated by ','",
 						Required: true,
 					},
 				},
@@ -449,12 +461,12 @@ func main() {
 						Usage: "chain name",
 					},
 					&cli.BoolFlag{
-						Name: "vote",
+						Name:  "vote",
 						Usage: "whether using votes",
 						Value: false,
 					},
 					&cli.BoolFlag{
-						Name: "update",
+						Name:  "update",
 						Usage: "updating side chain or not",
 					},
 				},
@@ -537,32 +549,33 @@ func start(c *cli.Context) error {
 
 func command(method string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		config.ENCRYPTED = c.Bool("encrypted")
-		conf, err := config.New(c.String("config"))
-		if err != nil {
-			log.Error("Failed to parse config file", "err", err)
-			os.Exit(2)
-		}
-		err = conf.Init()
-		if err != nil {
-			log.Error("Failed to initialize configuration", "err", err)
-			os.Exit(2)
-		}
-		// poly wallets
-		walletsPath := c.String("wallets")
-		if walletsPath != "" {
-			if conf.Poly.ExtraWallets == nil {
-				conf.Poly.ExtraWallets = new(wallet.Config)
-			}
-			conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
-			password, err := msg.ReadPassword("passphrase")
+		if !(method == relayer.RELAY_TX && c.Bool("httpservice")) {
+			config.ENCRYPTED = c.Bool("encrypted")
+			conf, err := config.New(c.String("config"))
 			if err != nil {
-				return err
+				log.Error("Failed to parse config file", "err", err)
+				os.Exit(2)
 			}
-			conf.Poly.ExtraWallets.Password = string(password)
+			err = conf.Init()
+			if err != nil {
+				log.Error("Failed to initialize configuration", "err", err)
+				os.Exit(2)
+			}
+			// poly wallets
+			walletsPath := c.String("wallets")
+			if walletsPath != "" {
+				if conf.Poly.ExtraWallets == nil {
+					conf.Poly.ExtraWallets = new(wallet.Config)
+				}
+				conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
+				password, err := msg.ReadPassword("passphrase")
+				if err != nil {
+					return err
+				}
+				conf.Poly.ExtraWallets.Password = string(password)
+			}
 		}
-
-		err = relayer.HandleCommand(method, c)
+		err := relayer.HandleCommand(method, c)
 		if err != nil {
 			log.Error("Failure", "command", method, "err", err)
 		} else {
