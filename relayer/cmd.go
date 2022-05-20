@@ -134,9 +134,26 @@ func RelayTx(ctx *cli.Context) (err error) {
 	limit := ctx.Uint64("limit")
 	price := ctx.String("price")
 	pricex := ctx.String("pricex")
-	url := ctx.String("url")
-	if url != "" {
-		// TODO, POST to http service
+	endpoint := ctx.String("url")
+	if endpoint != "" {
+		form := url.Values{}
+		for _, s := range []string{"height", "chain", "hash", "sender", "limit", "price", "pricex"} {
+			form.Set(s, ctx.String(s))
+		}
+		if free { form.Set("free", "true") }
+		req, err := http.NewRequest("POST", endpoint, strings.NewReader(form.Encode()))
+		if err != nil { return err }
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil { return err }
+		defer resp.Body.Close()
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		log.Info("Submitted request", "result", string(respBody))
+		return nil
 	}
 	return relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
 }
