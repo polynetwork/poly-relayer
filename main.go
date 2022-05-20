@@ -2,17 +2,18 @@ package main
 
 import (
 	"context"
-	"github.com/polynetwork/poly-relayer/msg"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer"
-	"github.com/urfave/cli/v2"
 )
 
 func main() {
