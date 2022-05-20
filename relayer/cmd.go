@@ -146,15 +146,15 @@ func RelayTx(ctx *cli.Context) (err error) {
 			fmt.Println("err: submit poly to dstchain, dstchain is nil")
 			return
 		}
-		params := make(map[string]interface{})
-		params["height"] = height
-		params["chain"] = chain
+		params := make(map[string]string)
+		params["height"] = fmt.Sprintf("%s", height)
+		params["chain"] = fmt.Sprintf("%s", chain)
 		params["hash"] = hash
-		params["free"] = free
+		params["free"] = fmt.Sprintf("%s", free)
 		params["sender"] = sender
-		params["limit"] = height
-		params["price"] = height
-		params["pricex"] = height
+		params["limit"] = fmt.Sprintf("%s", limit)
+		params["price"] = price
+		params["pricex"] = pricex
 		data, err := json.Marshal(params)
 		if err != nil {
 			fmt.Println(err)
@@ -244,7 +244,7 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 		height, err = listener.GetTxBlock(hash)
 		if err != nil {
 			log.Error("Failed to get tx block", "hash", hash)
-			err = fmt.Errorf("Failed to get tx block hash", "hash", hash, "err", err.Error())
+			err = fmt.Errorf("Failed to get tx block hash, hash: %v, err: %v", hash, err)
 			return
 		}
 	}
@@ -258,7 +258,7 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 	txs, err := listener.Scan(height)
 	if err != nil {
 		log.Error("Fetch block txs error", "height", height, "err", err)
-		err = fmt.Errorf("Fetch block txs error", "height", height, "err", err.Error())
+		err = fmt.Errorf("Fetch block txs error, height: %v, err: %v", height, err)
 		return
 	}
 
@@ -302,13 +302,13 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 				}
 				sub, err := ChainSubmitter(tx.DstChainId)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("Failed to init chain submitter, chain: %v, err: %v\n", tx.DstChainId, err.Error())
+					txslog[txHash] += fmt.Sprintf("Failed to init chain submitter, chain: %v, err: %v\n", tx.DstChainId, err)
 					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.ProcessTx(tx, ps.ComposeTx)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("Failed to process tx, chain: %v, err:%v\n", tx.DstChainId, err.Error())
+					txslog[txHash] += fmt.Sprintf("Failed to process tx, chain: %v, err:%v\n", tx.DstChainId, err)
 					log.Error("Failed to process tx", "chain", tx.DstChainId, "err", err)
 					continue
 				}
@@ -318,14 +318,14 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 				err = sub.SubmitTx(tx)
 				txslog[txHash] += fmt.Sprintf("Submtter patching poly tx, chain: %v ", tx.DstChainId)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("err: %v\n", err.Error())
+					txslog[txHash] += fmt.Sprintf("err: %v\n", err)
 				}
 				log.Info("Submtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
 			} else {
 				err = ps.ProcessTx(tx, listener)
 				txslog[txHash] += fmt.Sprintf("Submtter patching src tx, chain: %v\n", tx.SrcChainId)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("err: %v\n", err.Error())
+					txslog[txHash] += fmt.Sprintf("err: %v\n", err)
 				}
 				if tx.PolyHash == "" {
 					txslog[txHash] += "***Tx already imported to poly.***\n"

@@ -60,6 +60,7 @@ func (c *Controller) SubmitTx(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error("Decode RequestBody", "err", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	height, _ := strconv.Atoi(requestMap["height"])
 	chain, _ := strconv.Atoi(requestMap["chain"])
@@ -76,8 +77,9 @@ func (c *Controller) SubmitTx(w http.ResponseWriter, r *http.Request) {
 	} else {
 		var resp string
 		for k, v := range txlog {
-			resp += k + " : " + v + "\n"
+			resp += k + " :\n" + v + "\n"
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(resp))
 	}
 }
