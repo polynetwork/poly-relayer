@@ -18,9 +18,11 @@
 package relayer
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -58,17 +60,31 @@ const (
 	SKIP                 = "skip"
 	CHECK_SKIP           = "checkskip"
 	CREATE_ACCOUNT       = "createaccount"
+	UPDATE_ACCOUNT       = "updateaccount"
+	ENCRYPT_FILE         = "encryptfile"
+	DECRYPT_FILE         = "decryptfile"
 	CHECK_WALLET         = "wallet"
 	ADD_SIDECHAIN        = "addsidechain"
 	SYNC_GENESIS         = "syncgenesis"
+	CREATE_GENESIS       = "creategenesis"
+	SIGN_POLY_TX         = "signpolytx"
+	SEND_POLY_TX         = "sendpolytx"
 	APPROVE_SIDECHAIN    = "approvesidechain"
 	INIT_GENESIS         = "initgenesis"
 	SYNC_HEADER          = "syncheader"
 	GET_SIDE_CHAIN       = "getsidechain"
 	SCAN_POLY_TX         = "scanpolytx"
 	VALIDATE             = "validate"
+	VALIDATE_BLOCK       = "validateblock"
 	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
-	HTTP_SUBMIT          = "httpsubmit"
+)
+
+const (
+	MAIN_SUBMIT_HTTP  = "http://0.0.0.0:6502/api/v1/submit"
+	MATIC_SUBMIT_HTTP = "http://0.0.0.0:6503/api/v1/submit"
+	OK_SUBMIT_HTTP    = "http://0.0.0.0:6504/api/v1/submit"
+	ONT_SUBMIT_HTTP   = "http://0.0.0.0:6505/api/v1/submit"
+	PLT_SUBMIT_HTTP   = "http://0.0.0.0:6506/api/v1/submit"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -93,7 +109,6 @@ func init() {
 	_Handlers[SCAN_POLY_TX] = ScanPolyTxs
 	_Handlers[VALIDATE] = Validate
 	_Handlers[SET_VALIDATOR_HEIGHT] = SetTxValidatorHeight
-	_Handlers[HTTP_SUBMIT] = HttpSubmit
 }
 
 func CheckWallet(ctx *cli.Context) (err error) {
@@ -116,19 +131,92 @@ func CheckWallet(ctx *cli.Context) (err error) {
 func RelayTx(ctx *cli.Context) (err error) {
 	height := uint64(ctx.Int("height"))
 	chain := uint64(ctx.Int("chain"))
+	dstchain := uint64(ctx.Int("dstchain"))
 	hash := ctx.String("hash")
 	free := ctx.Bool("free")
 	sender := ctx.String("sender")
+	auto := ctx.Bool("auto")
+	limit := ctx.Uint64("limit")
+	price := ctx.String("price")
+	pricex := ctx.String("pricex")
+	httpservice := ctx.Bool("httpservice")
+
+	if httpservice {
+		if chain == base.POLY && dstchain == base.POLY {
+			fmt.Println("err: submit poly to dstchain, dstchain is nil")
+			return
+		}
+		params := make(map[string]interface{})
+		params["height"] = height
+		params["chain"] = chain
+		params["hash"] = hash
+		params["free"] = free
+		params["sender"] = sender
+		params["limit"] = height
+		params["price"] = height
+		params["pricex"] = height
+		data, err := json.Marshal(params)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		var selectChain uint64
+		if chain != base.POLY {
+			selectChain = chain
+		} else {
+			selectChain = dstchain
+		}
+		var requrl string
+		switch selectChain {
+		case base.MATIC:
+			requrl = MATIC_SUBMIT_HTTP
+		case base.OK:
+			requrl = OK_SUBMIT_HTTP
+		case base.ONT:
+			requrl = ONT_SUBMIT_HTTP
+		case base.PLT:
+			requrl = PLT_SUBMIT_HTTP
+		default:
+			requrl = MAIN_SUBMIT_HTTP
+		}
+
+		req, err := http.NewRequest("POST", requrl, bytes.NewBuffer(data))
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		req.Header.Add("Content-Type", "application/json")
+		client := &http.Client{}
+		res, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer res.Body.Close()
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(string(body))
+		return
+	}
+	_, err = relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
+	return
+}
+
+func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex string, limit uint64, auto bool) (txslog map[string]string, err error) {
 	params := &msg.Tx{
 		SkipCheckFee: free,
-		DstGasPrice:  ctx.String("price"),
-		DstGasPriceX: ctx.String("pricex"),
-		DstGasLimit:  uint64(ctx.Int("limit")),
+		DstGasPrice:  price,
+		DstGasPriceX: pricex,
+		DstGasLimit:  limit,
 	}
 	if len(sender) > 0 {
 		params.DstSender = sender
 	}
-	if ctx.Bool("auto") {
+	if auto {
 		params.SrcChainId = chain
 		if chain == base.POLY {
 			params.PolyHash = hash
@@ -138,11 +226,6 @@ func RelayTx(ctx *cli.Context) (err error) {
 		Relay(params)
 		return
 	}
-	_, err = relayTx(height, chain, hash, free, params)
-	return
-}
-
-func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txslog map[string]string, err error) {
 	txslog = make(map[string]string)
 	ps, err := PolySubmitter()
 	if err != nil {
@@ -175,7 +258,7 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 	txs, err := listener.Scan(height)
 	if err != nil {
 		log.Error("Fetch block txs error", "height", height, "err", err)
-		err = fmt.Errorf("Fetch block txs error", "height", height, "err", err)
+		err = fmt.Errorf("Fetch block txs error", "height", height, "err", err.Error())
 		return
 	}
 
@@ -187,7 +270,7 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 			txHash = tx.PolyHash
 		}
 		if hash == "" || util.LowerHex(hash) == util.LowerHex(txHash) {
-			txslog[txHash] += fmt.Sprintf("Found patch target tx hash: %v height: %v ", txHash, height)
+			txslog[txHash] += fmt.Sprintf("Found patch target tx hash: %v height: %v\n", txHash, height)
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
@@ -195,22 +278,22 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 					if bridge == nil {
 						bridge, err = Bridge()
 						if err != nil {
-							txslog[txHash] += fmt.Sprintf("Failed to init bridge sdk. ")
+							txslog[txHash] += "Failed to init bridge sdk\n"
 							log.Error("Failed to init bridge sdk")
 							continue
 						}
 					}
 					res, err := CheckFee(bridge, tx)
 					if err != nil {
-						txslog[txHash] += fmt.Sprintf("Failed to call check fee ")
+						txslog[txHash] += "Failed to call check fee\n"
 						log.Error("Failed to call check fee", "poly_hash", tx.PolyHash)
 						continue
 					}
 					if res.Pass() {
-						txslog[txHash] += fmt.Sprintf("Check fee pass ")
+						txslog[txHash] += "Check fee pass\n"
 						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
 					} else {
-						txslog[txHash] += fmt.Sprintf("Check fee failed ")
+						txslog[txHash] += "Check fee failed\n"
 						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
 						fmt.Println(util.Verbose(tx))
 						fmt.Println(res)
@@ -219,41 +302,42 @@ func relayTx(height, chain uint64, hash string, free bool, params *msg.Tx) (txsl
 				}
 				sub, err := ChainSubmitter(tx.DstChainId)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("Failed to init chain submitter, chain: %v, err: %v ", tx.DstChainId, err.Error())
+					txslog[txHash] += fmt.Sprintf("Failed to init chain submitter, chain: %v, err: %v\n", tx.DstChainId, err.Error())
 					log.Error("Failed to init chain submitter", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				err = sub.ProcessTx(tx, ps.ComposeTx)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("Failed to process tx, chain: %v, err:%v ", tx.DstChainId, err.Error())
+					txslog[txHash] += fmt.Sprintf("Failed to process tx, chain: %v, err:%v\n", tx.DstChainId, err.Error())
 					log.Error("Failed to process tx", "chain", tx.DstChainId, "err", err)
 					continue
 				}
 				if tx.DstHash == "" {
-					txslog[txHash] += fmt.Sprintf("***Tx already imported to dstchain.*** ")
+					txslog[txHash] += "***Tx already imported to dstchain.***\n"
 				}
 				err = sub.SubmitTx(tx)
 				txslog[txHash] += fmt.Sprintf("Submtter patching poly tx, chain: %v ", tx.DstChainId)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("err: %v ", err.Error())
+					txslog[txHash] += fmt.Sprintf("err: %v\n", err.Error())
 				}
 				log.Info("Submtter patching poly tx", "hash", txHash, "chain", tx.DstChainId, "err", err)
 			} else {
 				err = ps.ProcessTx(tx, listener)
-				txslog[txHash] += fmt.Sprintf("Submtter patching src tx, chain: %v ", tx.SrcChainId)
+				txslog[txHash] += fmt.Sprintf("Submtter patching src tx, chain: %v\n", tx.SrcChainId)
 				if err != nil {
-					txslog[txHash] += fmt.Sprintf("err: %v ", err.Error())
+					txslog[txHash] += fmt.Sprintf("err: %v\n", err.Error())
 				}
 				if tx.PolyHash == "" {
-					txslog[txHash] += fmt.Sprintf("***Tx already imported to poly.*** ")
+					txslog[txHash] += "***Tx already imported to poly.***\n"
 				}
 				log.Info("Submtter patching src tx", "hash", txHash, "chain", tx.SrcChainId, "err", err)
 			}
-			fmt.Println(util.Verbose(tx))
-			txslog[txHash] += fmt.Sprintf(util.Json(tx))
+			verboseTx := util.Verbose(tx)
+			fmt.Println(verboseTx)
+			txslog[txHash] += verboseTx
 			count++
 		} else {
-			txslog[txHash] += fmt.Sprintf("Found tx in block not targeted, height: %v ", height)
+			txslog[txHash] += fmt.Sprintf("Found tx in block not targeted, height: %v\n", height)
 			log.Info("Found tx in block not targeted", "hash", txHash, "height", height)
 		}
 	}

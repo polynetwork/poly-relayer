@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
@@ -50,6 +51,28 @@ func SetupController() (err error) {
 type Controller struct {
 	listener  *po.Listener
 	submitter *po.Submitter
+}
+
+func (c *Controller) SubmitTx(w http.ResponseWriter, r *http.Request) {
+	height, _ := strconv.Atoi(r.FormValue("height"))
+	chain, _ := strconv.Atoi(r.FormValue("chain"))
+	limit, _ := strconv.Atoi(r.FormValue("limit"))
+	hash := r.FormValue("hash")
+	sender := r.FormValue("sender")
+	price := r.FormValue("price")
+	pricex := r.FormValue("pricex")
+	free := r.FormValue("free") == "true"
+	txlog, err := relayTx(uint64(chain), uint64(height), hash, sender, free, price, pricex, uint64(limit), false)
+	if err != nil {
+		log.Error("Failed to compose dst tx", "err", err)
+		http.Error(w, "Failed to compose dst tx, err"+err.Error(), http.StatusInternalServerError)
+	} else {
+		var resp string
+		for k, v := range txlog {
+			resp += k + " : " + v + "\n"
+		}
+		w.Write([]byte(resp))
+	}
 }
 
 func (c *Controller) ComposeDstTx(w http.ResponseWriter, r *http.Request) {

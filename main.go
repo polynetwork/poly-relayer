@@ -159,6 +159,14 @@ func main() {
 						Usage: "submit will try to find the proper bin",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:  "httpservice",
+						Usage: "submit to local http service",
+					},
+					&cli.StringFlag{
+						Name:  "dstchain",
+						Usage: "submit poly to dstchain",
+					},
 				},
 			},
 			&cli.Command{
@@ -213,6 +221,10 @@ func main() {
 					&cli.StringFlag{
 						Name:  "host",
 						Usage: "http endpoint host",
+					},
+					&cli.BoolFlag{
+						Name:  "submit",
+						Usage: "enable http submit tx",
 					},
 				},
 			},
@@ -373,21 +385,6 @@ func main() {
 					&cli.StringFlag{
 						Name:  "ccm",
 						Usage: "ccm address",
-					},
-				},
-			},
-			&cli.Command{
-				Name:   relayer.HTTP_SUBMIT,
-				Usage:  "Run http_submit server",
-				Action: command(relayer.HTTP_SUBMIT),
-				Flags: []cli.Flag{
-					&cli.Int64Flag{
-						Name:  "port",
-						Usage: "http_submit endpoint port",
-					},
-					&cli.StringFlag{
-						Name:  "host",
-						Usage: "http_submit endpoint host",
 					},
 				},
 			},
