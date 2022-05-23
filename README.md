@@ -14,6 +14,8 @@ Reimplement poly relayer
 |O3       |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Palette  |plt  |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Harmony  |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|HSC      |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|Bytom    |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |Arbitrum |main |:x:|:x:|:white_check_mark:|
 |Xdai     |main |:x:|:x:|:white_check_mark:|
 |Optimism |main |:x:|:x:|:white_check_mark:|
@@ -22,7 +24,11 @@ Reimplement poly relayer
 |Metis    |main |:x:|:x:|:white_check_mark:|
 |Boba     |main |:x:|:x:|:white_check_mark:|
 |KCC      |main |:x:|:x:|:white_check_mark:|
-|HSC     |main |:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|Milkomeda|main |:x:|:x:|:white_check_mark:|
+|Cube     |main |:x:|:x:|:white_check_mark:|
+|Kava     |main |:x:|:x:|:white_check_mark:|
+
+
 
 ## TODOs
 - [x] metrics, height, height_diff, queue length
