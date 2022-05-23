@@ -29,6 +29,8 @@ import (
 	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
+
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 var (
@@ -84,6 +86,13 @@ func New(path string) (config *Config, err error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("Read config file error %v", err)
+	}
+	if ENCRYPTED {
+		passphrase, err := msg.ReadPassword("passphrase")
+		if err != nil {
+			return nil, err
+		}
+		data = msg.Decrypt(data, passphrase)
 	}
 	config = &Config{chains: map[uint64]bool{}}
 	err = json.Unmarshal(data, config)

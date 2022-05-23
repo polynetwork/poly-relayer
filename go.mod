@@ -13,5 +13,7 @@ require (
 	github.com/polynetwork/bridge-common v0.0.0-20220523024425-886a92360b94
 	github.com/polynetwork/poly v1.3.1
 	github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4
+	github.com/starcoinorg/starcoin-go v0.0.0-20220105024102-530daedc128b
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 )

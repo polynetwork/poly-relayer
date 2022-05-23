@@ -179,7 +179,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		return "", err
 	}
 	hash = tx.ToHexString()
-	_, err = s.sdk.Node().Confirm(hash, 0, 10)
+	_, err = s.sdk.Node().Confirm(hash, 0, 300)
 	if err == nil {
 		log.Info("Submitted header to poly", "chain", chainId, "hash", hash)
 	}

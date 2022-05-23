@@ -7,10 +7,13 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/poly-relayer/config"
-	"github.com/polynetwork/poly-relayer/relayer"
 	"github.com/urfave/cli/v2"
+
+	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/wallet"
+	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer"
 )
 
 func main() {
@@ -24,6 +27,9 @@ func main() {
 				Value: "config.json",
 				Usage: "configuration file",
 			},
+			&cli.BoolFlag{
+				Name: "encrypted",
+			},
 			&cli.StringFlag{
 				Name:  "roles",
 				Value: "roles.json",
@@ -33,6 +39,11 @@ func main() {
 				Name:  "wallet",
 				Value: "",
 				Usage: "wallet path",
+			},
+			&cli.StringFlag{
+				Name:  "wallets",
+				Value: "",
+				Usage: "poly wallets path",
 			},
 		},
 		Before: Init,
@@ -87,6 +98,21 @@ func main() {
 				Name:   relayer.VALIDATE,
 				Usage:  "Validate txs",
 				Action: command(relayer.VALIDATE),
+			},
+			&cli.Command{
+				Name:   relayer.VALIDATE_BLOCK,
+				Usage:  "Validate txs in block",
+				Action: command(relayer.VALIDATE_BLOCK),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target poly height",
+					},
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+				},
 			},
 			&cli.Command{
 				Name:   relayer.SET_VALIDATOR_HEIGHT,
@@ -159,13 +185,9 @@ func main() {
 						Usage: "submit will try to find the proper bin",
 						Value: false,
 					},
-					&cli.BoolFlag{
-						Name:  "httpservice",
-						Usage: "submit to local http service",
-					},
 					&cli.StringFlag{
-						Name:  "dstchain",
-						Usage: "submit poly to dstchain",
+						Name:  "url",
+						Usage: "submit to local http service",
 					},
 				},
 			},
@@ -279,9 +301,45 @@ func main() {
 						Usage:    "wallet path",
 						Required: true,
 					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.UPDATE_ACCOUNT,
+				Usage:  "Update keystore accounts with new passphrase",
+				Action: command(relayer.UPDATE_ACCOUNT),
+				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "pass",
-						Usage: "wallet password",
+						Name:     "path",
+						Usage:    "wallet path",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "account",
+						Usage: "wallet account to update",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.ENCRYPT_FILE,
+				Usage:  "Encrypt a single file with passphrase",
+				Action: command(relayer.ENCRYPT_FILE),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "file",
+						Usage:    "file path",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.DECRYPT_FILE,
+				Usage:  "Decrypt a single file with passphrase",
+				Action: command(relayer.DECRYPT_FILE),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "file",
+						Usage:    "file path",
+						Required: true,
 					},
 				},
 			},
@@ -293,6 +351,10 @@ func main() {
 					&cli.Int64Flag{
 						Name:  "chain",
 						Usage: "chain id",
+					},
+					&cli.BoolFlag{
+						Name:  "update",
+						Usage: "updating side chain or not",
 					},
 				},
 			},
@@ -306,8 +368,52 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:  "chain",
-						Usage: "chain id",
+						Name:     "chain",
+						Usage:    "chain id",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.CREATE_GENESIS,
+				Usage:  "Create raw tx to sync side chain genesis ",
+				Action: command(relayer.CREATE_GENESIS),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target block height",
+					},
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "chain id",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "keys",
+						Usage:    "public keys seperated by ','",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.SIGN_POLY_TX,
+				Usage:  "Sign raw poly multi-sig tx",
+				Action: command(relayer.SIGN_POLY_TX),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "tx",
+						Usage: "raw tx hex or path to hex file",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.SEND_POLY_TX,
+				Usage:  "Send poly multi-sig tx",
+				Action: command(relayer.SEND_POLY_TX),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "tx",
+						Usage: "raw tx hex for path to hex file",
 					},
 				},
 			},
@@ -356,6 +462,10 @@ func main() {
 						Usage: "whether using votes",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:  "update",
+						Usage: "updating side chain or not",
+					},
 				},
 			},
 			&cli.Command{
@@ -398,6 +508,7 @@ func main() {
 }
 
 func start(c *cli.Context) error {
+	config.ENCRYPTED = c.Bool("encrypted")
 	config, err := config.New(c.String("config"))
 	if err != nil {
 		log.Error("Failed to parse config file", "err", err)
@@ -435,17 +546,33 @@ func start(c *cli.Context) error {
 
 func command(method string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		config, err := config.New(c.String("config"))
-		if err != nil {
-			log.Error("Failed to parse config file", "err", err)
-			os.Exit(2)
+		if !(method == relayer.RELAY_TX && c.String("url") != "") {
+			config.ENCRYPTED = c.Bool("encrypted")
+			conf, err := config.New(c.String("config"))
+			if err != nil {
+				log.Error("Failed to parse config file", "err", err)
+				os.Exit(2)
+			}
+			err = conf.Init()
+			if err != nil {
+				log.Error("Failed to initialize configuration", "err", err)
+				os.Exit(2)
+			}
+			// poly wallets
+			walletsPath := c.String("wallets")
+			if walletsPath != "" {
+				if conf.Poly.ExtraWallets == nil {
+					conf.Poly.ExtraWallets = new(wallet.Config)
+				}
+				conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
+				password, err := msg.ReadPassword("passphrase")
+				if err != nil {
+					return err
+				}
+				conf.Poly.ExtraWallets.Password = string(password)
+			}
 		}
-		err = config.Init()
-		if err != nil {
-			log.Error("Failed to initialize configuration", "err", err)
-			os.Exit(2)
-		}
-		err = relayer.HandleCommand(method, c)
+		err := relayer.HandleCommand(method, c)
 		if err != nil {
 			log.Error("Failure", "command", method, "err", err)
 		} else {

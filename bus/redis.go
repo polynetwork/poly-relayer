@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 )
 
@@ -39,6 +40,10 @@ func (c *RedisConn) Create() (interface{}, error) {
 }
 
 func New(options *redis.Options) *redis.Client {
+	if options.Addr == "" {
+		log.Warn("Skipping redis connection for missing url")
+		return nil
+	}
 	c, _ := util.Single(&RedisConn{
 		options: options,
 	})

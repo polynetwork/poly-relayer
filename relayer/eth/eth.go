@@ -78,13 +78,13 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		return nil
 	}
 	if tx.CheckFeeStatus != bridge.FREE && !tx.SkipFee() {
-		needGasPrice,needGasLimit, err := s.wallet.EstimateGas(s.ccm, tx.DstData)
+		needGasPrice, needGasLimit, err := s.wallet.EstimateGas(s.ccm, tx.DstData)
 		if err != nil {
 			log.Info("err get EstimateGas", "tx.PolyHash", tx.PolyHash)
 			return fmt.Errorf("get EstimateGas err")
 		}
 		paidGas := uint64(tx.PaidGas)
-		needGas := new(big.Int).Mul(needGasPrice,new(big.Int).SetUint64(needGasLimit)).Uint64()
+		needGas := new(big.Int).Mul(needGasPrice, new(big.Int).SetUint64(needGasLimit)).Uint64()
 		if paidGas < needGas {
 			log.Info("err checkgas", "paidGas", paidGas, "needGas", needGas, "tx.PolyHash", tx.PolyHash)
 			return fmt.Errorf("checkgas err")
@@ -309,7 +309,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM, base.RINKEBY, base.BOBA, base.OASIS,
 				base.KAVA, base.CUBE:
 				tsp = time.Now().Unix() + 60*25
-			case base.BSC, base.HECO, base.OK, base.PIXIE, base.HSC, base.BYTOM, base.KCC:
+			case base.BSC, base.HECO, base.OK, base.PIXIE, base.HSC, base.BYTOM, base.KCC, base.MILKO:
 				tsp = time.Now().Unix() + 60*4
 			case base.ETH:
 				tsp = time.Now().Unix() + 60*6

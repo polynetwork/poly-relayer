@@ -96,13 +96,16 @@ func GetListener(chain uint64) (listener IChainListener) {
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA,
-	base.METIS, base.RINKEBY, base.BOBA, base.PIXIE, base.OASIS, base.HSC, base.BYTOM, base.HARMONY, base.ONTEVM, base.KCC:
+		base.METIS, base.RINKEBY, base.BOBA, base.PIXIE, base.OASIS, base.HSC, base.BYTOM, base.HARMONY, base.ONTEVM, base.KCC:
 		submitter = new(eth.Submitter)
 	case base.NEO:
 		submitter = new(neo.Submitter)
 	case base.ONT:
 		submitter = new(ont.Submitter)
 	default:
+		if base.SameAsETH(chain) {
+			return new(eth.Submitter)
+		}
 	}
 	return
 }
@@ -121,7 +124,7 @@ func PolyListener() (l *po.Listener, err error) {
 
 func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if chain == base.ONT {
-		sub = new(eth.Submitter)
+		sub = new(ont.Submitter)
 	} else if chain == base.NEO {
 		sub = new(neo.Submitter)
 	} else {
@@ -140,7 +143,6 @@ func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if conf == nil || conf.PolyTxCommit == nil {
 		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
 	}
-	conf.PolyTxCommit.SubmitterConfig.Wallet = nil
 	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
 	return
 }
