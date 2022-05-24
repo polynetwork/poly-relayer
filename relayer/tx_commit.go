@@ -68,7 +68,7 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 		return fmt.Errorf("Unabled to create submitter for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
-	err = h.submitter.Init(h.config.SubmitterConfig)
+	err = h.submitter.Init(h.config)
 	if err != nil {
 		return
 	}
@@ -228,7 +228,7 @@ LOOP:
 				if tx.SkipFee() {
 					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
 					b.ch <- tx
-				} else if tx.CheckFeeStatus == bridge.FREE{
+				} else if tx.CheckFeeStatus == bridge.FREE {
 					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
 					b.ch <- tx
 				} else {

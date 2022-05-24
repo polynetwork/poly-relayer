@@ -29,19 +29,21 @@ import (
 
 type Submitter struct {
 	context.Context
-	wg     *sync.WaitGroup
-	config *config.SubmitterConfig
-	sdk    *eth.SDK
-	name   string
-	ccd    common.Address
-	ccm    common.Address
-	abi    abi.ABI
-	wallet wallet.IWallet
+	wg       *sync.WaitGroup
+	config   *config.SubmitterConfig
+	sdk      *eth.SDK
+	name     string
+	ccd      common.Address
+	ccm      common.Address
+	abi      abi.ABI
+	wallet   wallet.IWallet
+	checkFee bool
 	// eccd   *eccd_abi.EthCrossChainData
 }
 
-func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
-	s.config = config
+func (s *Submitter) Init(config *config.PolyTxCommitConfig) (err error) {
+	s.config = config.SubmitterConfig
+	s.checkFee = config.CheckFee
 	s.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err != nil {
 		return
@@ -77,7 +79,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	if len(tx.DstData) == 0 {
 		return nil
 	}
-	if tx.CheckFeeStatus != bridge.FREE && !tx.SkipFee() {
+	if tx.CheckFeeStatus != bridge.FREE && !tx.SkipFee() && s.checkFee {
 		needGasPrice, needGasLimit, err := s.wallet.EstimateGas(s.ccm, tx.DstData)
 		if err != nil {
 			log.Info("err get EstimateGas", "tx.PolyHash", tx.PolyHash)
