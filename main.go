@@ -546,7 +546,16 @@ func start(c *cli.Context) error {
 
 func command(method string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		if !(method == relayer.RELAY_TX && c.String("url") != "") {
+		readConf := true
+		switch method {
+		case relayer.RELAY_TX:
+			if c.String("url") != "" {
+				readConf = false
+			}
+		case relayer.ENCRYPT_FILE, relayer.DECRYPT_FILE, relayer.CREATE_ACCOUNT, relayer.UPDATE_ACCOUNT:
+			readConf = false
+		}
+		if readConf {
 			config.ENCRYPTED = c.Bool("encrypted")
 			conf, err := config.New(c.String("config"))
 			if err != nil {
