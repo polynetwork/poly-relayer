@@ -60,7 +60,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	l.ccm = common.HexToAddress(config.CCMContract).String()
 	l.ccd = common.HexToAddress(config.CCDContract).String()
 	l.poly = poly
-	l.sdk, err = ontevm.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	l.sdk, err = ontevm.WithOptions(config.ChainId, config.ExtraNodes, time.Minute, 1)
 	if err != nil {
 		return fmt.Errorf("ontevm.WithOptions err:%v", err)
 	}
