@@ -34,6 +34,19 @@ func main() {
 				Name: "plain",
 			},
 			&cli.StringFlag{
+				Name:  "log",
+				Value: "",
+				Usage: "log file path, use stdout when unspecified",
+			},
+			&cli.UintFlag{
+				Name:  "logmaxsize",
+				Usage: "max log file size in MB, wont split log file when unspecified",
+			},
+			&cli.UintFlag{
+				Name:  "logmaxfiles",
+				Usage: "max log files to keep, wont remove old logs when unspecified",
+			},
+			&cli.StringFlag{
 				Name:  "roles",
 				Value: "roles.json",
 				Usage: "roles configuration file",
@@ -599,6 +612,10 @@ func Init(ctx *cli.Context) (err error) {
 	config.ENCRYPTED = ctx.Bool("encrypted")
 	config.PLAIN = ctx.Bool("plain")
 
-	log.Init()
+	log.Init(&log.LogConfig{
+		Path: ctx.String("log"),
+		MaxFiles: ctx.Uint("logmaxfiles"),
+		MaxSize: ctx.Uint("logmaxsize")})
+
 	return
 }
