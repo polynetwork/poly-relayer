@@ -29,6 +29,9 @@ func main() {
 			&cli.BoolFlag{
 				Name: "encrypted",
 			},
+			&cli.BoolFlag{
+				Name: "plain",
+			},
 			&cli.StringFlag{
 				Name:  "roles",
 				Value: "roles.json",
@@ -503,7 +506,6 @@ func main() {
 }
 
 func start(c *cli.Context) error {
-	config.ENCRYPTED = c.Bool("encrypted")
 	config, err := config.New(c.String("config"))
 	if err != nil {
 		log.Error("Failed to parse config file", "err", err)
@@ -551,7 +553,6 @@ func command(method string) func(*cli.Context) error {
 			readConf = false
 		}
 		if readConf {
-			config.ENCRYPTED = c.Bool("encrypted")
 			conf, err := config.New(c.String("config"))
 			if err != nil {
 				log.Error("Failed to parse config file", "err", err)
@@ -590,6 +591,8 @@ func Init(ctx *cli.Context) (err error) {
 	// Set wallet path
 	config.WALLET_PATH = ctx.String("wallet")
 	config.CONFIG_PATH = ctx.String("config")
+	config.ENCRYPTED = ctx.Bool("encrypted")
+	config.PLAIN = ctx.Bool("plain")
 
 	log.Init()
 	return
