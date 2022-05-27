@@ -38,6 +38,7 @@ var (
 	WALLET_PATH string
 	CONFIG_PATH string
 	ENCRYPTED   bool
+	PLAIN       bool
 )
 
 type Config struct {
@@ -83,7 +84,12 @@ func New(path string) (config *Config, err error) {
 		return nil, fmt.Errorf("Read config file error %v", err)
 	}
 	if ENCRYPTED {
-		passphrase, err := msg.ReadPassword("passphrase")
+		var passphrase []byte
+		if PLAIN {
+			passphrase, err = msg.ReadInput("passphrase")
+		} else {
+			passphrase, err = msg.ReadPassword("passphrase")
+		}
 		if err != nil { return nil, err }
 		data = msg.Decrypt(data, passphrase)
 	}

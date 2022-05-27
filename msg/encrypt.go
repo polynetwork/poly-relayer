@@ -27,6 +27,12 @@ import (
 	"syscall"
 )
 
+func ReadInput(name string) ([]byte, error) {
+	var input string
+	_, err := fmt.Scanln(&input)
+	return []byte(input), err
+}
+
 func ReadPassword(name string) ([]byte, error) {
 	fmt.Printf("Enter %s: \n", name)
 	passphrase, err := term.ReadPassword(int(syscall.Stdin))
