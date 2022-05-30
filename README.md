@@ -40,7 +40,8 @@ Reimplement poly relayer
 - [x] bridge check fee
 - [x] cross chain transaction patching
 - [x] cross chain transaction validation
-
+- [x] log rotation
+- [x] encrypt configuration file
 
 
 ## Docs

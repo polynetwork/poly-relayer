@@ -658,6 +658,8 @@ github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6J
 github.com/pkg/term v0.0.0-20180730021639-bffc007b7fd5/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/polynetwork/bridge-common v0.0.30-alpha h1:DkaoLmXbfYpt1ns7OOPCH2E4aTcnRuLwYvX7WlpWYjs=
+github.com/polynetwork/bridge-common v0.0.30-alpha/go.mod h1:R1qfoyHaPGPOkLwCmCovaseTtqUKndnzXurVAVK0xl8=
 github.com/polynetwork/bridge-common v0.0.30 h1:VH+NHp7zGfkPCaTrgBClWaiqCU0TLpkNqmwuWbXogHs=
 github.com/polynetwork/bridge-common v0.0.30/go.mod h1:R1qfoyHaPGPOkLwCmCovaseTtqUKndnzXurVAVK0xl8=
 github.com/polynetwork/btc-vendor-tools v0.0.0-20200813091748-3b19a5fd7666/go.mod h1:U8rR9X6vemlkBAJWfvzwSoalcJjX8B2aQjB0kPRhBUA=
