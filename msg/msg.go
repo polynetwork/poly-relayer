@@ -98,6 +98,12 @@ type Tx struct {
 	DstAsset                string                `json:"-"`
 	DstAmount               *big.Int              `json:"-"`
 
+	Subject      []byte   `json:",omitempty"`
+	SigStorage   []byte   `json:",omitempty"`
+	Sigs         [][]byte `json:",omitempty"`
+	Signers      [][]byte `json:",omitempty"`
+	ResourcePath string   `json:",omitempty"`
+
 	Extra interface{} `json:"-"`
 }
 

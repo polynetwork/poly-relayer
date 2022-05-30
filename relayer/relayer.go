@@ -31,6 +31,7 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
+	"github.com/polynetwork/poly-relayer/relayer/flow"
 	"github.com/polynetwork/poly-relayer/relayer/harmony"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
 	"github.com/polynetwork/poly-relayer/relayer/neo"
@@ -102,6 +103,9 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(neo.Submitter)
 	case base.ONT:
 		submitter = new(ont.Submitter)
+	case base.FLOW:
+		submitter = new(flow.Submitter)
+
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Submitter)

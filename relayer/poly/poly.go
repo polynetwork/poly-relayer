@@ -212,7 +212,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	case base.NEO, base.ONT:
 		account = s.signer.Address[:]
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
-			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
+			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %d with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
 		}
 	default:
 		// For other chains, reversed?
@@ -248,7 +248,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 
 func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.SrcComposer) (err error) {
 	if m.Type() != msg.SRC {
-		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
+		return fmt.Errorf("%s desired message is not poly tx %v", s.name, m.Type())
 	}
 	s.composer = composer
 	return s.submit(m)
