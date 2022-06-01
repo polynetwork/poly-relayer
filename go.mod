@@ -10,9 +10,11 @@ require (
 	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.0.9
 	github.com/ontio/ontology-go-sdk v1.11.4
-	github.com/polynetwork/bridge-common v0.0.28-delta
+	github.com/polynetwork/bridge-common v1.111.1-main
 	github.com/polynetwork/poly v1.3.1
 	github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4
 	github.com/starcoinorg/starcoin-go v0.0.0-20220105024102-530daedc128b
 	github.com/urfave/cli/v2 v2.3.0
 )
+
+replace github.com/polynetwork/bridge-common v1.111.1-main => github.com/rain-zxn/bridge-common v0.0.21-0.20220601170721-b0f2adf01240

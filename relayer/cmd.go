@@ -37,7 +37,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 
 	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/chains/bridge"
+	common_bridge "github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/tools"
@@ -170,7 +170,7 @@ func RelayTx(ctx *cli.Context) (err error) {
 	}
 
 	count := 0
-	var bridge *bridge.SDK
+	var bridge *common_bridge.SDK
 	for _, tx := range txs {
 		txHash := tx.SrcHash
 		if chain == base.POLY {
@@ -195,6 +195,8 @@ func RelayTx(ctx *cli.Context) (err error) {
 					}
 					if res.Pass() {
 						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
+					} else if res.EstimatePay() {
+						log.Info("Check fee EstimatePay", "poly_hash", tx.PolyHash)
 					} else {
 						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
 						fmt.Println(util.Verbose(tx))
