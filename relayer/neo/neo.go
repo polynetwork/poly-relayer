@@ -49,18 +49,20 @@ const (
 
 type Submitter struct {
 	context.Context
-	wg     *sync.WaitGroup
-	config *config.SubmitterConfig
-	sdk    *neo.SDK
-	name   string
-	ccd    string
-	ccm    string
-	polyId uint64
-	wallet *wallet.NeoWallet
+	wg       *sync.WaitGroup
+	config   *config.SubmitterConfig
+	sdk      *neo.SDK
+	name     string
+	ccd      string
+	ccm      string
+	polyId   uint64
+	wallet   *wallet.NeoWallet
+	checkFee bool
 }
 
-func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
-	s.config = config
+func (s *Submitter) Init(config *config.PolyTxCommitConfig) (err error) {
+	s.config = config.SubmitterConfig
+	s.checkFee = config.CheckFee
 	s.sdk, err = neo.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err != nil {
 		return

@@ -63,7 +63,7 @@ type Handler interface {
 }
 
 type IChainSubmitter interface {
-	Init(*config.SubmitterConfig) error
+	Init(*config.PolyTxCommitConfig) error
 	Submit(msg.Message) error
 	Hook(context.Context, *sync.WaitGroup, <-chan msg.Message) error
 	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
@@ -147,7 +147,7 @@ func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if conf == nil || conf.PolyTxCommit == nil {
 		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
 	}
-	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
+	err = sub.Init(conf.PolyTxCommit)
 	return
 }
 
@@ -161,7 +161,7 @@ func ChainSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if conf == nil || conf.PolyTxCommit == nil {
 		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
 	}
-	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
+	err = sub.Init(conf.PolyTxCommit)
 	return
 }
 

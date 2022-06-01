@@ -68,7 +68,7 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 		return fmt.Errorf("Unabled to create submitter for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
-	err = h.submitter.Init(h.config.SubmitterConfig)
+	err = h.submitter.Init(h.config)
 	if err != nil {
 		return
 	}
@@ -148,6 +148,7 @@ func (b *CommitFilter) Pop(ctx context.Context) (tx *msg.Tx, err error) {
 func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	// Check fee here:
 	// Pass -> send to submitter
+	// EstimatePay -> send to submitter
 	// NotPass -> send to delay queue
 	// Missing -> send to delay queue
 	state := map[string]*bridge.CheckFeeRequest{}
@@ -166,16 +167,22 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	for _, tx := range txs {
 		feeMin := float32(0)
 		feePaid := float32(0)
+		paidGas := float64(0)
 		check := state[tx.PolyHash]
 		if check != nil {
 			tx.CheckFeeStatus = state[tx.PolyHash].Status
 			feeMin = float32(check.Min)
 			feePaid = float32(check.Paid)
+			paidGas = float64(check.PaidGas)
+			tx.PaidGas = paidGas
 		}
 
 		if check.Pass() {
 			b.ch <- tx
 			log.Info("CheckFee pass", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+		} else if check.EstimatePay() {
+			b.ch <- tx
+			log.Info("CheckFee EstimatePay", "poly_hash", tx.PolyHash, "paidGas", paidGas, "min", feeMin, "paid", feePaid)
 		} else if check.Skip() {
 			log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
 		} else if check.Missing() {
@@ -226,6 +233,8 @@ LOOP:
 					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
 					b.ch <- tx
 				} else if tx.CheckFeeStatus == bridge.PAID {
+					b.ch <- tx
+				} else if tx.CheckFeeStatus == bridge.EstimatePay {
 					b.ch <- tx
 				} else {
 					txs = append(txs, tx)
