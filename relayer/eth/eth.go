@@ -93,6 +93,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			return fmt.Errorf("checkgas err")
 		}
 		tx.CheckFeeStatus = bridge.PAID
+		log.Info("tx checkgas", "paidGas", paidGas, "needGas", needGas, "tx.PolyHash", tx.PolyHash)
 	}
 	var (
 		gasPrice  *big.Int
