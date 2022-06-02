@@ -37,7 +37,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 
 	"github.com/polynetwork/bridge-common/base"
-	common_bridge "github.com/polynetwork/bridge-common/chains/bridge"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/tools"
@@ -49,31 +49,31 @@ import (
 )
 
 const (
-	SET_HEADER_HEIGHT    = "setheaderblock"
-	SET_TX_HEIGHT        = "settxblock"
-	RELAY_TX             = "submit"
-	STATUS               = "status"
-	HTTP                 = "http"
-	PATCH                = "patch"
-	SKIP                 = "skip"
-	CHECK_SKIP           = "checkskip"
-	CREATE_ACCOUNT       = "createaccount"
-	UPDATE_ACCOUNT       = "updateaccount"
-	ENCRYPT_FILE         = "encryptfile"
-	DECRYPT_FILE         = "decryptfile"
-	CHECK_WALLET         = "wallet"
-	ADD_SIDECHAIN        = "addsidechain"
-	SYNC_GENESIS         = "syncgenesis"
-	CREATE_GENESIS       = "creategenesis"
-	SIGN_POLY_TX         = "signpolytx"
-	SEND_POLY_TX         = "sendpolytx"
-	APPROVE_SIDECHAIN    = "approvesidechain"
-	INIT_GENESIS         = "initgenesis"
-	SYNC_HEADER          = "syncheader"
-	GET_SIDE_CHAIN       = "getsidechain"
-	SCAN_POLY_TX         = "scanpolytx"
-	VALIDATE             = "validate"
-	VALIDATE_BLOCK       = "validateblock"
+	SET_HEADER_HEIGHT = "setheaderblock"
+	SET_TX_HEIGHT     = "settxblock"
+	RELAY_TX          = "submit"
+	STATUS            = "status"
+	HTTP              = "http"
+	PATCH             = "patch"
+	SKIP              = "skip"
+	CHECK_SKIP        = "checkskip"
+	CREATE_ACCOUNT    = "createaccount"
+	UPDATE_ACCOUNT    = "updateaccount"
+	ENCRYPT_FILE      = "encryptfile"
+	DECRYPT_FILE      = "decryptfile"
+	CHECK_WALLET      = "wallet"
+	ADD_SIDECHAIN     = "addsidechain"
+	SYNC_GENESIS      = "syncgenesis"
+	CREATE_GENESIS    = "creategenesis"
+	SIGN_POLY_TX   	  = "signpolytx"
+	SEND_POLY_TX      = "sendpolytx"
+	APPROVE_SIDECHAIN = "approvesidechain"
+	INIT_GENESIS      = "initgenesis"
+	SYNC_HEADER       = "syncheader"
+	GET_SIDE_CHAIN    = "getsidechain"
+	SCAN_POLY_TX      = "scanpolytx"
+	VALIDATE          = "validate"
+	VALIDATE_BLOCK    = "validateblock"
 	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
 )
 
@@ -141,19 +141,13 @@ func RelayTx(ctx *cli.Context) (err error) {
 		for _, s := range []string{"height", "chain", "hash", "sender", "limit", "price", "pricex"} {
 			form.Set(s, ctx.String(s))
 		}
-		if free {
-			form.Set("free", "true")
-		}
+		if free { form.Set("free", "true") }
 		req, err := http.NewRequest("POST", endpoint, strings.NewReader(form.Encode()))
-		if err != nil {
-			return err
-		}
+		if err != nil { return err }
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		client := &http.Client{}
 		resp, err := client.Do(req)
-		if err != nil {
-			return err
-		}
+		if err != nil { return err }
 		defer resp.Body.Close()
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -162,10 +156,11 @@ func RelayTx(ctx *cli.Context) (err error) {
 		log.Info("Submitted request", "result", string(respBody))
 		return nil
 	}
-	return relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
+	_, err = relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
+	return
 }
 
-func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex string, limit uint64, auto bool) (err error) {
+func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex string, limit uint64, auto bool) (targetTxs []*msg.Tx, err error) {
 	params := &msg.Tx{
 		SkipCheckFee: free,
 		DstGasPrice:  price,
@@ -219,7 +214,7 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 	}
 
 	count := 0
-	var bridge *common_bridge.SDK
+	var bridge *bridge.SDK
 	for _, tx := range txs {
 		txHash := tx.SrcHash
 		if chain == base.POLY {
@@ -227,6 +222,7 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 		}
 		if hash == "" || util.LowerHex(hash) == util.LowerHex(txHash) {
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
+			targetTxs = append(targetTxs, tx)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
 				if !free {
@@ -244,6 +240,8 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 					}
 					if res.Pass() {
 						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
+					} else if res.PaidLimit() {
+						log.Info("Check fee got paid with limit", "poly_hash", tx.PolyHash)
 					} else {
 						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
 						fmt.Println(util.Verbose(tx))
@@ -417,13 +415,9 @@ func HandleCommand(method string, ctx *cli.Context) error {
 func UpdateAccount(ctx *cli.Context) (err error) {
 	path := ctx.String("path")
 	pass, err := msg.ReadPassword("passphrase")
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	newPass, err := msg.ReadPassword("new passphrase")
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	password := string(pass)
 	newPassword := string(newPass)
 	if path == "" {
@@ -455,9 +449,7 @@ func CreateAccount(ctx *cli.Context) (err error) {
 		return
 	}
 	pass, err := msg.ReadPassword("passphrase")
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
 	account, err := ks.NewAccount(string(pass))
 	if err != nil {
@@ -482,13 +474,9 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 	chain := ctx.Uint64("chain")
 	start := ctx.Uint64("height")
 	lis, err := PolyListener()
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	sub, err := PolySubmitter()
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	for {
 		txs, err := lis.Scan(start)
 		if err != nil {
@@ -523,9 +511,7 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 	height := ctx.Uint64("height")
 	chain := ctx.Uint64("chain")
 	pl, err := PolyListener()
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	getListener := func(id uint64) *eth.Listener {
 		if !base.SameAsETH(id) {
 			log.Error("Unsupported chain", "chain", id)
@@ -550,9 +536,7 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 			log.Fatal("Failed to validate this block")
 		}
 		txs, err := lis.ScanDst(height)
-		if err != nil {
-			return err
-		}
+		if err != nil { return err }
 		for i, tx := range txs {
 			err = pl.Validate(tx)
 			log.Info("Validating tx", "index", i, "err", err)
@@ -561,9 +545,7 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 		return nil
 	}
 	txs, err := pl.ScanDst(height)
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	for i, tx := range txs {
 		lis := getListener(tx.SrcChainId)
 		if lis == nil {
@@ -579,9 +561,7 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 
 func Validate(ctx *cli.Context) (err error) {
 	pl, err := PolyListener()
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	listeners := make(map[uint64]*eth.Listener)
 
 	setup := func(chains []uint64) []uint64 {
@@ -638,7 +618,7 @@ func Validate(ctx *cli.Context) (err error) {
 			log.Fatal("Start validator failure", "chain", 0, "err", err)
 		}
 	}
-	<-make(chan bool)
+	<- make(chan bool)
 	return
 }
 
@@ -715,3 +695,4 @@ func Dial(target, content string) error {
 	log.Info("Dail success", "to", target, "content", content, "data", string(data))
 	return nil
 }
+

@@ -18,37 +18,29 @@
 package relayer
 
 import (
-	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/urfave/cli/v2"
 	"io/ioutil"
+	"github.com/urfave/cli/v2"
+	"github.com/polynetwork/poly-relayer/msg"
 )
 
 func EncryptFile(ctx *cli.Context) (err error) {
 	file := ctx.String("file")
 	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	pass, err := msg.ReadPassword("passphrase")
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	cipherData := msg.Encrypt(data, []byte(pass))
-	err = ioutil.WriteFile(file+".encrypted", cipherData, 0644)
+	err = ioutil.WriteFile(file + ".encrypted", cipherData, 0644)
 	return
 }
 
 func DecryptFile(ctx *cli.Context) (err error) {
 	file := ctx.String("file")
 	cipherData, err := ioutil.ReadFile(file)
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	pass, err := msg.ReadPassword("passphrase")
-	if err != nil {
-		return
-	}
+	if err != nil { return }
 	data := msg.Decrypt(cipherData, []byte(pass))
-	err = ioutil.WriteFile(file+".decrypted", data, 0644)
+	err = ioutil.WriteFile(file + ".decrypted", data, 0644)
 	return
 }

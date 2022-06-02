@@ -30,6 +30,22 @@ func main() {
 			&cli.BoolFlag{
 				Name: "encrypted",
 			},
+			&cli.BoolFlag{
+				Name: "plain",
+			},
+			&cli.StringFlag{
+				Name:  "log",
+				Value: "",
+				Usage: "log file path, use stdout when unspecified",
+			},
+			&cli.UintFlag{
+				Name:  "logmaxsize",
+				Usage: "max log file size in MB, wont split log file when unspecified",
+			},
+			&cli.UintFlag{
+				Name:  "logmaxfiles",
+				Usage: "max log files to keep, wont remove old logs when unspecified",
+			},
 			&cli.StringFlag{
 				Name:  "roles",
 				Value: "roles.json",
@@ -186,7 +202,7 @@ func main() {
 						Value: false,
 					},
 					&cli.StringFlag{
-						Name:  "url",
+						Name: "url",
 						Usage: "submit to local http service",
 					},
 				},
@@ -245,7 +261,7 @@ func main() {
 						Usage: "http endpoint host",
 					},
 					&cli.BoolFlag{
-						Name:  "submit",
+						Name: "submit",
 						Usage: "enable http submit tx",
 					},
 				},
@@ -314,8 +330,8 @@ func main() {
 						Required: true,
 					},
 					&cli.StringFlag{
-						Name:  "account",
-						Usage: "wallet account to update",
+						Name:     "account",
+						Usage:    "wallet account to update",
 					},
 				},
 			},
@@ -353,7 +369,7 @@ func main() {
 						Usage: "chain id",
 					},
 					&cli.BoolFlag{
-						Name:  "update",
+						Name: "update",
 						Usage: "updating side chain or not",
 					},
 				},
@@ -368,8 +384,8 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:     "chain",
-						Usage:    "chain id",
+						Name:  "chain",
+						Usage: "chain id",
 						Required: true,
 					},
 				},
@@ -384,13 +400,13 @@ func main() {
 						Usage: "target block height",
 					},
 					&cli.Int64Flag{
-						Name:     "chain",
-						Usage:    "chain id",
+						Name:  "chain",
+						Usage: "chain id",
 						Required: true,
 					},
 					&cli.StringFlag{
-						Name:     "keys",
-						Usage:    "public keys seperated by ','",
+						Name:  "keys",
+						Usage: "public keys seperated by ','",
 						Required: true,
 					},
 				},
@@ -458,12 +474,12 @@ func main() {
 						Usage: "chain name",
 					},
 					&cli.BoolFlag{
-						Name:  "vote",
+						Name: "vote",
 						Usage: "whether using votes",
 						Value: false,
 					},
 					&cli.BoolFlag{
-						Name:  "update",
+						Name: "update",
 						Usage: "updating side chain or not",
 					},
 				},
@@ -508,7 +524,6 @@ func main() {
 }
 
 func start(c *cli.Context) error {
-	config.ENCRYPTED = c.Bool("encrypted")
 	config, err := config.New(c.String("config"))
 	if err != nil {
 		log.Error("Failed to parse config file", "err", err)
@@ -546,8 +561,16 @@ func start(c *cli.Context) error {
 
 func command(method string) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		if !(method == relayer.RELAY_TX && c.String("url") != "") {
-			config.ENCRYPTED = c.Bool("encrypted")
+		readConf := true
+		switch method {
+		case relayer.RELAY_TX:
+			if c.String("url") != "" {
+				readConf = false
+			}
+		case relayer.ENCRYPT_FILE, relayer.DECRYPT_FILE, relayer.CREATE_ACCOUNT, relayer.UPDATE_ACCOUNT:
+			readConf = false
+		}
+		if readConf {
 			conf, err := config.New(c.String("config"))
 			if err != nil {
 				log.Error("Failed to parse config file", "err", err)
@@ -586,7 +609,13 @@ func Init(ctx *cli.Context) (err error) {
 	// Set wallet path
 	config.WALLET_PATH = ctx.String("wallet")
 	config.CONFIG_PATH = ctx.String("config")
+	config.ENCRYPTED = ctx.Bool("encrypted")
+	config.PLAIN = ctx.Bool("plain")
 
-	log.Init()
+	log.Init(&log.LogConfig{
+		Path: ctx.String("log"),
+		MaxFiles: ctx.Uint("logmaxfiles"),
+		MaxSize: ctx.Uint("logmaxsize")})
+
 	return
 }

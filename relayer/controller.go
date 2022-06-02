@@ -62,8 +62,13 @@ func (c *Controller) SubmitTx(w http.ResponseWriter, r *http.Request) {
 	price := r.FormValue("price")
 	pricex := r.FormValue("pricex")
 	free := r.FormValue("free") == "true"
-	err := relayTx(uint64(chain), uint64(height), hash, sender, free, price, pricex, uint64(limit), false)
+	txs, err := relayTx(uint64(chain), uint64(height), hash, sender, free, price, pricex, uint64(limit), false)
 	log.Info("Submit executed", "err", err)
+	resp := map[string]interface{}{}
+	resp["err"] = err
+	resp["txs"] = txs
+	resp["size"] = len(txs)
+	Json(w, resp)
 }
 
 func (c *Controller) ComposeDstTx(w http.ResponseWriter, r *http.Request) {

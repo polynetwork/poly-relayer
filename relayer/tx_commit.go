@@ -68,7 +68,7 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 		return fmt.Errorf("Unabled to create submitter for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
-	err = h.submitter.Init(h.config)
+	err = h.submitter.Init(h.config.SubmitterConfig)
 	if err != nil {
 		return
 	}
@@ -104,13 +104,14 @@ func (h *PolyTxCommitHandler) Start() (err error) {
 	if h.config.Filter != nil {
 		mq = bus.WithTxFilter(h.bus, h.config.Filter)
 	}
-	if h.config.CheckFee {
+	{
 		bus := &CommitFilter{
-			name:   base.GetChainName(h.config.ChainId),
-			TxBus:  mq,
-			delay:  h.queue,
-			ch:     make(chan *msg.Tx, 100),
-			bridge: h.bridge,
+			name:     base.GetChainName(h.config.ChainId),
+			TxBus:    mq,
+			checkFee: h.config.CheckFee,
+			delay:    h.queue,
+			ch:       make(chan *msg.Tx, 100),
+			bridge:   h.bridge,
 		}
 		go bus.Pipe(h.Context, h.wg)
 		mq = bus
@@ -130,6 +131,7 @@ func (h *PolyTxCommitHandler) Chain() uint64 {
 type CommitFilter struct {
 	name string
 	bus.TxBus
+	checkFee bool
 	delay  bus.DelayedTxBus
 	ch     chan *msg.Tx
 	bridge *bridge.SDK
@@ -147,8 +149,8 @@ func (b *CommitFilter) Pop(ctx context.Context) (tx *msg.Tx, err error) {
 
 func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	// Check fee here:
-	// FullPaid || ForceFree || OnlyPaid -> send to submitter
-	// Skip -> delete
+	// Pass -> send to submitter
+	// NotPass -> send to delay queue
 	// Missing -> send to delay queue
 	state := map[string]*bridge.CheckFeeRequest{}
 	for _, tx := range txs {
@@ -166,30 +168,31 @@ func (b *CommitFilter) flush(ctx context.Context, txs []*msg.Tx) (err error) {
 	for _, tx := range txs {
 		feeMin := float32(0)
 		feePaid := float32(0)
-		paidGas := float64(0)
 		check := state[tx.PolyHash]
 		if check != nil {
 			tx.CheckFeeStatus = state[tx.PolyHash].Status
 			feeMin = float32(check.Min)
 			feePaid = float32(check.Paid)
-			paidGas = float64(check.PaidGas)
-			tx.PaidGas = paidGas
+			tx.PaidGas = float64(check.PaidGas)
 		}
 
-		if check.ForceFree() || check.Pass() || check.OnlyPaid() {
+		if check.Pass() {
 			b.ch <- tx
-			log.Info("CheckFee paid", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid, "paidGas", paidGas)
+			log.Info("CheckFee pass", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+		} else if check.PaidLimit() {
+			b.ch <- tx
+			log.Info("CheckFee EstimatePay", "poly_hash", tx.PolyHash, "paidGas", tx.PaidGas, "min", feeMin, "paid", feePaid)
 		} else if check.Skip() {
 			log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
 		} else if check.Missing() {
 			tx.Attempts++
-			log.Info("CheckFee tx missing in bridge, delay for 10 seconds", "poly_hash", tx.PolyHash)
-			tsp := time.Now().Unix() + 10
+			log.Info("CheckFee tx missing in bridge, delay for 2 seconds", "poly_hash", tx.PolyHash)
+			tsp := time.Now().Unix() + 5
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 
 		} else {
 			tx.Attempts++
-			log.Info("CheckFee tx others, delay for 10 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+			log.Info("CheckFee tx not paid, delay for 10 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
 			tsp := time.Now().Unix() + 600
 			bus.SafeCall(ctx, tx, "push to delay queue", func() error { return b.delay.Delay(context.Background(), tx, tsp) })
 		}
@@ -225,11 +228,13 @@ LOOP:
 				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash, "process_pending", len(b.ch))
 
 				// Skip tx check fee
-				if tx.SkipFee() {
+				if !b.checkFee {
+					tx.CheckFeeOff = true
+					b.ch <- tx
+				} else if tx.SkipFee() {
 					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
 					b.ch <- tx
-				} else if tx.CheckFeeStatus == bridge.FREE {
-					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
+				} else if tx.CheckFeeStatus == bridge.PAID || tx.CheckFeeStatus == bridge.PAID_LIMIT {
 					b.ch <- tx
 				} else {
 					txs = append(txs, tx)
