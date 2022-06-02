@@ -23,7 +23,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
-	"github.com/polynetwork/bridge-common/log"
 )
 
 type RedisConn struct {
