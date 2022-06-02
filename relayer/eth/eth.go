@@ -219,7 +219,7 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		info := err.Error()
 		if strings.Contains(info, "business contract failed") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_FAILURE, err)
-		} else if strings.Contains(info, "higher than max limit") {
+		} else if strings.Contains(info, "higher than max limit") ||  strings.Contains(info, "max limit is zero or missing") {
 			err = fmt.Errorf("%w %v", msg.ERR_PAID_FEE_TOO_LOW, err)
 		} else if strings.Contains(info, "always failing") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_ALWAYS_FAIL, err)
