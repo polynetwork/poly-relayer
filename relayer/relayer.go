@@ -20,7 +20,6 @@ package relayer
 import (
 	"context"
 	"fmt"
-	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 	"sync"
 	"time"
 
@@ -33,6 +32,7 @@ import (
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/harmony"
+	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
 	"github.com/polynetwork/poly-relayer/relayer/neo"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
