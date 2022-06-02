@@ -62,14 +62,13 @@ func (c *Controller) SubmitTx(w http.ResponseWriter, r *http.Request) {
 	price := r.FormValue("price")
 	pricex := r.FormValue("pricex")
 	free := r.FormValue("free") == "true"
-	err := relayTx(uint64(chain), uint64(height), hash, sender, free, price, pricex, uint64(limit), false)
+	txs, err := relayTx(uint64(chain), uint64(height), hash, sender, free, price, pricex, uint64(limit), false)
 	log.Info("Submit executed", "err", err)
-	if err != nil {
-		log.Error("Failed to execute dst tx", "err", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else {
-		Json(w, map[string]string{"msg": "executed"})
-	}
+	resp := map[string]interface{}{}
+	resp["err"] = err
+	resp["txs"] = txs
+	resp["size"] = len(txs)
+	Json(w, map[string]string{"msg": "executed"})
 }
 
 func (c *Controller) ComposeDstTx(w http.ResponseWriter, r *http.Request) {

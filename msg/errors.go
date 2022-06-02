@@ -30,10 +30,8 @@ var (
 	ERR_HEADER_SUBMIT_FAILURE = errors.New("Header submit failure")
 	ERR_TX_EXEC_ALWAYS_FAIL   = errors.New("Tx exec always fail")
 	ERR_LOW_BALANCE           = errors.New("Insufficient balance")
+	ERR_PAID_FEE_TOO_LOW      = errors.New("Paid fee too low")
 
-	ERR_TX_VOILATION     = errors.New("Possible cross chain voilation")
-	ERR_TX_PROOF_MISSING = errors.New("Possible cross chain proof missing")
-
-	ERR_TX_GET_ESTIMATEGAS = errors.New("Tx get estimategas err")
-	ERR_TX_CHECK_GAS       = errors.New("Tx check gas err")
+	ERR_TX_VOILATION          = errors.New("Possible cross chain voilation")
+	ERR_TX_PROOF_MISSING      = errors.New("Possible cross chain proof missing")
 )

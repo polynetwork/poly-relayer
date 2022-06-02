@@ -35,6 +35,7 @@ import (
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -49,20 +50,18 @@ const (
 
 type Submitter struct {
 	context.Context
-	wg       *sync.WaitGroup
-	config   *config.SubmitterConfig
-	sdk      *neo.SDK
-	name     string
-	ccd      string
-	ccm      string
-	polyId   uint64
-	wallet   *wallet.NeoWallet
-	checkFee bool
+	wg     *sync.WaitGroup
+	config *config.SubmitterConfig
+	sdk    *neo.SDK
+	name   string
+	ccd    string
+	ccm    string
+	polyId uint64
+	wallet *wallet.NeoWallet
 }
 
-func (s *Submitter) Init(config *config.PolyTxCommitConfig) (err error) {
-	s.config = config.SubmitterConfig
-	s.checkFee = config.CheckFee
+func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
+	s.config = config
 	s.sdk, err = neo.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err != nil {
 		return
@@ -156,6 +155,9 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 }
 
 func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	if tx.CheckFeeStatus == bridge.PAID_LIMIT && !tx.CheckFeeOff {
+		return fmt.Errorf("%s does not support fee paid with max limit", s.name)
+	}
 	if tx.DstSender == nil {
 		tx.DstHash, err = s.wallet.Invoke(tx.DstData, nil)
 	} else {

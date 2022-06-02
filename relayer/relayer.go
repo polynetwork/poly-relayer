@@ -20,7 +20,6 @@ package relayer
 import (
 	"context"
 	"fmt"
-	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 	"sync"
 	"time"
 
@@ -33,6 +32,7 @@ import (
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/harmony"
+	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
 	"github.com/polynetwork/poly-relayer/relayer/neo"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
@@ -63,7 +63,7 @@ type Handler interface {
 }
 
 type IChainSubmitter interface {
-	Init(*config.PolyTxCommitConfig) error
+	Init(*config.SubmitterConfig) error
 	Submit(msg.Message) error
 	Hook(context.Context, *sync.WaitGroup, <-chan msg.Message) error
 	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
@@ -147,7 +147,7 @@ func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if conf == nil || conf.PolyTxCommit == nil {
 		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
 	}
-	err = sub.Init(conf.PolyTxCommit)
+	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
 	return
 }
 
@@ -161,7 +161,7 @@ func ChainSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if conf == nil || conf.PolyTxCommit == nil {
 		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
 	}
-	err = sub.Init(conf.PolyTxCommit)
+	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
 	return
 }
 
