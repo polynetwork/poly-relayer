@@ -155,10 +155,11 @@ func RelayTx(ctx *cli.Context) (err error) {
 		log.Info("Submitted request", "result", string(respBody))
 		return nil
 	}
-	return relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
+	_, err = relayTx(chain, height, hash, sender, free, price, pricex, limit, auto)
+	return
 }
 
-func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex string, limit uint64, auto bool) (err error) {
+func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex string, limit uint64, auto bool) (targetTxs []*msg.Tx, err error) {
 	params := &msg.Tx{
 		SkipCheckFee: free,
 		DstGasPrice:  price,
@@ -220,6 +221,7 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 		}
 		if hash == "" || util.LowerHex(hash) == util.LowerHex(txHash) {
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
+			targetTxs = append(targetTxs, tx)
 			if chain == base.POLY {
 				tx.CapturePatchParams(params)
 				if !free {
@@ -237,6 +239,8 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 					}
 					if res.Pass() {
 						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
+					} else if res.PaidLimit() {
+						log.Info("Check fee got paid with limit", "poly_hash", tx.PolyHash)
 					} else {
 						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
 						fmt.Println(util.Verbose(tx))

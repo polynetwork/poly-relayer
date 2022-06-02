@@ -33,6 +33,7 @@ import (
 	"github.com/polynetwork/bridge-common/chains/ont"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -112,6 +113,10 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 }
 
 func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	if tx.CheckFeeStatus == bridge.PAID_LIMIT && !tx.CheckFeeOff {
+		return fmt.Errorf("%s does not support fee paid with max limit", s.name)
+	}
+
 	param := tx.Extra.(*ccm.ProcessCrossChainTxParam)
 	hash, err := s.sdk.Node().Native.InvokeNativeContract(
 		s.signer.Config.GasPrice, s.signer.Config.GasLimit,

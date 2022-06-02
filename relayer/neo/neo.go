@@ -30,6 +30,7 @@ import (
 
 	nw "github.com/joeqian10/neo-gogogo/wallet"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/neo"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
@@ -154,6 +155,9 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 }
 
 func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	if tx.CheckFeeStatus == bridge.PAID_LIMIT && !tx.CheckFeeOff {
+		return fmt.Errorf("%s does not support fee paid with max limit", s.name)
+	}
 	if tx.DstSender == nil {
 		tx.DstHash, err = s.wallet.Invoke(tx.DstData, nil)
 	} else {
