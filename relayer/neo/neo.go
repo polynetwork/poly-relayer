@@ -35,6 +35,7 @@ import (
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -154,6 +155,9 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 }
 
 func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	if tx.CheckFeeStatus == bridge.PAID_LIMIT && !tx.CheckFeeOff {
+		return fmt.Errorf("%s does not support fee paid with max limit", s.name)
+	}
 	if tx.DstSender == nil {
 		tx.DstHash, err = s.wallet.Invoke(tx.DstData, nil)
 	} else {
