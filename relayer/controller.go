@@ -68,7 +68,7 @@ func (c *Controller) SubmitTx(w http.ResponseWriter, r *http.Request) {
 	resp["err"] = err
 	resp["txs"] = txs
 	resp["size"] = len(txs)
-	Json(w, map[string]string{"msg": "executed"})
+	Json(w, resp)
 }
 
 func (c *Controller) ComposeDstTx(w http.ResponseWriter, r *http.Request) {
