@@ -85,12 +85,12 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 				if len(states) < 6 {
 					continue
 				}
-				tx, err = l.parseMakeProofStates(event.TxHash, states)
+				tx, err = l.parseCcmNotifyStates(event.TxHash, states)
 			case poly.SM_ADDRESS:
 				if len(states) < 4 {
 					continue
 				}
-				tx, err = l.parseAddSignatureQuorumStates(height, event.TxHash, states)
+				tx, err = l.parseSmNotifyStates(height, event.TxHash, states)
 			default:
 				continue
 			}
@@ -125,7 +125,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 			if len(states) < 6 {
 				continue
 			}
-			tx, err = l.parseMakeProofStates(event.TxHash, states)
+			tx, err = l.parseCcmNotifyStates(event.TxHash, states)
 		case poly.SM_ADDRESS:
 			if len(states) < 4 {
 				continue
@@ -133,7 +133,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 			if polyHeight, e := l.sdk.Node().GetBlockHeightByTxHash(hash); e != nil {
 				return nil, e
 			} else {
-				tx, err = l.parseAddSignatureQuorumStates(uint64(polyHeight), event.TxHash, states)
+				tx, err = l.parseSmNotifyStates(uint64(polyHeight), event.TxHash, states)
 			}
 		default:
 			continue
@@ -218,7 +218,11 @@ func (l *Listener) SDK() *poly.SDK {
 	return l.sdk
 }
 
-func (l *Listener) parseMakeProofStates(txHash string, states []interface{}) (tx *msg.Tx, err error) {
+func (l *Listener) parseCcmNotifyStates(txHash string, states []interface{}) (tx *msg.Tx, err error) {
+	method, _ := states[0].(string)
+	if method != "makeProof" {
+		return
+	}
 	dstChain := uint64(states[2].(float64))
 	if dstChain == 0 {
 		err = fmt.Errorf("Invalid dst chain id in poly tx, txHash=%s ", txHash)
@@ -245,7 +249,11 @@ func (l *Listener) parseMakeProofStates(txHash string, states []interface{}) (tx
 	return
 }
 
-func (l *Listener) parseAddSignatureQuorumStates(height uint64, txHash string, states []interface{}) (tx *msg.Tx, err error) {
+func (l *Listener) parseSmNotifyStates(height uint64, txHash string, states []interface{}) (tx *msg.Tx, err error) {
+	method, _ := states[0].(string)
+	if method != "AddSignatureQuorum" {
+		return
+	}
 	log.Info("found flow AddSignatureQuorum event", "height", height, "txHash", txHash)
 	dstChain := uint64(states[3].(float64))
 	if dstChain == 0 {
