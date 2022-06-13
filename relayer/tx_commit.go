@@ -234,7 +234,7 @@ LOOP:
 				} else if tx.SkipFee() {
 					log.Info("CheckFee skipped for tx", "poly_hash", tx.PolyHash)
 					b.ch <- tx
-				} else if tx.CheckFeeStatus == bridge.PAID || tx.CheckFeeStatus == bridge.PAID_LIMIT {
+				} else if tx.CheckFeeStatus == bridge.PAID {
 					b.ch <- tx
 				} else {
 					txs = append(txs, tx)
