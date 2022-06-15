@@ -42,10 +42,10 @@ var (
 )
 
 func Http(ctx *cli.Context) (err error) {
-	metrics.Init("relayer")
 	// Insert web config
 	port := ctx.Int("port")
 	host := ctx.String("host")
+	submit := ctx.Bool("submit")
 	if port == 0 {
 		port = config.CONFIG.Port
 	}
@@ -56,11 +56,21 @@ func Http(ctx *cli.Context) (err error) {
 	// Init patcher
 	_PATCHER = bus.NewRedisPatchTxBus(bus.New(config.CONFIG.Bus.Redis), 0)
 	_SKIP = bus.NewRedisSkipCheck(bus.New(config.CONFIG.Bus.Redis))
+	err = SetupController()
+	if err != nil {
+		return
+	}
 
-	go recordMetrics()
-	http.HandleFunc("/api/v1/patch", PatchTx)
-	http.HandleFunc("/api/v1/skip", SkipTx)
-	http.HandleFunc("/api/v1/skipcheck", SkipCheckTx)
+	if submit {
+		http.HandleFunc("/api/v1/submit", controller.SubmitTx)
+	} else {
+		metrics.Init("relayer")
+		go recordMetrics()
+		http.HandleFunc("/api/v1/patch", PatchTx)
+		http.HandleFunc("/api/v1/skip", SkipTx)
+		http.HandleFunc("/api/v1/skipcheck", SkipCheckTx)
+		http.HandleFunc("/api/v1/composetx", controller.ComposeDstTx)
+	}
 	http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil)
 	return
 }

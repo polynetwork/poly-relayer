@@ -30,19 +30,14 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/polynetwork/poly-relayer/relayer/arb"
-	"github.com/polynetwork/poly-relayer/relayer/ava"
-	"github.com/polynetwork/poly-relayer/relayer/bsc"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
-	"github.com/polynetwork/poly-relayer/relayer/fantom"
-	"github.com/polynetwork/poly-relayer/relayer/heco"
+	"github.com/polynetwork/poly-relayer/relayer/harmony"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
-	"github.com/polynetwork/poly-relayer/relayer/metis"
-	"github.com/polynetwork/poly-relayer/relayer/o3"
+	"github.com/polynetwork/poly-relayer/relayer/neo"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
-	"github.com/polynetwork/poly-relayer/relayer/opt"
+	"github.com/polynetwork/poly-relayer/relayer/ont"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
-	"github.com/polynetwork/poly-relayer/relayer/xdai"
+	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 )
 
 type IChainListener interface {
@@ -76,55 +71,45 @@ type IChainSubmitter interface {
 	ProcessTx(*msg.Tx, msg.PolyComposer) error // Process poly tx
 	ProcessEpochs([]*msg.Tx) error             // Process poly epoch sync
 	GetPolyEpochStartHeight(uint64) (height uint64, err error)
+	SubmitTx(*msg.Tx) error
 	Stop() error
 }
 
 func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
-	case base.ETH, base.KOVAN, base.RINKBY, base.GOERLI, base.SIDE:
-		listener = new(eth.Listener)
 	case base.OK:
 		listener = new(ok.Listener)
 	case base.MATIC:
 		listener = new(matic.Listener)
-	case base.BSC:
-		listener = new(bsc.Listener)
-	case base.HECO:
-		listener = new(heco.Listener)
-	case base.O3:
-		listener = new(o3.Listener)
+	case base.NEO:
+		listener = new(neo.Listener)
+	case base.ONT:
+		listener = new(ont.Listener)
 	case base.POLY:
 		listener = new(po.Listener)
+	case base.HARMONY:
+		listener = new(harmony.Listener)
+	case base.STARCOIN:
+		listener = new(starcoin.Listener)
+
 	default:
+		if base.SameAsETH(chain) {
+			return new(eth.Listener)
+		}
 	}
 	return
 }
 
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
-	case base.ETH, base.KOVAN, base.RINKBY, base.GOERLI, base.SIDE:
-		submitter = new(eth.Submitter)
-	case base.BSC:
-		submitter = new(bsc.Submitter)
-	case base.HECO:
-		submitter = new(heco.Submitter)
-	case base.O3:
-		submitter = new(o3.Submitter)
-	case base.ARBITRUM:
-		submitter = new(arb.Submitter)
-	case base.XDAI:
-		submitter = new(xdai.Submitter)
-	case base.OPTIMISM:
-		submitter = new(opt.Submitter)
-	case base.FANTOM:
-		submitter = new(fantom.Submitter)
-	case base.AVA:
-		submitter = new(ava.Submitter)
-	case base.POLY:
-		submitter = new(po.Submitter)
-	case base.METIS:
-		submitter = new(metis.Submitter)
+	case base.NEO:
+		submitter = new(neo.Submitter)
+	case base.ONT:
+		submitter = new(ont.Submitter)
 	default:
+		if base.SameAsETH(chain) {
+			return new(eth.Submitter)
+		}
 	}
 	return
 }
@@ -138,6 +123,31 @@ func PolySubmitter() (sub *po.Submitter, err error) {
 func PolyListener() (l *po.Listener, err error) {
 	l = new(po.Listener)
 	err = l.Init(config.CONFIG.Poly.PolyTxSync.ListenerConfig, nil)
+	return
+}
+
+func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
+	if chain == base.ONT {
+		sub = new(ont.Submitter)
+	} else if chain == base.NEO {
+		sub = new(neo.Submitter)
+	} else {
+		for _, v := range base.ETH_CHAINS {
+			if v == chain {
+				sub = new(eth.Submitter)
+				break
+			}
+		}
+	}
+	if sub == nil {
+		err = fmt.Errorf("No submitter for chain %d available", chain)
+		return
+	}
+	conf := config.CONFIG.Chains[chain]
+	if conf == nil || conf.PolyTxCommit == nil {
+		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
+	}
+	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
 	return
 }
 

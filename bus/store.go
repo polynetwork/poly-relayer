@@ -23,6 +23,7 @@ const (
 	KEY_HEIGHT_TX           ChainHeightType = "tx_sync"           // tx sync mark
 	KEY_HEIGHT_EPOCH        ChainHeightType = "epoch_sync"        // epoch sync mark
 	KEY_HEIGHT_EPOCH_RESET  ChainHeightType = "epoch_sync_reset"  // epoch sync reset
+	KEY_HEIGHT_VALIDATOR    ChainHeightType = "tx_validator"      // tx validator reset
 )
 
 type ChainHeightType string

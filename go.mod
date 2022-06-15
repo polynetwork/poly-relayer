@@ -13,6 +13,7 @@ require (
 	github.com/ontio/ontology-crypto v1.0.9
 	github.com/ontio/ontology-go-sdk v1.11.4
 	github.com/polynetwork/bridge-common v0.0.54-v2
-	github.com/polynetwork/poly v1.7.3-0.20210804073726-5d4f4d4a9371
+	github.com/starcoinorg/starcoin-go v0.0.0-20220105024102-530daedc128b
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 )

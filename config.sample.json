@@ -1,0 +1,66 @@
+{
+  "Env": "testnet",
+  "Bus": {
+    "Config": {
+      "Addr": "127.0.0.1:6379"
+    },
+    "HeightUpdateInterval": 1
+  },
+  "Poly": {
+    "Nodes": [
+      "http://124.156.226.204:20336"
+    ],
+    "Wallet": {
+      "Path": "./keystore/poly/wallet.dat",
+      "Password": "wallet password"
+    }
+  },
+  "Bridge": [
+    "https://bridge.poly.network/testnet/v1"
+  ],
+  "Port": 6501,
+  "ValidMethods": [
+    "add",
+    "remove",
+    "swap",
+    "unlock",
+    "addExtension",
+    "removeExtension",
+    "registerAsset",
+    "onCrossTransfer",
+    "depositCCIn"
+  ],
+  "Chains": {
+    "2": {
+      "Nodes": [
+        "https://eth-ropsten-rpc-node"
+      ],
+      "CheckFee": true,
+      "CCMContract": "0xf989E80AAd477cB6059f366C0170a498909C4a55",
+      "CCDContract": "0xA38366d552672556CE82426Da5031E2Ae0598dcD",
+      "Wallet": {
+        "KeyStoreProviders": [
+          {
+            "Path": "./keystore/eth",
+            "Passwords": {
+              "0x2c3b54d366bf55d85b175be8975356af233ce912": "wallet password",
+              "0x25a84C56e9eE8100CD034c3465c0dE0B30e101A8": "wallet password"
+            }
+          }
+        ]
+      }
+    },
+    "3": {
+      "Nodes": [
+        "http://polaris2.ont.io:20336"
+      ],
+      "CheckFee": true,
+      "Wallet": {
+        "Path": "./keystore/ont/wallet.dat",
+        "Password": "wallet password",
+        "GasPrice": 2500,
+        "GasLimit": 200000
+      }
+    }
+  }
+}

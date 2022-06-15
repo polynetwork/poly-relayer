@@ -81,9 +81,7 @@ func Bin(chainId uint64, hash string) (bin string, err error) {
 	default:
 		bin = "relayer_main"
 	}
-	if bin != "" {
-		bin = path.Join(BIN_DIR, bin)
-	}
+	bin = path.Join(BIN_DIR, bin)
 	return
 }
 
@@ -110,6 +108,9 @@ func Relay(tx *msg.Tx) {
 	}
 	if tx.SkipCheckFee {
 		args = append(args, "-free")
+	}
+	if tx.DstSender != nil {
+		args = append(args, "-sender", tx.DstSender.(string))
 	}
 	cmd := exec.Command(bin, args...)
 	log.Info(fmt.Sprintf("Executing auto patch %v: %v", bin, args))

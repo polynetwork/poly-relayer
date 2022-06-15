@@ -20,8 +20,10 @@ import (
 	"github.com/devfans/zion-sdk/core/types"
 
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -95,12 +97,22 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			return fmt.Errorf("%s submit invalid gas priceX %s", tx.DstGasPriceX)
 		}
 	}
-	var err error
+	var (
+		err     error
+		account accounts.Account
+	)
 	if tx.DstSender != nil {
-		account := tx.DstSender.(*accounts.Account)
-		tx.DstHash, err = s.wallet.SendWithAccount(*account, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+		acc := tx.DstSender.(*accounts.Account)
+		account = *acc
 	} else {
-		tx.DstHash, err = s.wallet.Send(s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+		account, _, _ = s.wallet.Select()
+	}
+
+	if tx.CheckFeeOff || tx.CheckFeeStatus != bridge.PAID_LIMIT {
+		tx.DstHash, err = s.wallet.SendWithAccount(account, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
+	} else {
+		maxLimit, _ := big.NewFloat(tx.PaidGas).Int(nil)
+		tx.DstHash, err = s.wallet.SendWithMaxLimit(account, s.ccm, big.NewInt(0), maxLimit, gasPrice, gasPriceX, tx.DstData)
 	}
 
 	return err
@@ -169,7 +181,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		err = fmt.Errorf("%s processPolyTx pack tx error %v", s.name, err)
 		return err
 	}
-	return s.submit(tx)
+	return
 }
 
 func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
@@ -248,12 +260,30 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 		return
 	}
 	err = s.processPolyTx(m)
+	return
+}
+
+func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	switch v := tx.DstSender.(type) {
+	case string:
+		for _, a := range s.wallet.Accounts() {
+			if util.LowerHex(a.Address.String()) == util.LowerHex(v) {
+				tx.DstSender = &a
+				break
+			}
+		}
+	}
+	err = s.submit(tx)
 	if err != nil {
 		info := err.Error()
 		if strings.Contains(info, "business contract failed") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_FAILURE, err)
+		} else if strings.Contains(info, "higher than max limit") || strings.Contains(info, "max limit is zero or missing") {
+			err = fmt.Errorf("%w %v", msg.ERR_PAID_FEE_TOO_LOW, err)
 		} else if strings.Contains(info, "always failing") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_ALWAYS_FAIL, err)
+		} else if strings.Contains(info, "insufficient funds") || strings.Contains(info, "exceeds allowance") {
+			err = msg.ERR_LOW_BALANCE
 		}
 	}
 	return
@@ -291,6 +321,9 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 		if tx.Type() == msg.POLY {
 			log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 			err = s.ProcessTx(tx, compose)
+			if err == nil {
+				err = s.SubmitTx(tx)
+			}
 		} else if tx.Type() == msg.POLY_EPOCH {
 			log.Info("Processing poly epoch", "poly_epoch", tx.PolyEpoch.EpochId, "account", account.Address)
 			err = s.ProcessEpochs([]*msg.Tx{tx})
@@ -310,9 +343,16 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) || err == msg.ERR_EPOCH_MISS {
 				tsp := time.Now().Unix() + 10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else if errors.Is(err, msg.ERR_PAID_FEE_TOO_LOW) {
+				tsp := time.Now().Unix() + 60*10
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
 				tsp := time.Now().Unix() + 1
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+				if errors.Is(err, msg.ERR_LOW_BALANCE) {
+					log.Info("Low wallet balance detected", "chain", s.name, "account", account.Address)
+					s.WaitForBalance(account.Address)
+				}
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
@@ -322,9 +362,10 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			switch s.config.ChainId {
 			case base.MATIC, base.PLT:
 				tsp = time.Now().Unix() + 60*3
-			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM:
+			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM, base.RINKEBY, base.BOBA, base.OASIS,
+				base.KAVA, base.CUBE:
 				tsp = time.Now().Unix() + 60*25
-			case base.BSC, base.HECO, base.OK:
+			case base.BSC, base.HECO, base.OK, base.KCC, base.BYTOM, base.HSC, base.MILKO:
 				tsp = time.Now().Unix() + 60*4
 			case base.ETH, base.RINKBY, base.GOERLI, base.KOVAN:
 				tsp = time.Now().Unix() + 60*6
@@ -332,6 +373,22 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			if tsp > 0 && tx.DstHash != "" {
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
+		}
+	}
+}
+
+func (s *Submitter) WaitForBalance(address common.Address) {
+	for {
+		balance, err := s.wallet.GetBalance(address)
+		hasBalance := wallet.HasBalance(s.config.ChainId, balance)
+		log.Info("Wallet balance check", "chain", s.name, "account", address, "has_balance", hasBalance, "err", err)
+		if hasBalance {
+			return
+		}
+		select {
+		case <-time.After(time.Minute):
+		case <-s.Done():
+			return
 		}
 	}
 }

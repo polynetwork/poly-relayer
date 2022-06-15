@@ -35,6 +35,7 @@ import (
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -149,12 +150,19 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	}
 	builder := sc.NewScriptBuilder()
 	builder.MakeInvocationScript(scriptHash, VERIFY_AND_EXECUTE_TX, args)
-	script := builder.ToArray()
+	tx.DstData = builder.ToArray()
+	return
+}
+
+func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
+	if tx.CheckFeeStatus == bridge.PAID_LIMIT && !tx.CheckFeeOff {
+		return fmt.Errorf("%s does not support fee paid with max limit", s.name)
+	}
 	if tx.DstSender == nil {
-		tx.DstHash, err = s.wallet.Invoke(script, nil)
+		tx.DstHash, err = s.wallet.Invoke(tx.DstData, nil)
 	} else {
 		account := tx.DstSender.(*nw.Account)
-		tx.DstHash, err = s.wallet.InvokeWithAccount(account, script, nil)
+		tx.DstHash, err = s.wallet.InvokeWithAccount(account, tx.DstData, nil)
 	}
 	return
 }
@@ -215,6 +223,9 @@ func (s *Submitter) run(account *nw.Account, mq bus.TxBus, delay bus.DelayedTxBu
 		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
 		tx.DstSender = account
 		err = s.ProcessTx(tx, compose)
+		if err == nil {
+			err = s.SubmitTx(tx)
+		}
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "err", err)
 			log.Json(log.ERROR, tx)

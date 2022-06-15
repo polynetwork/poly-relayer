@@ -165,8 +165,14 @@ type Tx struct {
 	DstData                 []byte                `json:"-"`
 	DstProxy                string                `json:",omitempty"`
 	SkipCheckFee            bool                  `json:",omitempty"`
+	CheckFeeOff             bool                  `json:"-"` 			// CheckFee disabled in submitter
 	Skipped                 bool                  `json:",omitempty"`
+	PaidGas                 float64               `json:",omitempty"`
 	CheckFeeStatus          bridge.CheckFeeStatus `json:",omitempty"`
+	DstAsset                string                `json:"-"`
+	DstAmount               *big.Int              `json:"-"`
+
+	Extra interface{} `json:"-"`
 }
 
 func (tx *Tx) Type() TxType {
@@ -272,6 +278,9 @@ func (tx *Tx) CapturePatchParams(o *Tx) *Tx {
 
 		if o.SkipCheckFee {
 			tx.SkipCheckFee = o.SkipCheckFee
+		}
+		if o.DstSender != nil {
+			tx.DstSender = o.DstSender
 		}
 	}
 	return tx
