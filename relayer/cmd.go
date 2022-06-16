@@ -19,15 +19,10 @@ package relayer
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 
@@ -40,40 +35,38 @@ import (
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/polynetwork/poly-relayer/relayer/eth"
 )
 
 const (
-	SET_HEADER_HEIGHT = "setheaderblock"
-	SET_TX_HEIGHT     = "settxblock"
-	RELAY_TX          = "submit"
-	STATUS            = "status"
-	HTTP              = "http"
-	PATCH             = "patch"
-	SKIP              = "skip"
-	CHECK_SKIP        = "checkskip"
-	CREATE_ACCOUNT    = "createaccount"
-	UPDATE_ACCOUNT    = "updateaccount"
-	ENCRYPT_FILE      = "encryptfile"
-	DECRYPT_FILE      = "decryptfile"
-	CHECK_WALLET      = "wallet"
-	ADD_SIDECHAIN     = "addsidechain"
-	SYNC_GENESIS      = "syncgenesis"
-	CREATE_GENESIS    = "creategenesis"
-	SIGN_POLY_TX   	  = "signpolytx"
-	SEND_POLY_TX      = "sendpolytx"
-	APPROVE_SIDECHAIN = "approvesidechain"
-	INIT_GENESIS      = "initgenesis"
-	SYNC_HEADER       = "syncheader"
-	GET_SIDE_CHAIN    = "getsidechain"
-	SCAN_POLY_TX      = "scanpolytx"
-	VALIDATE          = "validate"
-	VALIDATE_BLOCK    = "validateblock"
+	SET_HEADER_HEIGHT    = "setheaderblock"
+	SET_TX_HEIGHT        = "settxblock"
+	RELAY_TX             = "submit"
+	STATUS               = "status"
+	HTTP                 = "http"
+	PATCH                = "patch"
+	SKIP                 = "skip"
+	CHECK_SKIP           = "checkskip"
+	CREATE_ACCOUNT       = "createaccount"
+	UPDATE_ACCOUNT       = "updateaccount"
+	ENCRYPT_FILE         = "encryptfile"
+	DECRYPT_FILE         = "decryptfile"
+	CHECK_WALLET         = "wallet"
+	ADD_SIDECHAIN        = "addsidechain"
+	SYNC_GENESIS         = "syncgenesis"
+	CREATE_GENESIS       = "creategenesis"
+	SIGN_POLY_TX         = "signpolytx"
+	SEND_POLY_TX         = "sendpolytx"
+	APPROVE_SIDECHAIN    = "approvesidechain"
+	INIT_GENESIS         = "initgenesis"
+	SYNC_HEADER          = "syncheader"
+	GET_SIDE_CHAIN       = "getsidechain"
+	SCAN_POLY_TX         = "scanpolytx"
+	VALIDATE             = "validate"
+	VALIDATE_BLOCK       = "validateblock"
 	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
 )
 
@@ -141,13 +134,19 @@ func RelayTx(ctx *cli.Context) (err error) {
 		for _, s := range []string{"height", "chain", "hash", "sender", "limit", "price", "pricex"} {
 			form.Set(s, ctx.String(s))
 		}
-		if free { form.Set("free", "true") }
+		if free {
+			form.Set("free", "true")
+		}
 		req, err := http.NewRequest("POST", endpoint, strings.NewReader(form.Encode()))
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		client := &http.Client{}
 		resp, err := client.Do(req)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		defer resp.Body.Close()
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -224,29 +223,33 @@ func relayTx(chain, height uint64, hash, sender string, free bool, price, pricex
 			log.Info("Found patch target tx", "hash", txHash, "height", height)
 			targetTxs = append(targetTxs, tx)
 			if chain == base.POLY {
-				tx.CapturePatchParams(params)
-				if !free {
-					if bridge == nil {
-						bridge, err = Bridge()
+				switch tx.DstChainId {
+				case base.RIPPLE:
+				default:
+					tx.CapturePatchParams(params)
+					if !free {
+						if bridge == nil {
+							bridge, err = Bridge()
+							if err != nil {
+								log.Error("Failed to init bridge sdk")
+								continue
+							}
+						}
+						res, err := CheckFee(bridge, tx)
 						if err != nil {
-							log.Error("Failed to init bridge sdk")
+							log.Error("Failed to call check fee", "poly_hash", tx.PolyHash)
 							continue
 						}
-					}
-					res, err := CheckFee(bridge, tx)
-					if err != nil {
-						log.Error("Failed to call check fee", "poly_hash", tx.PolyHash)
-						continue
-					}
-					if res.Pass() {
-						log.Info("Check fee pass", "poly_hash", tx.PolyHash)
-					} else if res.PaidLimit() {
-						log.Info("Check fee got paid with limit", "poly_hash", tx.PolyHash)
-					} else {
-						log.Info("Check fee failed", "poly_hash", tx.PolyHash)
-						fmt.Println(util.Verbose(tx))
-						fmt.Println(res)
-						continue
+						if res.Pass() {
+							log.Info("Check fee pass", "poly_hash", tx.PolyHash)
+						} else if res.PaidLimit() {
+							log.Info("Check fee got paid with limit", "poly_hash", tx.PolyHash)
+						} else {
+							log.Info("Check fee failed", "poly_hash", tx.PolyHash)
+							fmt.Println(util.Verbose(tx))
+							fmt.Println(res)
+							continue
+						}
 					}
 				}
 				sub, err := ChainSubmitter(tx.DstChainId)

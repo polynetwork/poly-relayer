@@ -38,6 +38,7 @@ type PolyTxCommitHandler struct {
 
 	bus       bus.TxBus
 	queue     bus.DelayedTxBus // Delayed tx bus
+	sequence  bus.Sequence     // Chain now sequence and sequenceTx
 	submitter IChainSubmitter
 	composer  *poly.Submitter
 	config    *config.PolyTxCommitConfig
@@ -68,7 +69,7 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 		return fmt.Errorf("Unabled to create submitter for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
-	err = h.submitter.Init(h.config.SubmitterConfig)
+	err = h.submitter.Init(h.config.SubmitterConfig, h.config.Poly)
 	if err != nil {
 		return
 	}
@@ -80,6 +81,7 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
 	h.queue = bus.NewRedisDelayedTxBus(bus.New(h.config.Bus.Redis))
+	h.sequence = bus.NewRedisChainSequence(bus.New(h.config.Bus.Redis))
 	return
 }
 
@@ -116,7 +118,7 @@ func (h *PolyTxCommitHandler) Start() (err error) {
 		go bus.Pipe(h.Context, h.wg)
 		mq = bus
 	}
-	err = h.submitter.Start(h.Context, h.wg, mq, h.queue, h.Compose)
+	err = h.submitter.Start(h.Context, h.wg, mq, h.queue, h.Compose, h.sequence)
 	return
 }
 

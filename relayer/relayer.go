@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/relayer/ripple"
 	"sync"
 	"time"
 
@@ -63,10 +64,10 @@ type Handler interface {
 }
 
 type IChainSubmitter interface {
-	Init(*config.SubmitterConfig) error
+	Init(config *config.SubmitterConfig, polyConfig *config.PolySubmitterConfig) error
 	Submit(msg.Message) error
 	Hook(context.Context, *sync.WaitGroup, <-chan msg.Message) error
-	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer) error
+	Start(context.Context, *sync.WaitGroup, bus.TxBus, bus.DelayedTxBus, msg.PolyComposer, bus.Sequence) error
 	Process(msg.Message, msg.PolyComposer) error
 	ProcessTx(*msg.Tx, msg.PolyComposer) error
 	SubmitTx(*msg.Tx) error
@@ -103,6 +104,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(neo.Submitter)
 	case base.ONT:
 		submitter = new(ont.Submitter)
+	case base.RIPPLE:
+		submitter = new(ripple.Submitter)
 	case base.FLOW:
 		submitter = new(flow.Submitter)
 
@@ -147,7 +150,7 @@ func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if conf == nil || conf.PolyTxCommit == nil {
 		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
 	}
-	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
+	err = sub.Init(conf.PolyTxCommit.SubmitterConfig, conf.PolyTxCommit.Poly)
 	return
 }
 
@@ -161,7 +164,7 @@ func ChainSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 	if conf == nil || conf.PolyTxCommit == nil {
 		return nil, fmt.Errorf("No config available for submitter of chain %d", chain)
 	}
-	err = sub.Init(conf.PolyTxCommit.SubmitterConfig)
+	err = sub.Init(conf.PolyTxCommit.SubmitterConfig, conf.PolyTxCommit.Poly)
 	return
 }
 

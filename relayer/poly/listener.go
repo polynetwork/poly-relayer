@@ -26,6 +26,7 @@ import (
 	"github.com/onflow/flow-go/crypto/hash"
 	flowcrypto "github.com/onflow/flow-go/fvm/crypto"
 	"github.com/polynetwork/bridge-common/chains/flow"
+	"strconv"
 	"time"
 
 	ecom "github.com/ethereum/go-ethereum/common"
@@ -85,7 +86,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 				if len(states) < 6 {
 					continue
 				}
-				tx, err = l.parseCcmNotifyStates(event.TxHash, states)
+				tx, err = l.parseCcmNotifyStates(height, event.TxHash, states)
 			case poly.SM_ADDRESS:
 				if len(states) < 4 {
 					continue
@@ -118,6 +119,10 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	if err != nil {
 		return nil, err
 	}
+	polyHeight, err := l.sdk.Node().GetBlockHeightByTxHash(hash)
+	if err != nil {
+		return nil, err
+	}
 	for _, notify := range event.Notify {
 		states := notify.States.([]interface{})
 		switch notify.ContractAddress {
@@ -125,16 +130,12 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 			if len(states) < 6 {
 				continue
 			}
-			tx, err = l.parseCcmNotifyStates(event.TxHash, states)
+			tx, err = l.parseCcmNotifyStates(uint64(polyHeight), event.TxHash, states)
 		case poly.SM_ADDRESS:
 			if len(states) < 4 {
 				continue
 			}
-			if polyHeight, e := l.sdk.Node().GetBlockHeightByTxHash(hash); e != nil {
-				return nil, e
-			} else {
-				tx, err = l.parseSmNotifyStates(uint64(polyHeight), event.TxHash, states)
-			}
+			tx, err = l.parseSmNotifyStates(uint64(polyHeight), event.TxHash, states)
 		default:
 			continue
 		}
@@ -218,9 +219,9 @@ func (l *Listener) SDK() *poly.SDK {
 	return l.sdk
 }
 
-func (l *Listener) parseCcmNotifyStates(txHash string, states []interface{}) (tx *msg.Tx, err error) {
+func (l *Listener) parseCcmNotifyStates(height uint64, txHash string, states []interface{}) (tx *msg.Tx, err error) {
 	method, _ := states[0].(string)
-	if method != "makeProof" {
+	if method != "makeProof" && method != "multisignedTxJson"{
 		return
 	}
 	dstChain := uint64(states[2].(float64))
@@ -235,16 +236,23 @@ func (l *Listener) parseCcmNotifyStates(txHash string, states []interface{}) (tx
 	}
 
 	tx = new(msg.Tx)
+	tx.SrcChainId = uint64(states[1].(float64))
 	tx.DstChainId = dstChain
-	tx.PolyKey = states[5].(string)
-	tx.PolyHeight = uint32(states[4].(float64))
+	tx.PolyHeight = uint32(height)
 	tx.PolyHash = txHash
 	tx.TxType = msg.POLY
 	tx.TxId = states[3].(string)
-	tx.SrcChainId = uint64(states[1].(float64))
-	switch tx.SrcChainId {
-	case base.NEO, base.NEO3, base.ONT:
-		tx.TxId = util.ReverseHex(tx.TxId)
+	switch method {
+	case "makeProof":
+		tx.PolyKey = states[5].(string)
+		switch tx.SrcChainId {
+		case base.NEO, base.NEO3, base.ONT:
+			tx.TxId = util.ReverseHex(tx.TxId)
+		}
+	case "multisignedTxJson":
+		sequence := states[5].(float64)
+		tx.PolyKey = strconv.Itoa(int(sequence))
+		tx.PolySigs = []byte(states[4].(string))
 	}
 	return
 }

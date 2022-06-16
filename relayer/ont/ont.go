@@ -50,7 +50,7 @@ type Submitter struct {
 	polyId  uint64
 }
 
-func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
+func (s *Submitter) Init(config *config.SubmitterConfig, polyConfig *config.PolySubmitterConfig) (err error) {
 	s.config = config
 	s.signer, err = wallet.NewOntSigner(config.Wallet)
 	s.name = base.GetChainName(config.ChainId)
@@ -182,7 +182,7 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer, sequence bus.Sequence) error {
 	s.Context = ctx
 	s.wg = wg
 	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address, "chain", s.name)

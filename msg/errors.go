@@ -37,4 +37,5 @@ var (
 
 	ERR_TX_CHECK_ESTIMATEGAS = errors.New("Tx check estimategas err")
 	ERR_TX_CHECK_GAS         = errors.New("Tx check gas err")
+	ERR_FEE_INSUFFICIENT      = errors.New("Fee insufficient")
 )
