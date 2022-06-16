@@ -57,6 +57,7 @@ func (b *RedisChainSequence) GetTx(ctx context.Context, chain uint64, sequence s
 		err = errors.New("GetTx err:" + "key:" + k + err.Error())
 		return
 	}
+	tx = new(msg.Tx)
 	err = tx.Decode(resp)
 	return
 }

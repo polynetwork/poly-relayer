@@ -87,8 +87,7 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		return
 	}
 
-	jsonSubmitMultisignRes, _ := json.Marshal(submitMultisignRes)
-	log.Info("SubmitTx ripple success", "submitMultisignRes", string(jsonSubmitMultisignRes))
+	log.Info("SubmitTx ripple submitMultisignRes", "Status", submitMultisignRes.Result.Status, "rippleHash", submitMultisignRes.Result.TxJson.Hash, "ErrorMessage", submitMultisignRes.Result.ErrorMessage, "EngineResultMessage", submitMultisignRes.Result.EngineResultMessage)
 	if submitMultisignRes != nil {
 		if strings.Contains(submitMultisignRes.Result.EngineResultMessage, "Fee insufficient") {
 			err = fmt.Errorf("Fee insufficient")
@@ -149,17 +148,23 @@ func (s *Submitter) run(sequenceCache bus.Sequence) error {
 
 		tx, err := sequenceCache.GetTx(s.Context, s.config.ChainId, nowSequence)
 		if err != nil || tx == nil {
-			log.Error("run SetSequence error", "chain", s.name, "nowSequence", nowSequence, "err", err)
-			time.Sleep(time.Second)
+			if strings.Contains(err.Error(), "redis: nil") {
+				log.Info("run GetTx info", "chain", s.name, "nowSequence", nowSequence)
+			} else {
+				log.Error("run GetTx err", "chain", s.name, "nowSequence", nowSequence, "err", err)
+			}
+			time.Sleep(time.Second * 3)
 			continue
 		}
 		err = s.SubmitTx(tx)
 		if err != nil {
 			if errors.Is(err, msg.ERR_FEE_INSUFFICIENT) {
+				log.Info("run need ReconstructRippleTx", "chain", s.name, "nowSequence", nowSequence)
 				err = s.ReconstructRippleTx(tx)
 				if err != nil {
 					log.Error("run ReconstructRippleTx error", "chain", s.name, "nowSequence", nowSequence, "err", err)
 				} else {
+					log.Info("run ReconstructRippleTx end, ready DelTx", "chain", s.name, "nowSequence", nowSequence)
 					err = sequenceCache.DelTx(s.Context, s.config.ChainId, nowSequence)
 					if err != nil {
 						log.Error("run ReconstructRippleTx end, DelTx error", "chain", s.name, "nowSequence", nowSequence, "err", err)
@@ -175,6 +180,7 @@ func (s *Submitter) run(sequenceCache bus.Sequence) error {
 				log.Error("run end SubmitTx SetSequence error", "chain", s.name, "nextSequence", nextSequence, "err", err)
 			}
 			if nextSequence > nowSequence {
+				log.Info("run nextSequence grew, ready DelTx", "chain", s.name, "nowSequence", nowSequence, "nowSequence", nowSequence)
 				err = sequenceCache.DelTx(s.Context, s.config.ChainId, nowSequence)
 				if err != nil {
 					log.Error("run end SubmitTx DelTx error", "chain", s.name, "del nowSequence", nowSequence, "err", err)
