@@ -38,7 +38,7 @@ type Submitter struct {
 	wallet                                *wallet.FlowWallet
 }
 
-func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
+func (s *Submitter) Init(config *config.SubmitterConfig, polyConfig *config.PolySubmitterConfig) (err error) {
 	s.config = config
 	s.sdk, err = flow.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *Submitter) run(wallet *wallet.FlowWallet, mq bus.TxBus, delay bus.Delay
 	}
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer, sequence bus.Sequence) error {
 	fmt.Printf("Submitter=%+v\n", s)
 	s.Context = ctx
 	s.wg = wg

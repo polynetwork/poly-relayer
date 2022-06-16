@@ -19,10 +19,17 @@ package relayer
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"github.com/polynetwork/bridge-common/tools"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -418,9 +425,13 @@ func HandleCommand(method string, ctx *cli.Context) error {
 func UpdateAccount(ctx *cli.Context) (err error) {
 	path := ctx.String("path")
 	pass, err := msg.ReadPassword("passphrase")
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	newPass, err := msg.ReadPassword("new passphrase")
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	password := string(pass)
 	newPassword := string(newPass)
 	if path == "" {
@@ -452,7 +463,9 @@ func CreateAccount(ctx *cli.Context) (err error) {
 		return
 	}
 	pass, err := msg.ReadPassword("passphrase")
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
 	account, err := ks.NewAccount(string(pass))
 	if err != nil {
@@ -477,9 +490,13 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 	chain := ctx.Uint64("chain")
 	start := ctx.Uint64("height")
 	lis, err := PolyListener()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	sub, err := PolySubmitter()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	for {
 		txs, err := lis.Scan(start)
 		if err != nil {
@@ -514,7 +531,9 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 	height := ctx.Uint64("height")
 	chain := ctx.Uint64("chain")
 	pl, err := PolyListener()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	getListener := func(id uint64) *eth.Listener {
 		if !base.SameAsETH(id) {
 			log.Error("Unsupported chain", "chain", id)
@@ -539,7 +558,9 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 			log.Fatal("Failed to validate this block")
 		}
 		txs, err := lis.ScanDst(height)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		for i, tx := range txs {
 			err = pl.Validate(tx)
 			log.Info("Validating tx", "index", i, "err", err)
@@ -548,7 +569,9 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 		return nil
 	}
 	txs, err := pl.ScanDst(height)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	for i, tx := range txs {
 		lis := getListener(tx.SrcChainId)
 		if lis == nil {
@@ -564,7 +587,9 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 
 func Validate(ctx *cli.Context) (err error) {
 	pl, err := PolyListener()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	listeners := make(map[uint64]*eth.Listener)
 
 	setup := func(chains []uint64) []uint64 {
@@ -621,7 +646,7 @@ func Validate(ctx *cli.Context) (err error) {
 			log.Fatal("Start validator failure", "chain", 0, "err", err)
 		}
 	}
-	<- make(chan bool)
+	<-make(chan bool)
 	return
 }
 
@@ -698,4 +723,3 @@ func Dial(target, content string) error {
 	log.Info("Dail success", "to", target, "content", content, "data", string(data))
 	return nil
 }
-
