@@ -76,7 +76,7 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 
 func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	payment := new(rippleTypes.MultisignPayment)
-	err = json.Unmarshal(tx.PolySigs, payment)
+	err = json.Unmarshal([]byte(tx.ChainTxJson), payment)
 	if err != nil {
 		err = fmt.Errorf("SubmitTx ripple Submitter, Unmarshal paymentn err: %v", err)
 		return

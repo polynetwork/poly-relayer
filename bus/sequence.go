@@ -32,7 +32,7 @@ func NewRedisChainSequence(db *redis.Client) *RedisChainSequence {
 }
 
 func (b *RedisChainSequence) NowSequence(ctx context.Context, chain uint64) (sequence string, err error) {
-	k := fmt.Sprintf("%v_%v", b.Key, chain)
+	k := fmt.Sprintf("%v_%v", b.Key.Key(), chain)
 	sequence, err = b.db.Get(ctx, k).Result()
 	if err != nil {
 		err = errors.New("NowSequence err:" + "key:" + k + err.Error())
@@ -42,7 +42,7 @@ func (b *RedisChainSequence) NowSequence(ctx context.Context, chain uint64) (seq
 }
 
 func (b *RedisChainSequence) SetSequence(ctx context.Context, chain uint64, sequence string) (err error) {
-	k := fmt.Sprintf("%v_%v", b.Key, chain)
+	k := fmt.Sprintf("%v_%v", b.Key.Key(), chain)
 	_, err = b.db.Set(ctx, k, sequence, sequenceExpiration).Result()
 	if err != nil {
 		err = errors.New("SetSequence err:" + "key:" + k + "value:" + sequence + err.Error())
@@ -51,7 +51,7 @@ func (b *RedisChainSequence) SetSequence(ctx context.Context, chain uint64, sequ
 }
 
 func (b *RedisChainSequence) GetTx(ctx context.Context, chain uint64, sequence string) (tx *msg.Tx, err error) {
-	k := fmt.Sprintf("%v_%v_%v", b.Key, chain, sequence)
+	k := fmt.Sprintf("%v_%v_%v", b.Key.Key(), chain, sequence)
 	resp, err := b.db.Get(ctx, k).Result()
 	if err != nil {
 		err = errors.New("GetTx err:" + "key:" + k + err.Error())
@@ -62,7 +62,7 @@ func (b *RedisChainSequence) GetTx(ctx context.Context, chain uint64, sequence s
 }
 
 func (b *RedisChainSequence) AddTx(ctx context.Context, chain uint64, sequence string, tx *msg.Tx) (err error) {
-	k := fmt.Sprintf("%v_%v_%v", b.Key, chain, sequence)
+	k := fmt.Sprintf("%v_%v_%v", b.Key.Key(), chain, sequence)
 	_, err = b.db.Set(ctx, k, tx.Encode(), txExpiration).Result()
 	if err != nil {
 		err = errors.New("AddTx err:" + "key:" + k + err.Error())
@@ -72,7 +72,7 @@ func (b *RedisChainSequence) AddTx(ctx context.Context, chain uint64, sequence s
 }
 
 func (b *RedisChainSequence) DelTx(ctx context.Context, chain uint64, sequence string) (err error) {
-	k := fmt.Sprintf("%v_%v_%v", b.Key, chain, sequence)
+	k := fmt.Sprintf("%v_%v_%v", b.Key.Key(), chain, sequence)
 	_, err = b.db.Del(ctx, k).Result()
 	if err != nil {
 		err = errors.New("DelTx err:" + "key:" + k + err.Error())

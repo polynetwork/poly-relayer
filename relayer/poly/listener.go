@@ -221,7 +221,7 @@ func (l *Listener) SDK() *poly.SDK {
 
 func (l *Listener) parseCcmNotifyStates(height uint64, txHash string, states []interface{}) (tx *msg.Tx, err error) {
 	method, _ := states[0].(string)
-	if method != "makeProof" && method != "multisignedTxJson"{
+	if method != "makeProof" && method != "multisignedTxJson" {
 		return
 	}
 	dstChain := uint64(states[2].(float64))
@@ -252,7 +252,7 @@ func (l *Listener) parseCcmNotifyStates(height uint64, txHash string, states []i
 	case "multisignedTxJson":
 		sequence := states[5].(float64)
 		tx.PolyKey = strconv.Itoa(int(sequence))
-		tx.PolySigs = []byte(states[4].(string))
+		tx.ChainTxJson = states[4].(string)
 	}
 	return
 }
