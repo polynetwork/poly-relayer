@@ -400,11 +400,10 @@ func (h *PolyTxSyncHandler) patchTxs() {
 		count := 0
 		for _, t := range txs {
 			if tx.PolyHash == "" || util.LowerHex(tx.PolyHash) == util.LowerHex(t.PolyHash) {
-				switch tx.DstChainId {
-				case base.RIPPLE:
+				if tx.PolyHash != "" && tx.DstChainId == base.RIPPLE {
 					log.Info("Found patch target poly tx", "hash", t.PolyHash, "sequence", t.PolyKey, "chain", h.config.ChainId, "height", height)
 					h.sequence.AddTx(h.Context, base.RIPPLE, t.PolyKey, t)
-				default:
+				} else {
 					count++
 					log.Info("Found patch target poly tx", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
 					t.CapturePatchParams(tx)
