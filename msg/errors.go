@@ -31,6 +31,7 @@ var (
 	ERR_TX_EXEC_ALWAYS_FAIL   = errors.New("Tx exec always fail")
 	ERR_LOW_BALANCE           = errors.New("Insufficient balance")
 	ERR_PAID_FEE_TOO_LOW      = errors.New("Paid fee too low")
+	ERR_Tx_VERIFYMERKLEPROOF  = errors.New("Tx verifyMerkleProof err")
 
 	ERR_TX_VOILATION     = errors.New("Possible cross chain voilation")
 	ERR_TX_PROOF_MISSING = errors.New("Possible cross chain proof missing")
