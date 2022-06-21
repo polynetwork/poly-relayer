@@ -240,7 +240,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		if strings.Contains(err.Error(), "tx already done") {
 			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
 			return nil
-		}else if strings.Contains(err.Error(), "verifyMerkleProof error") {
+		} else if strings.Contains(err.Error(), "verifyMerkleProof error") {
 			log.Error("Tx verifyMerkleProof err", "src_hash", tx.SrcHash, "chain", tx.SrcChainId, "err", err)
 			return msg.ERR_Tx_VERIFYMERKLEPROOF
 		}
@@ -347,8 +347,8 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
 				continue
 			}
-			if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF){
-				tx.SrcProof = []byte{}
+			if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
+				tx.SrcProofHex = ""
 			}
 			block += 1
 			tx.Attempts++
@@ -405,8 +405,8 @@ func (s *Submitter) run(mq bus.TxBus) error {
 			err = s.submit(tx)
 			if err != nil {
 				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
-				if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF){
-					tx.SrcProof = []byte{}
+				if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
+					tx.SrcProofHex = ""
 				}
 				tx.Attempts++
 			} else {
