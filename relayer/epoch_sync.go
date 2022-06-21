@@ -27,14 +27,14 @@ import (
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/polynetwork/poly-relayer/relayer/poly"
+	"github.com/polynetwork/poly-relayer/relayer/zion"
 )
 
 type EpochSyncHandler struct {
 	context.Context
 	wg *sync.WaitGroup
 
-	listener         *poly.Listener
+	listener         *zion.Listener
 	submitter        IChainSubmitter
 	epochStartHeight uint64
 	config           *config.EpochSyncConfig
@@ -44,7 +44,7 @@ type EpochSyncHandler struct {
 func NewEpochSyncHandler(config *config.EpochSyncConfig) *EpochSyncHandler {
 	return &EpochSyncHandler{
 		config:    config,
-		listener:  new(poly.Listener),
+		listener:  new(zion.Listener),
 		submitter: GetSubmitter(config.ChainId),
 	}
 }

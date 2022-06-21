@@ -17,6 +17,7 @@
 
 package neo
 
+/*
 import (
 	"context"
 	"encoding/hex"
@@ -187,7 +188,7 @@ func (s *Submitter) processPolyHeader(tx *msg.Tx) (err error) {
 			newSig, _ := signature.ConvertToEthCompatible(sig) // convert to eth
 			bs2 = append(bs2, newSig...)
 		}
-	*/
+	//
 	cp3 := sc.ContractParameter{
 		Type:  sc.ByteArray,
 		Value: bs2,
@@ -275,3 +276,4 @@ func (s *Submitter) Process(m msg.Message, compose msg.PolyComposer) (err error)
 	}
 	return s.ProcessTx(tx, compose)
 }
+*/

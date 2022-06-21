@@ -15,10 +15,9 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package poly
+package zion
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -30,8 +29,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
-	hs "github.com/devfans/zion-sdk/contracts/native/go_abi/header_sync_abi"
-	"github.com/devfans/zion-sdk/contracts/native/utils"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
@@ -60,7 +57,6 @@ type Submitter struct {
 	lastCommit   uint64
 	lastCheck    uint64
 	blocksToWait uint64
-	hsabi        abi.ABI
 	txabi        abi.ABI
 }
 
@@ -96,10 +92,12 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		}
 	}
 
+	/*
 	s.hsabi, err = abi.JSON(strings.NewReader(hs.HeaderSyncABI))
 	if err != nil {
 		return
 	}
+	 */
 	s.txabi, err = abi.JSON(strings.NewReader(ccm.CrossChainManagerABI))
 	return
 }
@@ -156,21 +154,11 @@ func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, head
 }
 
 func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) error {
+	/*
 	attempt := 0
 	var ok bool
 	for {
-		var err error
-		if header != nil {
-			ok, err = s.CheckHeaderExistence(header)
-			if ok {
-				return nil
-			}
-			if err != nil {
-				log.Error("Failed to check header existence", "chain", chainId, "height", header.Height)
-			}
-		}
-
-		if err == nil {
+		{
 			attempt += 1
 			_, err = s.SubmitHeaders(chainId, headers)
 			if err == nil {
@@ -200,13 +188,17 @@ func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, head
 			time.Sleep(time.Second)
 		}
 	}
+	 */
+	return nil
 }
 
 func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string, err error) {
+	/*
 	data, err := s.hsabi.Pack("syncBlockHeader", chainId, s.signer.Address, headers)
 	if err != nil {
 		return
 	}
+
 	hash, err = s.wallet.SendWithAccount(*s.signer, utils.HeaderSyncContractAddress, big.NewInt(0), 0, nil, nil, data)
 	if err != nil && !strings.Contains(err.Error(), "already known") {
 		return
@@ -225,6 +217,7 @@ func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string
 		}
 		log.Warn("Tx wait confirm timeout", "chain", chainId, "hash", hash, "pending", pending)
 	}
+	 */
 	return
 }
 
@@ -254,15 +247,16 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		signer = tx.PolySender.(*accounts.Account)
 	}
 	switch tx.SrcChainId {
-	case base.NEO, base.ONT, base.SIDE:
+	case base.NEO, base.ONT:
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
 			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
 		}
 	default:
 		// For other chains, reversed?
 		// Check done tx existence
-		data, _ := s.sdk.Node().GetDoneTx(tx.SrcChainId, tx.Param.CrossChainID)
-		if len(data) != 0 {
+		done, err := s.sdk.Node().CheckDone(nil, tx.SrcChainId, tx.Param.CrossChainID)
+		if err != nil { return err }
+		if done {
 			log.Info("Tx already imported", "src_hash", tx.SrcHash)
 			return nil
 		}
@@ -323,12 +317,11 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	var err error
 	switch s.config.ChainId {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.STARCOIN, base.BYTOM, base.HSC:
-		height, err = s.sdk.Node().GetSideChainHeight(s.config.ChainId)
+		var h uint32
+		h, err = s.sdk.Node().GetInfoHeight(nil, s.config.ChainId)
+		height = uint64(h)
 	default:
 		height, err = s.composer.LatestHeight()
-	}
-	if height > s.blocksToWait {
-		height -= s.blocksToWait
 	}
 	if err != nil {
 		log.Error("Failed to get ready block height", "chain", s.name, "err", err)
@@ -504,36 +497,8 @@ func (s *Submitter) StartSync(
 }
 
 func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error) {
-	return s.sdk.Node().GetSideChainHeight(chainId)
-}
-
-func (s *Submitter) CheckHeaderExistence(header *msg.Header) (ok bool, err error) {
-	if s.sync.ChainId == base.HARMONY {
-		return
-	}
-
-	var hash []byte
-	if s.sync.ChainId == base.NEO || s.sync.ChainId == base.ONT {
-		hash, err = s.sdk.Node().GetSideChainHeaderIndex(s.sync.ChainId, header.Height)
-		if err != nil {
-			return
-		}
-		ok = len(hash) != 0
-		return
-	} else if s.sync.ChainId == base.HARMONY {
-		height, err := s.sdk.Node().GetSideChainHeight(s.sync.ChainId)
-		if err != nil {
-			return false, err
-		}
-		if height >= header.Height {
-			return true, nil
-		}
-	}
-	hash, err = s.sdk.Node().GetSideChainHeader(s.sync.ChainId, header.Height)
-	if err != nil {
-		return
-	}
-	ok = bytes.Equal(hash, header.Hash)
+	h, err := s.sdk.Node().GetInfoHeight(nil, chainId)
+	height = uint64(h)
 	return
 }
 
@@ -642,8 +607,4 @@ func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
 	hash, err := s.SubmitHeaders(epoch.ChainId, headers)
 	log.Info("Submit side chain epochs to zion", "size", len(epochs), "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "from_chain", epoch.ChainId, "hash", hash, "err", err)
 	return
-}
-
-func (s *Submitter) GetPolyEpochStartHeight(chainId uint64) (height uint64, err error) {
-	return s.sdk.Node().GetSideChainConsensusBlockHeight(chainId)
 }

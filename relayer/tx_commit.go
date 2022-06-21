@@ -29,7 +29,7 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/polynetwork/poly-relayer/relayer/poly"
+	"github.com/polynetwork/poly-relayer/relayer/zion"
 )
 
 type PolyTxCommitHandler struct {
@@ -39,7 +39,7 @@ type PolyTxCommitHandler struct {
 	bus       bus.TxBus
 	queue     bus.DelayedTxBus // Delayed tx bus
 	submitter IChainSubmitter
-	composer  *poly.Submitter
+	composer  *zion.Submitter
 	config    *config.PolyTxCommitConfig
 
 	bridge *bridge.SDK
@@ -49,7 +49,7 @@ func NewPolyTxCommitHandler(config *config.PolyTxCommitConfig) *PolyTxCommitHand
 	return &PolyTxCommitHandler{
 		config:    config,
 		submitter: GetSubmitter(config.ChainId),
-		composer:  new(poly.Submitter),
+		composer:  new(zion.Submitter),
 	}
 }
 
@@ -278,7 +278,7 @@ type SrcTxCommitHandler struct {
 	wg *sync.WaitGroup
 
 	bus       bus.SortedTxBus
-	submitter *poly.Submitter
+	submitter *zion.Submitter
 	listener  IChainListener
 	config    *config.SrcTxCommitConfig
 }
@@ -286,7 +286,7 @@ type SrcTxCommitHandler struct {
 func NewSrcTxCommitHandler(config *config.SrcTxCommitConfig) *SrcTxCommitHandler {
 	return &SrcTxCommitHandler{
 		config:    config,
-		submitter: new(poly.Submitter),
+		submitter: new(zion.Submitter),
 		listener:  GetListener(config.ChainId),
 	}
 }

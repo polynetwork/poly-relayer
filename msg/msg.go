@@ -24,7 +24,6 @@ import (
 	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
-	pcom "github.com/polynetwork/poly/common"
 )
 
 var TxParam abi.Arguments
@@ -366,6 +365,7 @@ func GetCurveLabel(name string) (byte, error) {
 }
 
 func ParseAuditPath(path []byte) (value []byte, pos []byte, hashes [][32]byte, err error) {
+	/*
 	source := pcom.NewZeroCopySource(path)
 	value, eof := source.NextVarBytes()
 	if eof {
@@ -389,6 +389,7 @@ func ParseAuditPath(path []byte) (value []byte, pos []byte, hashes [][32]byte, e
 		copy(hash[:], v.ToArray()[0:32])
 		hashes = append(hashes, hash)
 	}
+	 */
 	return
 }
 

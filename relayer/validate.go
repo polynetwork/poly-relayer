@@ -24,12 +24,13 @@ import (
 	"time"
 
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
-	"github.com/polynetwork/poly-relayer/relayer/poly"
+	"github.com/polynetwork/poly-relayer/relayer/zion"
 )
 
 type IValidator interface {
@@ -70,7 +71,7 @@ func (v *Validator) start() (err error) {
 		listener = v.listener.(*eth.Listener)
 		scan = listener.ScanDst
 	} else {
-		scan = v.listener.(*poly.Listener).ScanDst
+		scan = v.listener.(*zion.Listener).ScanDst
 	}
 
 
@@ -85,7 +86,7 @@ func (v *Validator) start() (err error) {
 			for _, tx := range txs {
 				hash := tx.PolyHash
 				if chainID > 0 {
-					hash = tx.DstHash
+					hash = common.HexToHash(tx.DstHash)
 				}
 				validator := v.vs(tx.SrcChainId)
 				if validator == nil {

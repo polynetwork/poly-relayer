@@ -15,12 +15,11 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package poly
+package zion
 
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
@@ -32,7 +31,6 @@ import (
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
 	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
-	zh "github.com/devfans/zion-sdk/contracts/native/header_sync/zion"
 	"github.com/devfans/zion-sdk/core/state"
 	"github.com/devfans/zion-sdk/core/types"
 
@@ -70,6 +68,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 	if err != nil {
 		return
 	}
+	/*
 	sub := &Submitter{sdk: l.sdk}
 	for _, tx := range txs {
 		tx.MerkleValue, _, _, err = sub.GetProof(tx.PolyHeight, tx.PolyKey)
@@ -77,6 +76,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 			return
 		}
 	}
+	*/
 	return
 }
 
@@ -148,6 +148,7 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	//hash hasn't '0x'
+	/*
 	event, err := l.sdk.Node().GetSmartContractEvent(hash)
 	if err != nil {
 		return nil, err
@@ -185,6 +186,8 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 		}
 	}
 	return nil, errors.New(fmt.Sprintf("hash:%v hasn't event", hash))
+	 */
+	return
 }
 
 func (l *Listener) ChainId() uint64 {
@@ -212,37 +215,6 @@ func (l *Listener) Nodes() chains.Nodes {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
-	epoch, err := l.sdk.Node().GetEpochInfo(height)
-	if err != nil {
-		return
-	}
-	if epoch.Status != node_manager.ProposalStatusPassed {
-		return
-	}
-	if epoch.ID == l.lastEpoch {
-		return
-	}
-
-	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
-	if err != nil {
-		err = fmt.Errorf("Fetch block header error %v", err)
-		return nil, nil, err
-	}
-	log.Info("Fetched block header", "chain", l.name, "height", height, "hash", hdr.Hash().String())
-	hash = hdr.Hash().Bytes()
-
-	proof, err := l.sdk.Node().GetProof(zion.NODE_MANAGER_ADDRESS.Hex(), zion.EpochProofKey(epoch.ID).Hex(), 0)
-	if err != nil {
-		return
-	}
-
-	proofBytes, err := json.Marshal(proof)
-	if err != nil {
-		panic(err)
-	}
-
-	payload := &zh.HeaderWithEpoch{hdr, epoch, proofBytes}
-	header, err = payload.Encode()
 	return
 }
 
@@ -414,7 +386,7 @@ func (l *Listener) LatestHeight() (uint64, error) {
 }
 
 func (l *Listener) Validate(tx *msg.Tx) (err error) {
-	t, err := l.ScanTx(tx.PolyHash)
+	t, err := l.ScanTx(tx.PolyHash.String())
 	if err != nil {
 		return
 	}
@@ -427,6 +399,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 	if tx.DstChainId != t.DstChainId {
 		return fmt.Errorf("%w DstChainID does not match: %v, was %v", msg.ERR_TX_VOILATION, tx.DstChainId, t.DstChainId)
 	}
+	/*
 	sub := &Submitter{sdk: l.sdk}
 	value, _, _, err := sub.GetProof(t.PolyHeight, t.PolyKey)
 	if err != nil {
@@ -440,9 +413,10 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 	if a != b {
 		return fmt.Errorf("%w ToContract does not match: %v, was %v", msg.ERR_TX_VOILATION, b, a)
 	}
+	*/
 	return
 }
 
-func (l *Listener) SDK() *poly.SDK {
+func (l *Listener) SDK() *zion.SDK {
 	return l.sdk
 }

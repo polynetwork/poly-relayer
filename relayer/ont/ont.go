@@ -17,6 +17,7 @@
 
 package ont
 
+/*
 import (
 	"context"
 	"errors"
@@ -188,3 +189,4 @@ func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus
 	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address, "chain", s.name)
 	return nil
 }
+ */

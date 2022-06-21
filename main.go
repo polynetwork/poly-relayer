@@ -10,9 +10,9 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/polynetwork/bridge-common/log"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/config"
-	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer"
 )
 
@@ -611,7 +611,7 @@ func command(method string) func(*cli.Context) error {
 					conf.Poly.ExtraWallets = new(wallet.Config)
 				}
 				conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
-				password, err := msg.ReadPassword("passphrase")
+				password, err := util.ReadPassword("passphrase")
 				if err != nil {
 					return err
 				}

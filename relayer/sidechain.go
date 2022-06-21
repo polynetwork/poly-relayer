@@ -17,6 +17,7 @@
 
 package relayer
 
+/*
 import (
 	"bytes"
 	"crypto/elliptic"
@@ -380,7 +381,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 		height, err = ps.SDK().Node().GetLatestHeight()
 		if err != nil { return err }
 	}
-	*/
+	//
 	block, err := ps.SDK().Node().GetBlockByHeight(uint32(height))
 	if err != nil { return }
 	info := &vconfig.VbftBlockInfo{}
@@ -466,4 +467,4 @@ func GetCurveLabel(name string) (byte, error) {
 		panic("err")
 	}
 }
-
+*/

@@ -18,23 +18,20 @@
 package harmony
 
 import (
-	"encoding/json"
 	"time"
 
-	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/harmony"
-	"github.com/polynetwork/bridge-common/chains/poly"
+	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
-	"github.com/polynetwork/poly/native/service/governance/side_chain_manager"
 )
 
 type Listener struct {
 	*eth.Listener
 	sdk *harmony.SDK
-	poly *poly.SDK
+	poly *zion.SDK
 	epoch uint64
 	header []byte // Pending header
 	nextEpochBlock uint64
@@ -59,7 +56,7 @@ func GetLastEpochBlock(height uint64) (prev, next uint64) {
 	return
 }
 
-func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
+func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	l.Listener = new(eth.Listener)
 	l.poly = poly
 	err = l.Listener.Init(config, poly)
@@ -130,6 +127,7 @@ type Context struct {
 	NetworkID int
 }
 
+/*
 func (l *Listener) SideChain() (sc *side_chain_manager.SideChain, err error) {
 	sc = &side_chain_manager.SideChain{
 		ChainId: base.HARMONY,
@@ -147,4 +145,4 @@ func (l *Listener) SideChain() (sc *side_chain_manager.SideChain, err error) {
 func (l *Listener) Defer() int {
 	return 2
 }
-
+*/

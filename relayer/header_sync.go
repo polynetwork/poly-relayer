@@ -23,20 +23,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	"github.com/polynetwork/poly-relayer/relayer/poly"
+	"github.com/polynetwork/poly-relayer/relayer/zion"
 )
 
 type HeaderSyncHandler struct {
 	context.Context
 	wg        *sync.WaitGroup
 	listener  IChainListener
-	submitter *poly.Submitter
+	submitter *zion.Submitter
 	state     bus.ChainStore // sync height mark
 	input     bus.ChainStore // init sync height(force)
 	latest    bus.ChainStore // chain latest state
@@ -49,14 +48,12 @@ type HeaderSyncHandler struct {
 func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
 	var listener IChainListener
 	switch config.ChainId {
-	case base.SIDE:
-		listener = new(poly.Listener)
 	default:
 		listener = GetListener(config.ChainId)
 	}
 	return &HeaderSyncHandler{
 		listener:  listener,
-		submitter: new(poly.Submitter),
+		submitter: new(zion.Submitter),
 		config:    config,
 		reset:     make(chan uint64, 1),
 	}
@@ -113,51 +110,6 @@ func (h *HeaderSyncHandler) monitor(ch chan<- uint64) {
 				}
 			default:
 			}
-		}
-	}
-}
-
-func (h *HeaderSyncHandler) RollbackToCommonAncestor(height, target uint64) uint64 {
-	log.Warn("Rolling header sync back to common ancestor", "current", height, "goal", target, "chain", h.config.ChainId)
-	switch h.config.ChainId {
-	case base.ETH, base.HECO, base.BSC, base.O3, base.STARCOIN, base.BYTOM, base.HSC:
-	case base.HARMONY:
-		for {
-			height, err := h.submitter.Poly().Node().GetSideChainHeight(h.config.ChainId)
-			if err == nil {
-				return height + 1
-			}
-			log.Error("RollbackToCommonAncestor error", "chain", h.config.ChainId, "height", target)
-			time.Sleep(time.Second)
-		}
-	default:
-		return target
-	}
-
-	var (
-		a, b []byte
-		err  error
-	)
-	for {
-		// Check err here?
-		b, _ = h.submitter.Poly().Node().GetSideChainHeader(h.config.ChainId, target)
-		if len(b) == 0 {
-			target--
-			continue
-		}
-		_, a, err = h.listener.Header(target)
-		if err == nil {
-			if common.BytesToHash(a).String() == common.BytesToHash(b).String() {
-				log.Info("Found common ancestor", "chain", h.config.ChainId, "height", target)
-				return target
-			} else {
-				log.Info("Hard forked block", "synced_hash", common.BytesToHash(a), "hash", common.BytesToHash(b), "height", target, "chain", h.config.ChainId)
-				target--
-				continue
-			}
-		} else {
-			log.Error("RollbackToCommonAncestor error", "chain", h.config.ChainId, "height", target)
-			time.Sleep(time.Second)
 		}
 	}
 }
@@ -220,8 +172,10 @@ LOOP:
 					}
 				}
 
+				/*
 				log.Info("Detected submit failure reset", "chain", h.config.ChainId, "value", reset)
 				h.height = h.RollbackToCommonAncestor(h.height, reset-1)
+				 */
 			}
 		case <-h.Done():
 			break LOOP

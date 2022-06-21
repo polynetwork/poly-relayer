@@ -93,11 +93,7 @@ func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) 
 
 	switch c := conf.(type) {
 	case *config.HeaderSyncConfig:
-		if chain == base.SIDE {
-			handler = NewEpochSyncHandler(c.AsEpochSyncConfig())
-		} else {
-			handler = NewHeaderSyncHandler(c)
-		}
+		handler = NewHeaderSyncHandler(c)
 	case *config.EpochSyncConfig:
 		handler = NewEpochSyncHandler(c)
 	case *config.SrcTxSyncConfig:

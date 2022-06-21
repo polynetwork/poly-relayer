@@ -356,21 +356,10 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
-
 			// Retry to verify a successful submit
-			tsp := int64(0)
-			switch s.config.ChainId {
-			case base.MATIC, base.PLT:
-				tsp = time.Now().Unix() + 60*3
-			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM, base.RINKEBY, base.BOBA, base.OASIS,
-				base.KAVA, base.CUBE:
-				tsp = time.Now().Unix() + 60*25
-			case base.BSC, base.HECO, base.OK, base.KCC, base.BYTOM, base.HSC, base.MILKO:
-				tsp = time.Now().Unix() + 60*4
-			case base.ETH, base.RINKBY, base.GOERLI, base.KOVAN:
-				tsp = time.Now().Unix() + 60*6
-			}
-			if tsp > 0 && tx.DstHash != "" {
+			after := base.CheckAfter(s.config.ChainId)
+			if after > 0 && tx.DstHash != "" {
+				tsp := time.Now().Unix() + after
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
 		}

@@ -31,13 +31,8 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
-	"github.com/polynetwork/poly-relayer/relayer/harmony"
-	"github.com/polynetwork/poly-relayer/relayer/matic"
-	"github.com/polynetwork/poly-relayer/relayer/neo"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
-	"github.com/polynetwork/poly-relayer/relayer/ont"
-	po "github.com/polynetwork/poly-relayer/relayer/poly"
-	"github.com/polynetwork/poly-relayer/relayer/starcoin"
+	po "github.com/polynetwork/poly-relayer/relayer/zion"
 )
 
 type IChainListener interface {
@@ -79,19 +74,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
 	case base.OK:
 		listener = new(ok.Listener)
-	case base.MATIC:
-		listener = new(matic.Listener)
-	case base.NEO:
-		listener = new(neo.Listener)
-	case base.ONT:
-		listener = new(ont.Listener)
 	case base.POLY:
 		listener = new(po.Listener)
-	case base.HARMONY:
-		listener = new(harmony.Listener)
-	case base.STARCOIN:
-		listener = new(starcoin.Listener)
-
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)
@@ -102,10 +86,6 @@ func GetListener(chain uint64) (listener IChainListener) {
 
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
-	case base.NEO:
-		submitter = new(neo.Submitter)
-	case base.ONT:
-		submitter = new(ont.Submitter)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Submitter)
@@ -127,18 +107,13 @@ func PolyListener() (l *po.Listener, err error) {
 }
 
 func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
-	if chain == base.ONT {
-		sub = new(ont.Submitter)
-	} else if chain == base.NEO {
-		sub = new(neo.Submitter)
-	} else {
-		for _, v := range base.ETH_CHAINS {
-			if v == chain {
-				sub = new(eth.Submitter)
-				break
-			}
+	for _, v := range base.ETH_CHAINS {
+		if v == chain {
+			sub = new(eth.Submitter)
+			break
 		}
 	}
+
 	if sub == nil {
 		err = fmt.Errorf("No submitter for chain %d available", chain)
 		return

@@ -97,6 +97,7 @@ func init() {
 	_Handlers[UPDATE_ACCOUNT] = UpdateAccount
 	_Handlers[ENCRYPT_FILE] = EncryptFile
 	_Handlers[DECRYPT_FILE] = DecryptFile
+	/*
 	_Handlers[ADD_SIDECHAIN] = AddSideChain
 	_Handlers[SYNC_GENESIS] = SyncGenesis
 	_Handlers[CREATE_GENESIS] = CreateGenesis
@@ -106,6 +107,7 @@ func init() {
 	_Handlers[APPROVE_SIDECHAIN] = ApproveSideChain
 	_Handlers[INIT_GENESIS] = SyncContractGenesis
 	_Handlers[GET_SIDE_CHAIN] = FetchSideChain
+	 */
 	_Handlers[SCAN_POLY_TX] = ScanPolyTxs
 	_Handlers[VALIDATE] = Validate
 	_Handlers[VALIDATE_BLOCK] = ValidateBlock
@@ -365,7 +367,8 @@ func Status(ctx *cli.Context) (err error) {
 		header := uint64(0)
 		switch chain {
 		case base.BSC, base.HECO, base.MATIC, base.ETH, base.O3, base.STARCOIN, base.BYTOM, base.HSC:
-			header, _ = h.poly.Node().GetSideChainHeight(chain)
+			height, _ := h.poly.Node().GetInfoHeight(nil, chain)
+			header = uint64(height)
 		default:
 		}
 
@@ -444,11 +447,11 @@ func HandleCommand(method string, ctx *cli.Context) error {
 
 func UpdateAccount(ctx *cli.Context) (err error) {
 	path := ctx.String("path")
-	pass, err := msg.ReadPassword("passphrase")
+	pass, err := util.ReadPassword("passphrase")
 	if err != nil {
 		return
 	}
-	newPass, err := msg.ReadPassword("new passphrase")
+	newPass, err := util.ReadPassword("new passphrase")
 	if err != nil {
 		return
 	}
@@ -482,7 +485,7 @@ func CreateAccount(ctx *cli.Context) (err error) {
 		log.Error("Wallet patch can not be empty")
 		return
 	}
-	pass, err := msg.ReadPassword("passphrase")
+	pass, err := util.ReadPassword("passphrase")
 	if err != nil {
 		return
 	}
@@ -513,7 +516,7 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 	if err != nil {
 		return
 	}
-	sub, err := PolySubmitter()
+	_, err = PolySubmitter()
 	if err != nil {
 		return
 	}
@@ -531,6 +534,7 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 			}
 			fmt.Println(util.Json(tx))
 			for {
+				/*
 				value, _, _, e := sub.GetPolyParams(tx)
 				if value != nil {
 					log.Info("SRC", "ccid", hex.EncodeToString(value.MakeTxParam.CrossChainID), "to", value.MakeTxParam.ToChainID,
@@ -540,6 +544,7 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 					log.Error("Fetc SRC failed", "err", e)
 					time.Sleep(time.Second)
 				}
+				 */
 			}
 		}
 		start++

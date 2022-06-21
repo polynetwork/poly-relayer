@@ -29,8 +29,6 @@ import (
 	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
-
-	"github.com/polynetwork/poly-relayer/msg"
 )
 
 var (
@@ -88,14 +86,14 @@ func New(path string) (config *Config, err error) {
 	if ENCRYPTED {
 		var passphrase []byte
 		if PLAIN {
-			passphrase, err = msg.ReadInput("passphrase")
+			passphrase, err = util.ReadInput("passphrase")
 		} else {
-			passphrase, err = msg.ReadPassword("passphrase")
+			passphrase, err = util.ReadPassword("passphrase")
 		}
 		if err != nil {
 			return nil, err
 		}
-		data = msg.Decrypt(data, passphrase)
+		data = util.Decrypt(data, passphrase)
 	}
 	config = &Config{chains: map[uint64]bool{}}
 	err = json.Unmarshal(data, config)
@@ -120,7 +118,6 @@ func New(path string) (config *Config, err error) {
 
 type PolyChainConfig struct {
 	SubmitterConfig `json:",inline"`
-	PolyTxSync      *PolyTxSyncConfig
 	PolyTxSync      *PolyTxSyncConfig
 	ExtraWallets    *wallet.Config
 }

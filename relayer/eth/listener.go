@@ -28,14 +28,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
+	zcom "github.com/devfans/zion-sdk/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/light"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
 
 	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
-	ceth "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/eth"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
@@ -82,11 +80,9 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	switch l.config.ChainId {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.BYTOM, base.HSC:
-		h, err := l.poly.Node().GetSideChainHeight(l.config.ChainId)
-		if err != nil {
-			return 0, err
-		}
-		height = h - base.BlocksToWait(l.config.ChainId)
+		h, err := l.poly.Node().GetInfoHeight(nil, l.config.ChainId)
+		height = uint64(h)
+		return height, err
 	case base.OK, base.HARMONY:
 		height, err = l.sdk.Node().GetLatestHeight()
 		if err != nil {
@@ -104,7 +100,7 @@ func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 
 func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof []byte, err error) {
 	id := msg.EncodeTxId(txId)
-	bytes, err := ceth.MappingKeyAt(id, "01")
+	bytes, err := zcom.MappingKeyAt(id, "01")
 	if err != nil {
 		err = fmt.Errorf("%s scan event mapping key error %v", l.name, err)
 		return
@@ -166,9 +162,6 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	if err != nil {
 		return
 	}
-	if l.config.ChainId == base.SIDE {
-		tx.SrcStateRoot, _, err = l.Header(tx.SrcProofHeight)
-	}
 	return
 }
 
@@ -185,7 +178,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 }
 
 func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
+	ccm, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +205,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 			SrcChainId: ev.FromChainID,
 			DstProxy:   hex.EncodeToString(ev.ToContract),
 			DstHeight:  ev.Raw.BlockNumber,
-			PolyHash:   msg.HexStringReverse(hex.EncodeToString(ev.CrossChainTxHash)),
+			PolyHash:   common.BytesToHash(ev.CrossChainTxHash),
 		}
 		txs = append(txs, tx)
 	}
@@ -327,16 +320,19 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 	if force != 0 {
 		return force, nil
 	}
-	return l.poly.Node().GetSideChainHeight(l.config.ChainId)
+	h, err := l.poly.Node().GetInfoHeight(nil, l.config.ChainId)
+	height = uint64(h)
+	return
 }
 
 func (l *Listener) Validate(tx *msg.Tx) (err error) {
+	/*
 	txId, err := hex.DecodeString(tx.TxId)
 	if err != nil {
 		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
 	}
 	id := msg.EncodeTxId(txId)
-	bytes, err := ceth.MappingKeyAt(id, "01")
+	bytes, err := zcom.MappingKeyAt(id, "01")
 	if err != nil {
 		err = fmt.Errorf("%s scan event mapping key error %v", l.name, err)
 		return
@@ -371,7 +367,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		return
 	}
 
-	sink := pcom.NewZeroCopySink(nil)
+	sink := zcom.NewZeroCopySink(nil)
 	tx.MerkleValue.MakeTxParam.Serialization(sink)
 	value := sink.Bytes()
 	err = CheckProofResult(storageValue, crypto.Keccak256(value))
@@ -380,6 +376,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		return
 	}
 	log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
+	 */
 	return
 }
 

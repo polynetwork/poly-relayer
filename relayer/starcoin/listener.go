@@ -16,7 +16,7 @@
  */
 
 package starcoin
-
+/*
 import (
 	"bytes"
 	"context"
@@ -289,3 +289,4 @@ func (l *Listener) LastHeaderSync(force, _ uint64) (height uint64, err error) {
 	}
 	return l.poly.Node().GetSideChainHeight(l.config.ChainId)
 }
+*/

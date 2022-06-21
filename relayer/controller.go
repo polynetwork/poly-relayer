@@ -27,7 +27,7 @@ import (
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/config"
-	po "github.com/polynetwork/poly-relayer/relayer/poly"
+	po "github.com/polynetwork/poly-relayer/relayer/zion"
 )
 
 var controller *Controller
@@ -89,7 +89,7 @@ func (c *Controller) ComposeDstTx(w http.ResponseWriter, r *http.Request) {
 
 func (c *Controller) composeDstTx(hash string) (data interface{}, err error) {
 	tx, err := c.listener.ScanTx(hash)
-	if err != nil || tx == nil || util.LowerHex(tx.PolyHash) != util.LowerHex(hash) {
+	if err != nil || tx == nil || util.LowerHex(tx.PolyHash.String()) != util.LowerHex(hash) {
 		err = fmt.Errorf("Failed to find poly tx %s, err %v", hash, err)
 		return
 	}
