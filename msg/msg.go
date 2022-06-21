@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"strings"
 
@@ -27,6 +28,11 @@ import (
 )
 
 var TxParam abi.Arguments
+
+var (
+	HexToAddress = common.HexToAddress
+	HexToHash = common.HexToHash
+)
 
 func init() {
 	BytesTy, _ := abi.NewType("bytes", "", nil)
@@ -354,35 +360,6 @@ func GetCurveLabel(name string) (byte, error) {
 	}
 }
 
-func ParseAuditPath(path []byte) (value []byte, pos []byte, hashes [][32]byte, err error) {
-	/*
-	source := pcom.NewZeroCopySource(path)
-	value, eof := source.NextVarBytes()
-	if eof {
-		return
-	}
-	size := int((source.Size() - source.Pos()) / pcom.UINT256_SIZE)
-	pos = []byte{}
-	hashes = [][32]byte{}
-	for i := 0; i < size; i++ {
-		f, eof := source.NextByte()
-		if eof {
-			return
-		}
-		pos = append(pos, f)
-
-		v, eof := source.NextHash()
-		if eof {
-			return
-		}
-		var hash [32]byte
-		copy(hash[:], v.ToArray()[0:32])
-		hashes = append(hashes, hash)
-	}
-	 */
-	return
-}
-
 func EncodeTxId(id []byte) string {
 	index := big.NewInt(0)
 	index.SetBytes(id)
@@ -398,4 +375,12 @@ func RlpEncodeStrings(strs []string) ([]byte, error) {
 		bytes = append(bytes, common.Hex2Bytes(str[2:])...)
 	}
 	return rlp.EncodeToBytes(bytes)
+}
+
+func FilterLog(abi abi.ABI, address common.Address,  event string, data *types.Log, out interface{}) bool {
+	if data.Address != address {
+		return false
+	}
+	b := bind.NewBoundContract(address, abi, nil, nil, nil)
+	return b.UnpackLog(out, event, *data) == nil
 }

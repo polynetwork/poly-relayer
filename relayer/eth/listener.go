@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"math/big"
 	"time"
@@ -31,12 +32,9 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
-	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -59,6 +57,7 @@ type Listener struct {
 	GetProofHeight func(uint64) (uint64, error)
 	GetProof       func([]byte, uint64) (uint64, []byte, error)
 	name           string
+	abi            abi.ABI
 	state          bus.ChainStore // Header sync state
 }
 
@@ -78,6 +77,9 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	)
 
 	l.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	if err == nil {
+		l.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
+	}
 	return
 }
 
@@ -153,10 +155,6 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
 	}
 	param, err := msg.DecodeTxParam(event)
-	/*
-		param := &ccom.MakeTxParam{}
-		err = param.Deserialization(pcom.NewZeroCopySource(event))
-	*/
 	if err != nil {
 		return
 	}
@@ -272,6 +270,33 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 }
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
+	res, err := l.sdk.Node().TransactionReceipt(context.Background(), msg.HexToHash(hash))
+	if err != nil || res == nil { return }
+	for _, entry := range res.Logs {
+		ev := new(eccm_abi.EthCrossChainManagerImplementationCrossChainEvent)
+		if msg.FilterLog(l.abi, l.ccm, "CrossChainEvent", entry, ev) {
+			param, err := msg.DecodeTxParam(ev.Rawdata)
+			if err != nil {
+				return nil, err
+			}
+			log.Info("Found src cross chain tx", "method", param.Method, "hash", ev.Raw.TxHash.String())
+			tx := &msg.Tx{
+				TxType:     msg.SRC,
+				TxId:       msg.EncodeTxId(ev.TxId),
+				SrcHash:    hash,
+				DstChainId: ev.ToChainId,
+				SrcHeight:  res.BlockNumber.Uint64(),
+				SrcParam:   hex.EncodeToString(ev.Rawdata),
+				SrcChainId: l.config.ChainId,
+				SrcProxy:   ev.ProxyOrAssetContract.String(),
+				DstProxy:   common.BytesToAddress(ev.ToContract).String(),
+				SrcAddress: ev.Sender.String(),
+			}
+			l.Compose(tx)
+			// Only the first?
+			return tx, nil
+		}
+	}
 	return
 }
 
@@ -327,50 +352,25 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
 	}
 	id := msg.EncodeTxId(txId)
-	bytes, err := zcom.MappingKeyAt(id, "01")
+	key, err := zcom.MappingKeyAt(id, "01")
 	if err != nil {
 		err = fmt.Errorf("%s scan event mapping key error %v", l.name, err)
 		return
 	}
-	proofKey := hexutil.Encode(bytes)
-	height, err := l.sdk.Node().GetLatestHeight()
-	if err != nil {
-		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
-		return
-	}
-	proof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height-1)
-	if err != nil {
-		return fmt.Errorf("get proof failure %v", err)
-	}
 
-	// Verify storage proof
-	if len(proof.StorageProofs) != 1 {
-		err = fmt.Errorf("invalid storage proof size, %v", proof.StorageProofs)
-		return
-	}
-	sp := proof.StorageProofs[0]
-	nodeList := new(light.NodeList)
-	storageKey := crypto.Keccak256(common.HexToHash(sp.Key).Bytes())
-	for _, p := range sp.Proof {
-		nodeList.Put(nil, common.Hex2Bytes(ccom.Replace0x(p)))
-	}
-
-	storageHash := common.HexToHash(proof.StorageHash)
-	storageValue, err := trie.VerifyProof(storageHash, storageKey, nodeList.NodeSet())
+	proof, err := l.sdk.Node().StorageAt(nil, l.ccd, common.BytesToHash(key), nil)
 	if err != nil {
-		err = fmt.Errorf("account storage VerifyProof failure, err: %v", err)
-		return
+		return fmt.Errorf("get proof storage failure %v", err)
 	}
 
 	value, err := msg.EncodeTxParam(tx.MerkleValue.MakeTxParam)
 	if err == nil {
-		err = CheckProofResult(storageValue, crypto.Keccak256(value))
+		if bytes.Equal(proof, crypto.Keccak256(value)) {
+			log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
+			return
+		}
 	}
-	if err != nil {
-		err = fmt.Errorf("%w CheckProofResult failed, err: %v", msg.ERR_TX_VOILATION, err)
-		return
-	}
-	log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
+	err = fmt.Errorf("%w CheckProofResult failed, hash doesnt match", msg.ERR_TX_VOILATION)
 	return
 }
 
@@ -437,26 +437,6 @@ func (l *Listener) ScanEvents(height uint64, ch chan tools.CardEvent) (err error
 
 	for _, ev := range events {
 		ch <- ev
-	}
-	return
-}
-
-// Check proof storage value hash
-func CheckProofResult(result, value []byte) (err error) {
-	var temp []byte
-	err = rlp.DecodeBytes(result, &temp)
-	if err != nil {
-		err = fmt.Errorf("rlp decode proof result failed, err: %v", err)
-		return
-	}
-	var hash []byte
-	for i := len(temp); i < 32; i++ {
-		hash = append(hash, 0)
-	}
-	hash = append(hash, temp...)
-	if !bytes.Equal(hash, value) {
-		err = fmt.Errorf("storage value does not match with proof result, wanted %x, got %x", result, value)
-		return
 	}
 	return
 }

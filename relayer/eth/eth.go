@@ -238,23 +238,6 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	if err != nil {
 		return fmt.Errorf("%s fetch dst chain poly epoch height error %v", s.name, err)
 	}
-	/*
-		if m.PolyHeight > m.DstPolyEpochEndHeight {
-			log.Warn(
-				"Poly epoch miss for tx", "poly_height", tx.PolyHeight,
-				"epoch_start", m.DstPolyEpochStartHeight,
-				"epoch_end", m.DstPolyEpochEndHeight,
-				"poly_hash", m.PolyHash,
-			)
-			return msg.ERR_EPOCH_MISS
-		}
-	*/
-	/*
-		m.AnchorHeight = m.PolyHeight
-		if m.AnchorHeight < m.DstPolyEpochStartHeight {
-			m.AnchorHeight = m.DstPolyEpochStartHeight
-		}
-	*/
 	err = compose(m)
 	if err != nil {
 		return

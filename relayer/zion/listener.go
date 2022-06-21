@@ -18,15 +18,21 @@
 package zion
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
+
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/devfans/zion-sdk/contracts/native/utils"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
@@ -49,6 +55,7 @@ type Listener struct {
 	config    *config.ListenerConfig
 	epochs    map[uint64]*node_manager.EpochInfo
 	lastEpoch uint64
+	abi 	  abi.ABI
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error) {
@@ -60,23 +67,14 @@ func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error
 	} else {
 		l.sdk, err = zion.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	}
+	if err == nil {
+		l.abi, err = abi.JSON(strings.NewReader(ccm.CrossChainManagerABI))
+	}
 	return
 }
 
 func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 	txs, err = l.Scan(height)
-	if err != nil {
-		return
-	}
-	/*
-	sub := &Submitter{sdk: l.sdk}
-	for _, tx := range txs {
-		tx.MerkleValue, _, _, err = sub.GetProof(tx.PolyHeight, tx.PolyKey)
-		if err != nil {
-			return
-		}
-	}
-	*/
 	return
 }
 
@@ -141,52 +139,52 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 }
 
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
-	h, err := l.sdk.Node().GetBlockHeightByTxHash(msg.Hash(hash))
-	height = uint64(h)
-	return
+	return l.sdk.Node().GetBlockHeightByTxHash(msg.Hash(hash))
 }
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
-	//hash hasn't '0x'
-	/*
-	event, err := l.sdk.Node().GetSmartContractEvent(hash)
-	if err != nil {
-		return nil, err
-	}
-	for _, notify := range event.Notify {
-		if notify.ContractAddress == poly.CCM_ADDRESS {
-			states := notify.States.([]interface{})
-			if len(states) < 6 {
-				continue
+	res, err := l.sdk.Node().TransactionReceipt(context.Background(), msg.HexToHash(hash))
+	if err != nil || res == nil { return }
+	for _, entry := range res.Logs {
+		ev := new(ccm.CrossChainManagerMakeProof)
+		if msg.FilterLog(l.abi, utils.CrossChainManagerContractAddress, "CrossChainEvent", entry, ev) {
+			param := new(zcom.ToMerkleValue)
+			value, err := hex.DecodeString(ev.MerkleValueHex)
+			if err != nil {
+				return nil, err
 			}
-			method, _ := states[0].(string)
-			if method != "makeProof" {
-				continue
-			}
-
-			dstChain := uint64(states[2].(float64))
-			if dstChain == 0 {
-				log.Error("Invalid dst chain id in poly tx", "hash", event.TxHash)
-				continue
+			err = rlp.DecodeBytes(value, param)
+			/*
+				err = param.Deserialization(pcom.NewZeroCopySource(value))
+			*/
+			if err != nil {
+				err = fmt.Errorf("rlp decode poly merkle value error %v", err)
+				return nil, err
 			}
 
 			tx := new(msg.Tx)
-			tx.DstChainId = dstChain
-			tx.PolyKey = states[5].(string)
-			tx.PolyHeight = uint32(states[4].(float64))
-			tx.PolyHash = event.TxHash
+			tx.MerkleValue = param
+			tx.PolyParam = ev.MerkleValueHex
+			tx.DstChainId = param.MakeTxParam.ToChainID
+			tx.SrcProxy = hex.EncodeToString(param.MakeTxParam.FromContractAddress)
+			tx.DstProxy = hex.EncodeToString(param.MakeTxParam.ToContractAddress)
+			tx.PolyKey = ev.Key
+			key, _ := hex.DecodeString(ev.Key)
+			tx.PolyKey = state.Key2Slot(key[common.AddressLength:]).String()
+			tx.PolyHeight = res.BlockNumber.Uint64()
+			tx.PolyHash = ev.Raw.TxHash
 			tx.TxType = msg.POLY
-			tx.TxId = states[3].(string)
-			tx.SrcChainId = uint64(states[1].(float64))
+			tx.TxId = hex.EncodeToString(param.MakeTxParam.CrossChainID)
+			tx.SrcChainId = param.FromChainID
 			switch tx.SrcChainId {
-			case base.NEO, base.NEO3, base.ONT:
+			case base.NEO, base.ONT, base.NEO3:
 				tx.TxId = util.ReverseHex(tx.TxId)
 			}
+
+			// Only the first?
 			return tx, nil
 		}
 	}
-	return nil, errors.New(fmt.Sprintf("hash:%v hasn't event", hash))
-	 */
 	return
 }
 
@@ -399,21 +397,19 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 	if tx.DstChainId != t.DstChainId {
 		return fmt.Errorf("%w DstChainID does not match: %v, was %v", msg.ERR_TX_VOILATION, tx.DstChainId, t.DstChainId)
 	}
-	/*
-	sub := &Submitter{sdk: l.sdk}
-	value, _, _, err := sub.GetProof(t.PolyHeight, t.PolyKey)
+	proof, err := l.sdk.Node().GetStorage(utils.CrossChainManagerContractAddress, msg.HexToHash(tx.PolyKey).Bytes())
 	if err != nil {
-		return
+		return fmt.Errorf("get proof storage failure %v", err)
 	}
-	if value == nil {
-		return msg.ERR_TX_PROOF_MISSING
+
+	value, err := rlp.EncodeToBytes(tx.MerkleValue)
+	if err == nil {
+		if bytes.Equal(proof, crypto.Keccak256(value)) {
+			log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
+			return
+		}
 	}
-	a := util.LowerHex(hex.EncodeToString(value.MakeTxParam.ToContractAddress))
-	b := util.LowerHex(tx.DstProxy)
-	if a != b {
-		return fmt.Errorf("%w ToContract does not match: %v, was %v", msg.ERR_TX_VOILATION, b, a)
-	}
-	*/
+	err = fmt.Errorf("%w CheckProofResult failed, hash doesnt match", msg.ERR_TX_VOILATION)
 	return
 }
 
