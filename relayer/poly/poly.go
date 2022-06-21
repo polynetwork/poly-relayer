@@ -20,6 +20,7 @@ package poly
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -239,6 +240,9 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		if strings.Contains(err.Error(), "tx already done") {
 			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
 			return nil
+		} else if strings.Contains(err.Error(), "verifyMerkleProof error") {
+			log.Error("Tx verifyMerkleProof err", "src_hash", tx.SrcHash, "chain", tx.SrcChainId, "err", err)
+			return msg.ERR_Tx_VERIFYMERKLEPROOF
 		}
 		return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
 	}
@@ -248,7 +252,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 
 func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.SrcComposer) (err error) {
 	if m.Type() != msg.SRC {
-		return fmt.Errorf("desired message is not poly tx %v", m.Type())
+		return fmt.Errorf("%s desired message is not poly tx %v", s.name, m.Type())
 	}
 	s.composer = composer
 	return s.submit(m)
@@ -344,6 +348,12 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 				continue
 			}
 
+			if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
+				log.Warn("src tx submit to poly verifyMerkleProof failed, clear src proof", "chain", s.name, "src hash", tx.SrcHash, "err", err)
+				tx.SrcProofHex = ""
+				tx.SrcProof = []byte{}
+			}
+
 			if strings.Contains(err.Error(), "side chain") && strings.Contains(err.Error(), "not registered") {
 				log.Warn("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
 				continue
@@ -405,6 +415,11 @@ func (s *Submitter) run(mq bus.TxBus) error {
 			if err != nil {
 				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
 				tx.Attempts++
+				if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
+					log.Warn("src tx submit to poly verifyMerkleProof failed, clear src proof", "chain", s.name, "src hash", tx.SrcHash, "err", err)
+					tx.SrcProofHex = ""
+					tx.SrcProof = []byte{}
+				}
 				if strings.Contains(err.Error(), "side chain") && strings.Contains(err.Error(), "not registered") {
 					retry = false
 				}
