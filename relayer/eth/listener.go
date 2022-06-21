@@ -23,16 +23,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
 	"math/big"
 	"time"
 
+	zcom "github.com/devfans/zion-sdk/common"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
-	zcom "github.com/devfans/zion-sdk/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/light"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
-
+	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
+	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -234,19 +238,11 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	txs = []*msg.Tx{}
 	for events.Next() {
 		ev := events.Event
-		/*
-			param := &ccom.MakeTxParam{}
-			err = param.Deserialization(pcom.NewZeroCopySource([]byte(ev.Rawdata)))
-		*/
 		param, err := msg.DecodeTxParam(ev.Rawdata)
 		if err != nil {
 			return nil, err
 		}
 		log.Info("Found src cross chain tx", "method", param.Method, "hash", ev.Raw.TxHash.String())
-		/*
-			sink := pcom.NewZeroCopySink(nil)
-			param.Serialization(sink)
-		*/
 		tx := &msg.Tx{
 			TxType:     msg.SRC,
 			TxId:       msg.EncodeTxId(ev.TxId),
@@ -326,7 +322,6 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 }
 
 func (l *Listener) Validate(tx *msg.Tx) (err error) {
-	/*
 	txId, err := hex.DecodeString(tx.TxId)
 	if err != nil {
 		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
@@ -367,16 +362,15 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		return
 	}
 
-	sink := zcom.NewZeroCopySink(nil)
-	tx.MerkleValue.MakeTxParam.Serialization(sink)
-	value := sink.Bytes()
-	err = CheckProofResult(storageValue, crypto.Keccak256(value))
+	value, err := msg.EncodeTxParam(tx.MerkleValue.MakeTxParam)
+	if err == nil {
+		err = CheckProofResult(storageValue, crypto.Keccak256(value))
+	}
 	if err != nil {
 		err = fmt.Errorf("%w CheckProofResult failed, err: %v", msg.ERR_TX_VOILATION, err)
 		return
 	}
 	log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
-	 */
 	return
 }
 

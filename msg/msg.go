@@ -204,6 +204,11 @@ type MakeTxParamShim struct {
 	Args                []byte
 }
 
+func EncodeTxParam(param *ccom.MakeTxParam) (data []byte, err error) {
+	return TxParam.Pack(param.TxHash, param.CrossChainID, param.FromContractAddress,
+		param.ToChainID, param.ToContractAddress, param.Method, param.Args)
+}
+
 func DecodeTxParam(data []byte) (param *ccom.MakeTxParam, err error) {
 	args, err := TxParam.Unpack(data)
 	if err != nil {
@@ -230,21 +235,6 @@ func DecodeTxParam(data []byte) (param *ccom.MakeTxParam, err error) {
 func (tx *Tx) Decode(data string) (err error) {
 	err = json.Unmarshal([]byte(data), tx)
 	if err == nil {
-		/*
-			if len(tx.SrcParam) > 0 && tx.Param == nil {
-				event, err := hex.DecodeString(tx.SrcParam)
-				if err != nil {
-					return fmt.Errorf("Decode src param error %v event %s", err, tx.SrcParam)
-				}
-				param := &ccom.MakeTxParam{}
-				err = param.Deserialization(pcom.NewZeroCopySource(event))
-				if err != nil {
-					return fmt.Errorf("Decode src event error %v event %s", err, tx.SrcParam)
-				}
-				tx.Param = param
-				tx.SrcEvent = event
-			}
-		*/
 		if len(tx.PolyParam) > 0 && tx.Param == nil {
 			param := new(ccom.ToMerkleValue)
 			value, err := hex.DecodeString(tx.PolyParam)
