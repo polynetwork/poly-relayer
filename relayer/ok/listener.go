@@ -46,6 +46,7 @@ import (
 	okex2 "github.com/polynetwork/poly/native/service/header_sync/okex"
 
 	"github.com/polynetwork/poly/native/service/header_sync/cosmos"
+	"github.com/okex/exchain/libs/tendermint/types"
 )
 
 type Listener struct {
@@ -77,7 +78,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 			err = fmt.Errorf("OKex get validators height %d error %v", height, err)
 			return nil, nil, err
 		}
-		hdr := cosmos.CosmosHeader{
+		hdr := CosmosHeader{
 			Header:  *cr.Header,
 			Commit:  cr.Commit,
 			Valsets: vs,
@@ -171,7 +172,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	if err != nil {
 		return
 	}
-	tx.SrcStateRoot, err = l.codec.MarshalBinaryBare(&okex2.CosmosHeader{
+	tx.SrcStateRoot, err = l.codec.MarshalBinaryBare(&CosmosHeader{
 		Header:  *cr.Header,
 		Commit:  cr.Commit,
 		Valsets: vs,
@@ -214,3 +215,11 @@ func (l *Listener) verifyMerkleProof(mp *merkle.Proof) (err error) {
 	}
 	return
 }
+
+
+type CosmosHeader struct {
+	Header  types.Header
+	Commit  *types.Commit
+	Valsets []*types.Validator
+}
+
