@@ -270,39 +270,15 @@ func (l *Listener) parseSmNotifyStates(height uint64, txHash string, states []in
 		return
 	}
 
-	sigKey, err := base64.StdEncoding.DecodeString(states[1].(string))
-	if err != nil {
-		err = fmt.Errorf("txHash=%s decode sig error=%s", txHash, err)
-		log.Error("parseAddSignatureQuorumStates", "error", err)
+	sigStorage, sigInfo, e := l.getSigInfoFromPolyStorage(states[1])
+	if e != nil {
+		log.Error("parseSmNotifyStates", "height", height, "hash", txHash, "getSigInfoFromPolyStorage error", e)
 		return
 	}
 
-	sigStorage, err := l.sdk.Node().GetStorage(poly.SM_ADDRESS, append([]byte("sigInfo"), sigKey...))
-	if err != nil {
-		err = fmt.Errorf("txHash=%s get sigInfo error=%s", txHash, err)
-		log.Error("failed to GetStorage", "error", err)
-	}
-
-	subject, err := base64.StdEncoding.DecodeString(states[2].(string))
-	if err != nil {
-		err = fmt.Errorf("txHash=%s decode subject error=%s", txHash, err)
-		log.Error("parseAddSignatureQuorumStates", "error", err)
-		return
-	}
-
-	sigInfo := new(poly.SigInfo)
-	err = sigInfo.Deserialization(pcom.NewZeroCopySource(sigStorage))
-	if err != nil {
-		err = fmt.Errorf("txHash=%s deserialization sigRawData error=%s", txHash, err)
-		log.Error("parseAddSignatureQuorumStates", "error", err)
-		return
-	}
-
-	toMerkleValue := &common.ToMerkleValue{}
-	subjectValueZS := pcom.NewZeroCopySource(subject)
-	if err = toMerkleValue.Deserialization(subjectValueZS); err != nil {
-		err = fmt.Errorf("txHash=%s deserialization subject error=%s", txHash, err)
-		log.Error("parseAddSignatureQuorumStates", "error", err)
+	subject, toMerkleValue, e := getToMerkleValueFromNotifyState(states[2])
+	if e != nil {
+		log.Error("parseSmNotifyStates", "height", height, "hash", txHash, "getMerkleValueFromNotifyState error", e)
 		return
 	}
 
@@ -319,50 +295,100 @@ func (l *Listener) parseSmNotifyStates(height uint64, txHash string, states []in
 	tx.TxId = ecom.BytesToAddress(toMerkleValue.MakeTxParam.TxHash).String()
 
 	if dstChain == base.FLOW {
-		tag := "FLOW-V0.0-user"
-		var hasher hash.Hasher
-		hasher, err = flowcrypto.NewPrefixedHashing(flowcrypto.RuntimeToCryptoHashingAlgorithm(runtime.HashAlgorithmSHA2_256), tag)
-		if err != nil {
-			err = fmt.Errorf("create SHA2_256 hasher for the prefix tag %s error %s", tag, err)
-			log.Error("parseAddSignatureQuorumStates", "error", err)
-		}
-
-		sigs, signers := make([][]byte, 0), make([][]byte, 0)
-		for k, sig := range sigInfo.SigInfo {
-			sigs = append(sigs, sig)
-			var polyAddr pcom.Address
-			polyAddr, err = pcom.AddressFromBase58(k)
-			if err != nil {
-				fmt.Println(err)
-			}
-			h := hasher.ComputeHash(subject)
-			var flowPub []byte
-			flowPub, err = flow.RecoverPubkeyFromFlowSig(h[:], sig, polyAddr)
-			if err != nil {
-				err = fmt.Errorf("txHash=%s recover pubkey from flow sig error=%s", txHash, err)
-				log.Error("parseAddSignatureQuorumStates", "error", err)
-			}
-			signers = append(signers, flowPub)
+		sigs, signers, e := parseFlowSig(subject, sigInfo)
+		if e != nil {
+			log.Error("parseSmNotifyStates", "height", height, "hash", txHash, "parseFlowSig error", e)
+			return
 		}
 		tx.Sigs = sigs
 		tx.Signers = signers
 
-		args := new(flow.Args)
-		err = args.Deserialization(pcom.NewZeroCopySource(toMerkleValue.MakeTxParam.Args))
-		if err != nil {
-			err = fmt.Errorf("txHash=%s deserialization args error=%s", txHash, err)
-			log.Error("parseAddSignatureQuorumStates", "error", err)
-			return
-		}
-		resourceRoute := new(flow.ResourceRoute)
-		err = resourceRoute.Deserialization(pcom.NewZeroCopySource(args.ToAddress))
-		if err != nil {
-			err = fmt.Errorf("txHash=%s deserialization args.ToAddress error=%s", txHash, err)
-			log.Error("parseAddSignatureQuorumStates", "error", err)
+		resourceRoute, e := parseFlowResourceRoute(toMerkleValue)
+		if e != nil {
+			log.Error("parseSmNotifyStates", "height", height, "hash", txHash, "parseFlowResourceRoute error", e)
 			return
 		}
 		tx.ResourcePath = resourceRoute.Path
 	}
+	return
+}
 
+func parseFlowResourceRoute(toMerkleValue *common.ToMerkleValue) (resourceRoute *flow.ResourceRoute, err error) {
+	args := new(flow.Args)
+	err = args.Deserialization(pcom.NewZeroCopySource(toMerkleValue.MakeTxParam.Args))
+	if err != nil {
+		err = fmt.Errorf("deserialization toMerkleValue.MakeTxParam.Args error=%s", err)
+		return
+	}
+	resourceRoute = new(flow.ResourceRoute)
+	err = resourceRoute.Deserialization(pcom.NewZeroCopySource(args.ToAddress))
+	if err != nil {
+		err = fmt.Errorf("deserialization args.ToAddress error=%s", err)
+	}
+	return
+}
+
+func parseFlowSig(subject []byte, sigInfo *poly.SigInfo) (sigs [][]byte, signers [][]byte, err error) {
+	tag := "FLOW-V0.0-user"
+	var hasher hash.Hasher
+	hasher, err = flowcrypto.NewPrefixedHashing(flowcrypto.RuntimeToCryptoHashingAlgorithm(runtime.HashAlgorithmSHA2_256), tag)
+	if err != nil {
+		err = fmt.Errorf("create SHA2_256 hasher for the prefix tag %s error %s", tag, err)
+		return
+	}
+
+	sigs, signers = make([][]byte, 0), make([][]byte, 0)
+	for k, sig := range sigInfo.SigInfo {
+		sigs = append(sigs, sig)
+		var polyAddr pcom.Address
+		polyAddr, err = pcom.AddressFromBase58(k)
+		if err != nil {
+			err = fmt.Errorf("poly address from base58 value[%s] error %s", k, err)
+			return
+		}
+		h := hasher.ComputeHash(subject)
+		var flowPub []byte
+		flowPub, err = flow.RecoverPubkeyFromFlowSig(h[:], sig, polyAddr)
+		if err != nil {
+			err = fmt.Errorf("recover pubkey from flow sig error=%s", err)
+		}
+		signers = append(signers, flowPub)
+	}
+
+	return
+}
+
+func (l *Listener) getSigInfoFromPolyStorage(state interface{}) (sigStorage []byte, sigInfo *poly.SigInfo, err error) {
+	sigKey, err := base64.StdEncoding.DecodeString(state.(string))
+	if err != nil {
+		err = fmt.Errorf("decode sig error=%s", err)
+		return
+	}
+	sigStorage, err = l.sdk.Node().GetStorage(poly.SM_ADDRESS, append([]byte("sigInfo"), sigKey...))
+	if err != nil {
+		err = fmt.Errorf("failed to GetStorage error=%s", err)
+		return
+	}
+	sigInfo = new(poly.SigInfo)
+	err = sigInfo.Deserialization(pcom.NewZeroCopySource(sigStorage))
+	if err != nil {
+		err = fmt.Errorf("deserialization sigStorage error=%s", err)
+		return
+	}
+	return
+}
+
+func getToMerkleValueFromNotifyState(state interface{}) (rawData []byte, toMerkleValue *common.ToMerkleValue, err error) {
+	rawData, err = base64.StdEncoding.DecodeString(state.(string))
+	if err != nil {
+		err = fmt.Errorf("decode subject error=%s", err)
+		return
+	}
+	toMerkleValue = &common.ToMerkleValue{}
+	subjectValueZS := pcom.NewZeroCopySource(rawData)
+	if err = toMerkleValue.Deserialization(subjectValueZS); err != nil {
+		err = fmt.Errorf("deserialization toMerkleValue error=%s", err)
+		return
+	}
 	return
 }
