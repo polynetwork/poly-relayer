@@ -27,10 +27,11 @@ replace (
 	github.com/cosmos/cosmos-sdk => github.com/okex/cosmos-sdk v0.39.2-exchain9
 
 	github.com/ethereum/go-ethereum => github.com/okex/go-ethereum v1.10.8-oec3
-	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+	github.com/gogo/protobuf => github.com/devfans/protobuf v1.3.3-fix
 
 	github.com/polynetwork/poly => github.com/zhiqiangxu/poly v0.0.0-20210512064417-e8c8ac7678d4
 	github.com/tendermint/go-amino => github.com/okex/go-amino v0.15.1-exchain7
 	github.com/tendermint/iavl => github.com/okex/iavl v0.14.3-exchain
 	github.com/tendermint/tendermint => github.com/okex/tendermint v0.33.9-exchain6
+	github.com/golang/protobuf v1.5.2 => github.com/devfans/pb v1.5.2-fix
 )
