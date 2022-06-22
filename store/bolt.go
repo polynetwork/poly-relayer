@@ -19,7 +19,6 @@
 package store
 
 import (
-	"strconv"
 
 	"github.com/boltdb/bolt"
 )
