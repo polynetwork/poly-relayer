@@ -10,7 +10,8 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/joeqian10/neo-gogogo v0.0.0-20201214075916-44b70d175579
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/okex/exchain v1.5.6 // indirect
+	github.com/okex/exchain v1.5.6
+	github.com/okex/exchain-go-sdk v1.5.6
 	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.0.9
 	github.com/ontio/ontology-go-sdk v1.11.4
@@ -28,10 +29,10 @@ replace (
 
 	github.com/ethereum/go-ethereum => github.com/okex/go-ethereum v1.10.8-oec3
 	github.com/gogo/protobuf => github.com/devfans/protobuf v1.3.3-fix
+	github.com/golang/protobuf v1.5.2 => github.com/devfans/pb v1.5.2-fix
 
 	github.com/polynetwork/poly => github.com/zhiqiangxu/poly v0.0.0-20210512064417-e8c8ac7678d4
 	github.com/tendermint/go-amino => github.com/okex/go-amino v0.15.1-exchain7
 	github.com/tendermint/iavl => github.com/okex/iavl v0.14.3-exchain
 	github.com/tendermint/tendermint => github.com/okex/tendermint v0.33.9-exchain6
-	github.com/golang/protobuf v1.5.2 => github.com/devfans/pb v1.5.2-fix
 )

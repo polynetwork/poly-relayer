@@ -25,7 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/okex/exchain/libs/cosmos-sdk/codec"
+	oktypes "github.com/okex/exchain-go-sdk/types"
 	"github.com/cosmos/cosmos-sdk/store/rootmulti"
 	ethcom "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -43,7 +44,6 @@ import (
 	pcom "github.com/polynetwork/poly/common"
 	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 	"github.com/polynetwork/poly/native/service/cross_chain_manager/okex"
-	okex2 "github.com/polynetwork/poly/native/service/header_sync/okex"
 
 	"github.com/polynetwork/poly/native/service/header_sync/cosmos"
 	"github.com/okex/exchain/libs/tendermint/types"
@@ -61,7 +61,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	if err != nil {
 		return
 	}
-	l.codec = okex2.NewCDC()
+	l.codec = oktypes.NewCodec()
 	l.tm, err = ok.WithOptions(base.OK, config.ExtraNodes, time.Minute, 1)
 	return
 }
