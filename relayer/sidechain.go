@@ -63,8 +63,10 @@ type ISideChain interface {
 func GetSideChain(chainID uint64) ISideChain {
 	switch chainID {
 	case base.HARMONY:
-		listener, err :=  ChainListener(base.HARMONY, nil)
-		if err != nil { panic(err) }
+		listener, err := ChainListener(base.HARMONY, nil)
+		if err != nil {
+			panic(err)
+		}
 		return listener.(*harmony.Listener)
 	}
 	return nil
@@ -76,12 +78,16 @@ func GetPolyWallets() (accounts []*poly_go_sdk.Account, err error) {
 			if err != nil {
 				return err
 			}
-			if info.IsDir() { return nil }
+			if info.IsDir() {
+				return nil
+			}
 			log.Info("Loading wallet file", "path", path)
 			c := *config.CONFIG.Poly.ExtraWallets
 			c.Path = path
 			account, err := wallet.NewPolySigner(&c)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			accounts = append(accounts, account)
 			return nil
 		})
@@ -97,7 +103,9 @@ func ApproveSideChain(ctx *cli.Context) (err error) {
 	}
 
 	accounts, err := GetPolyWallets()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	for i, a := range accounts {
 		var hash common.Uint256
 		if update {
@@ -114,7 +122,7 @@ func ApproveSideChain(ctx *cli.Context) (err error) {
 		if err != nil {
 			panic(fmt.Errorf("No%d ApproveRegisterSideChain failed: %v", i, err))
 		}
-		log.Info("Confirmed approve side chain", "chain", chainID,"height", height,
+		log.Info("Confirmed approve side chain", "chain", chainID, "height", height,
 			"index", i, "account", a.Address.ToHexString(), "hash", hash.ToHexString())
 
 	}
@@ -128,7 +136,9 @@ func FetchSideChain(ctx *cli.Context) (err error) {
 	}
 	data, err := ps.SDK().Node().GetStorage(utils.SideChainManagerContractAddress.ToHexString(),
 		append([]byte(side_chain_manager.SIDE_CHAIN), utils.GetUint64Bytes(chainID)...))
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if data == nil {
 		log.Info("No such chain", "id", chainID)
 	} else {
@@ -174,14 +184,18 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	}
 	if ccm != "" {
 		c.CCMCAddress, err = common.HexToBytes(util.LowerHex(ccm))
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 	}
 	ps, err := PolySubmitter()
 	if err != nil {
 		return
 	}
 	accounts, err := GetPolyWallets()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if len(accounts) == 0 {
 		return fmt.Errorf("No valid poly wallet is provided")
 	}
@@ -194,9 +208,13 @@ func AddSideChain(ctx *cli.Context) (err error) {
 		hash, err = ps.SDK().Node().Native.Scm.RegisterSideChainExt(
 			account.Address, chainID, c.Router, c.Name, c.BlocksToWait, c.CCMCAddress, c.ExtraInfo, account)
 	}
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 30)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	log.Info("Add side chain succeed", "height", height)
 	return
 }
@@ -210,9 +228,13 @@ func SyncHeader(ctx *cli.Context) (err error) {
 	}
 	sc := GetSideChain(chainID)
 	header, err := sc.GenesisHeader(height)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	hash, err := ps.SubmitHeaders(chainID, [][]byte{header})
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	log.Info("Sync header succeed", "hash", hash)
 	return
 }
@@ -222,17 +244,23 @@ func SendPolyTx(ctx *cli.Context) (err error) {
 	tx := &types.Transaction{}
 	if raw == "" {
 		data, err := ioutil.ReadAll(os.Stdin)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		raw = strings.TrimSpace(string(data))
 	}
 	data, err := hex.DecodeString(util.LowerHex(raw))
 	if err != nil {
 		log.Info("Failed to decode hex, will treat as file")
 		body, err := ioutil.ReadFile(raw)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		raw = strings.TrimSpace(string(body))
 		data, err = hex.DecodeString(util.LowerHex(raw))
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 	}
 	if err := tx.Deserialization(common.NewZeroCopySource(data)); err != nil {
 		return err
@@ -250,10 +278,14 @@ func SendPolyTx(ctx *cli.Context) (err error) {
 	}
 	log.Info("Sending poly tx to node...")
 	hash, err := ps.SDK().Node().SendTransaction(tx)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	log.Info("Waiting poly tx to be confirmed")
 	height, err := ps.SDK().Node().Confirm(hash.ToHexString(), 1, 30)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	log.Info("SendMultiSignTx succeed", "height", height)
 	return
 }
@@ -263,17 +295,23 @@ func SignPolyTx(ctx *cli.Context) (err error) {
 	tx := &types.Transaction{}
 	if raw == "" {
 		data, err := ioutil.ReadAll(os.Stdin)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		raw = strings.TrimSpace(string(data))
 	}
 	data, err := hex.DecodeString(util.LowerHex(raw))
 	if err != nil {
 		log.Info("Failed to decode hex, will treat as file")
 		body, err := ioutil.ReadFile(raw)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		raw = strings.TrimSpace(string(body))
 		data, err = hex.DecodeString(util.LowerHex(raw))
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 	}
 	if err := tx.Deserialization(common.NewZeroCopySource(data)); err != nil {
 		return err
@@ -285,7 +323,9 @@ func SignPolyTx(ctx *cli.Context) (err error) {
 	}
 
 	accounts, err := GetPolyWallets()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	for i, acc := range accounts {
 		err = ps.Poly().Node().MultiSignToTransaction(tx, tx.Sigs[0].M, tx.Sigs[0].PubKeys, acc)
@@ -312,7 +352,9 @@ func CreateGenesis(ctx *cli.Context) (err error) {
 	pubKeys := strings.Split(ctx.String("keys"), ",")
 	sc := GetSideChain(chainID)
 	header, err := sc.GenesisHeader(height)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	ps, err := PolySubmitter()
 	if err != nil {
@@ -320,7 +362,9 @@ func CreateGenesis(ctx *cli.Context) (err error) {
 	}
 
 	tx, err := ps.SDK().Node().Native.Hs.NewSyncGenesisHeaderTransaction(chainID, header)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	keys := make([]keypair.PublicKey, len(pubKeys))
 	for i, v := range pubKeys {
@@ -350,18 +394,26 @@ func SyncGenesis(ctx *cli.Context) (err error) {
 	height := ctx.Uint64("height")
 	sc := GetSideChain(chainID)
 	header, err := sc.GenesisHeader(height)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	ps, err := PolySubmitter()
 	if err != nil {
 		return
 	}
 	accounts, err := GetPolyWallets()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	hash, err := ps.SDK().Node().Native.Hs.SyncGenesisHeader(chainID, header, accounts)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	height, err = ps.SDK().Node().Confirm(hash.ToHexString(), 1, 30)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	log.Info("SyncGenesis succeed", "height", height)
 	return
 }
@@ -370,30 +422,35 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	chainID := ctx.Uint64("chain")
 	ccm := ctx.String("ccm")
 	height := ctx.Uint64("height")
+	limit := ctx.Uint64("limit")
 	ps, err := PolySubmitter()
 	if err != nil {
 		return
 	}
 	//NOTE: only block 0 can succeed?!
 	/*
-	if height == 0 {
-		height, err = ps.SDK().Node().GetLatestHeight()
-		if err != nil { return err }
-	}
+		if height == 0 {
+			height, err = ps.SDK().Node().GetLatestHeight()
+			if err != nil { return err }
+		}
 	*/
 	block, err := ps.SDK().Node().GetBlockByHeight(uint32(height))
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	info := &vconfig.VbftBlockInfo{}
-	err = json.Unmarshal(block.Header.ConsensusPayload, info);
+	err = json.Unmarshal(block.Header.ConsensusPayload, info)
 	if err != nil {
 		panic(err)
 	}
 	if info.NewChainConfig == nil {
 		height = uint64(info.LastConfigBlockNum)
 		block, err := ps.SDK().Node().GetBlockByHeight(uint32(height))
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		info = &vconfig.VbftBlockInfo{}
-		err = json.Unmarshal(block.Header.ConsensusPayload, info);
+		err = json.Unmarshal(block.Header.ConsensusPayload, info)
 		if err != nil {
 			panic(err)
 		}
@@ -410,17 +467,24 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 		publickeys = append(publickeys, GetOntNoCompressKey(key)...)
 	}
 	abi, err := abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	data, err := abi.Pack("initGenesisBlock", block.Header.ToArray(), publickeys)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	sub, err := ChainSubmitter(chainID)
-	if err != nil { return }
-	hash, err := sub.(*eth.Submitter).Send(ecom.HexToAddress(ccm), big.NewInt(0), 0, nil, nil, data)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
+	hash, err := sub.(*eth.Submitter).Send(ecom.HexToAddress(ccm), big.NewInt(0), limit, nil, nil, data)
+	if err != nil {
+		return
+	}
 	log.Info("Send tx for initGenesisBlock", "chain", chainID, "hash", hash)
 	return
 }
-
 
 func GetOntNoCompressKey(key keypair.PublicKey) []byte {
 	var buf bytes.Buffer
@@ -466,4 +530,3 @@ func GetCurveLabel(name string) (byte, error) {
 		panic("err")
 	}
 }
-

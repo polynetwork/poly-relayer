@@ -32,12 +32,12 @@ import (
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/harmony"
-	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 	"github.com/polynetwork/poly-relayer/relayer/matic"
 	"github.com/polynetwork/poly-relayer/relayer/neo"
 	"github.com/polynetwork/poly-relayer/relayer/ok"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
+	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 )
 
 type IChainListener interface {
