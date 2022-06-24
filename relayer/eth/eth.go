@@ -17,11 +17,11 @@ import (
 	"github.com/polynetwork/bridge-common/abi/eccd_abi"
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
-	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -95,7 +95,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		}
 	}
 	var (
-		err error
+		err     error
 		account accounts.Account
 	)
 	if tx.DstSender != nil {
@@ -218,7 +218,7 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		info := err.Error()
 		if strings.Contains(info, "business contract failed") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_FAILURE, err)
-		} else if strings.Contains(info, "higher than max limit") {
+		} else if strings.Contains(info, "higher than max limit") || strings.Contains(info, "max limit is zero or missing") {
 			err = fmt.Errorf("%w %v", msg.ERR_PAID_FEE_TOO_LOW, err)
 		} else if strings.Contains(info, "always failing") {
 			err = fmt.Errorf("%w tx exec error %v", msg.ERR_TX_EXEC_ALWAYS_FAIL, err)
@@ -279,7 +279,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp := time.Now().Unix() + 10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else if errors.Is(err, msg.ERR_PAID_FEE_TOO_LOW) {
-				tsp := time.Now().Unix() + 60 * 10
+				tsp := time.Now().Unix() + 60*10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
 				tsp := time.Now().Unix() + 1

@@ -252,7 +252,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 
 func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.SrcComposer) (err error) {
 	if m.Type() != msg.SRC {
-		return fmt.Errorf("%s desired message is not poly tx %v", s.name, m.Type())
+		return fmt.Errorf("desired message is not poly tx %v", m.Type())
 	}
 	s.composer = composer
 	return s.submit(m)
