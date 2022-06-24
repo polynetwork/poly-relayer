@@ -113,8 +113,9 @@ func (s *Submitter) run(wallet *wallet.FlowWallet, mq bus.TxBus, delay bus.Delay
 				tsp := time.Now().Unix() + 10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
-				tsp := time.Now().Unix() + 60
-				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+				// todo flow analyze which err need to retry
+				//tsp := time.Now().Unix() + 60
+				//bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 				//bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
 			}
 		} else {
