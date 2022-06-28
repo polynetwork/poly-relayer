@@ -21,7 +21,6 @@ require (
 	github.com/starcoinorg/starcoin-go v0.0.0-20220105024102-530daedc128b
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-	google.golang.org/grpc v1.40.0
 
 )
 

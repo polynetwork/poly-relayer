@@ -30,10 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
-
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
 	"github.com/polynetwork/bridge-common/base"
@@ -325,50 +321,27 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
 	}
 	id := msg.EncodeTxId(txId)
-	bytes, err := ceth.MappingKeyAt(id, "01")
+	key, err := ceth.MappingKeyAt(id, "01")
 	if err != nil {
 		err = fmt.Errorf("%s scan event mapping key error %v", l.name, err)
 		return
 	}
-	proofKey := hexutil.Encode(bytes)
-	height, err := l.sdk.Node().GetLatestHeight()
+	proof, err := l.sdk.Node().StorageAt(context.Background(), l.ccd, common.BytesToHash(key), nil)
 	if err != nil {
-		err = fmt.Errorf("%s can height get proof height error %v", l.name, err)
-		return
-	}
-	proof, err := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height - 1)
-	if err != nil {
-		return fmt.Errorf("get proof failure %v", err)
-	}
-
-	// Verify storage proof
-	if len(proof.StorageProofs) != 1 {
-		err = fmt.Errorf("invalid storage proof size, %v", proof.StorageProofs)
-		return
-	}
-	sp := proof.StorageProofs[0]
-	nodeList := new(light.NodeList)
-	storageKey := crypto.Keccak256(common.HexToHash(sp.Key).Bytes())
-	for _, p := range sp.Proof {
-		nodeList.Put(nil, common.Hex2Bytes(ccom.Replace0x(p)))
-	}
-
-	storageHash := common.HexToHash(proof.StorageHash)
-	storageValue, err := trie.VerifyProof(storageHash, storageKey, nodeList.NodeSet())
-	if err != nil {
-		err = fmt.Errorf("account storage VerifyProof failure, err: %v", err)
-		return
+		return fmt.Errorf("get proof value failure %v", err)
 	}
 
 	sink := pcom.NewZeroCopySink(nil)
 	tx.MerkleValue.MakeTxParam.Serialization(sink)
 	value := sink.Bytes()
-	err = CheckProofResult(storageValue, crypto.Keccak256(value))
-	if err != nil {
-		err = fmt.Errorf("%w CheckProofResult failed, err: %v", msg.ERR_TX_VOILATION, err)
-		return
+
+	if bytes.Equal(proof, crypto.Keccak256(value)) {
+		log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
+		return nil
+	} else {
+		err = fmt.Errorf("proof value hash does not match")
 	}
-	log.Info("Validated proof for poly tx", "hash", tx.PolyHash, "src_chain", l.ChainId())
+	err = fmt.Errorf("%w CheckProofResult failed, err: %v", msg.ERR_TX_VOILATION, err)
 	return
 }
 
@@ -434,26 +407,6 @@ func (l *Listener) ScanEvents(height uint64, ch chan tools.CardEvent) (err error
 
 	for _, ev := range events {
 		ch <- ev
-	}
-	return
-}
-
-// Check proof storage value hash
-func CheckProofResult(result, value []byte) (err error) {
-	var temp []byte
-	err = rlp.DecodeBytes(result, &temp)
-	if err != nil {
-		err = fmt.Errorf("rlp decode proof result failed, err: %v", err)
-		return
-	}
-	var hash []byte
-	for i := len(temp); i< 32; i++ {
-		hash = append(hash, 0)
-	}
-	hash = append(hash, temp...)
-	if !bytes.Equal(hash, value) {
-		err = fmt.Errorf("storage value does not match with proof result, wanted %x, got %x", result, value)
-		return
 	}
 	return
 }
