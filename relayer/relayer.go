@@ -40,7 +40,6 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/ok"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
 	po "github.com/polynetwork/poly-relayer/relayer/poly"
-	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 )
 
 type IChainListener interface {
