@@ -20,6 +20,7 @@ package zion
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"strings"
 	"sync"
@@ -55,7 +56,6 @@ type Submitter struct {
 	sync     *config.HeaderSyncConfig
 	vote     *config.TxVoteConfig
 	composer msg.SrcComposer
-	state    bus.ChainStore // Header sync marking
 	wallet   wallet.IWallet
 	voter    wallet.IWallet
 	signer   *accounts.Account
@@ -65,7 +65,7 @@ type Submitter struct {
 	lastCheck    uint64
 	blocksToWait uint64
 	txabi        abi.ABI
-	hsabi         abi.ABI
+	hsabi        abi.ABI
 }
 
 type Composer struct {
@@ -98,25 +98,14 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		if len(accounts) > 0 {
 			s.signer = &accounts[0]
 		}
-	}
-
-	if config.Signer == nil {
-		err = fmt.Errorf("Voter signer wallet missing")
-		return
-	}
-
-	{
-		sdk, err := eth.WithOptions(base.POLY, config.Wallet.Nodes, time.Minute, 1)
-		if err != nil {
-			return err
-		}
-		s.voter = wallet.New(config.Wallet, sdk)
-		err = s.voter.Init()
-		if err != nil {
-			return err
+		if config.Signer != nil {
+			s.voter = wallet.New(config.Wallet, sdk)
+			err = s.voter.Init()
+			if err != nil {
+				return err
+			}
 		}
 	}
-
 	s.hsabi, err = abi.JSON(strings.NewReader(hs.InfoSyncABI))
 	if err != nil {
 		return
@@ -138,111 +127,6 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	s.Context = ctx
 	s.wg = wg
 	return nil
-}
-
-func (s *Submitter) SubmitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) (err error) {
-	start := time.Now()
-	h := uint64(0)
-	if len(headers) > 0 {
-		err = s.submitHeadersWithLoop(chainId, headers, header)
-		if err == nil && header != nil {
-			// Check last commit every 4 successful submit
-			if s.lastCommit > 0 && s.lastCheck > 3 {
-				s.lastCheck = 0
-				switch chainId {
-				case base.ETH, base.HECO, base.BSC, base.MATIC, base.O3, base.STARCOIN, base.BYTOM, base.HSC:
-					height, e := s.GetSideChainHeight(chainId)
-					if e != nil {
-						log.Error("Get side chain header height failure", "err", e)
-					} else if height < s.lastCommit {
-						log.Error("Chain header submit confirm check failure", "chain", s.name, "height", height, "last_submit", s.lastCommit)
-						err = msg.ERR_HEADER_MISSING
-					} else {
-						log.Info("Chain header submit confirm check success", "chain", s.name, "height", height, "last_submit", s.lastCommit)
-					}
-				}
-			} else {
-				s.lastCheck++
-			}
-		}
-	}
-	if header != nil {
-		h = header.Height
-		if err == nil {
-			s.state.HeightMark(h)        // Mark header sync height
-			s.lastCommit = header.Height // Mark last commit
-		}
-	}
-	log.Info("Submit headers to poly", "chain", chainId, "size", len(headers), "height", h, "elapse", time.Since(start), "err", err)
-	return
-}
-
-func (s *Submitter) submitHeadersWithLoop(chainId uint64, headers [][]byte, header *msg.Header) error {
-	/*
-	attempt := 0
-	var ok bool
-	for {
-		{
-			attempt += 1
-			_, err = s.SubmitHeaders(chainId, headers)
-			if err == nil {
-				return nil
-			}
-			info := err.Error()
-			if strings.Contains(info, "parent header not exist") ||
-				strings.Contains(info, "missing required field") ||
-				strings.Contains(info, "parent block failed") ||
-				strings.Contains(info, "span not correct") ||
-				strings.Contains(info, "VerifySpan err") {
-				//NOTE: reset header height back here
-				log.Error("Possible hard fork, will rollback some blocks", "chain", chainId, "err", err)
-				return msg.ERR_HEADER_INCONSISTENT
-			}
-			log.Error("Failed to submit header to poly", "chain", chainId, "err", err)
-		}
-		select {
-		case <-s.Done():
-			log.Warn("Header submitter exiting with headers not submitted", "chain", chainId)
-			return nil
-		default:
-			if attempt > 30 || (attempt > 3 && chainId == base.HARMONY) {
-				log.Error("Header submit too many failed attempts", "chain", chainId, "attempts", attempt)
-				return msg.ERR_HEADER_SUBMIT_FAILURE
-			}
-			time.Sleep(time.Second)
-		}
-	}
-	 */
-	return nil
-}
-
-func (s *Submitter) SubmitHeaders(chainId uint64, headers [][]byte) (hash string, err error) {
-	/*
-	data, err := s.hsabi.Pack("syncBlockHeader", chainId, s.signer.Address, headers)
-	if err != nil {
-		return
-	}
-
-	hash, err = s.wallet.SendWithAccount(*s.signer, utils.HeaderSyncContractAddress, big.NewInt(0), 0, nil, nil, data)
-	if err != nil && !strings.Contains(err.Error(), "already known") {
-		return
-	}
-	var height uint64
-	var pending bool
-	for {
-		height, _, pending, err = s.sdk.Node().Confirm(msg.Hash(hash), 0, 100)
-		if height > 0 {
-			log.Info("Submitted header to poly", "chain", chainId, "hash", hash, "height", height)
-			return
-		}
-		if err == nil && !pending {
-			err = fmt.Errorf("Failed to find the transaction %v", err)
-			return
-		}
-		log.Warn("Tx wait confirm timeout", "chain", chainId, "hash", hash, "pending", pending)
-	}
-	 */
-	return
 }
 
 func (s *Submitter) submit(tx *msg.Tx) error {
@@ -415,7 +299,15 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 		}
 		infos := make([][]byte, len(headers))
 		for i, header := range headers {
-			infos[i] = header.Data
+			info := &scom.RootInfo{
+				Height: uint32(header.Height),
+				Info: header.Data,
+			}
+			data, err := rlp.EncodeToBytes(info)
+			if err != nil {
+				log.Fatal("Failed to rlp root info", "err", err)
+			}
+			infos[i] = data
 		}
 		param := scom.SyncRootInfoParam{
 			ChainID: s.sync.ChainId,
@@ -644,6 +536,10 @@ func (s *Submitter) StartTxVote(
 		log.Fatal("Invalid tx vote side chain id","chain", s.sync.ChainId)
 	}
 
+	if s.signer == nil || s.wallet == nil {
+		log.Fatal("Missing voter signer or sender")
+	}
+
 	accounts := s.wallet.Accounts()
 	if len(accounts) == 0 {
 		log.Warn("No account available for submitter workers", "chain", s.name)
@@ -667,22 +563,6 @@ func (s *Submitter) Poly() *zion.SDK {
 }
 
 func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
-	if len(epochs) == 0 {
-		return
-	}
-
-	headers := [][]byte{}
-	for _, m := range epochs {
-		if m.Type() != msg.POLY_EPOCH || m.PolyEpoch == nil {
-			err = fmt.Errorf("Invalid side chainy epoch message %s", m.Encode())
-			return
-		}
-		headers = append(headers, m.PolyEpoch.Header)
-	}
-
-	epoch := epochs[len(epochs)-1].PolyEpoch
-	log.Info("Submitting side chain epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "size", len(epochs), "from_chain", epoch.ChainId)
-	hash, err := s.SubmitHeaders(epoch.ChainId, headers)
-	log.Info("Submit side chain epochs to zion", "size", len(epochs), "epoch", epoch.EpochId, "height", epoch.Height, "chain", s.name, "from_chain", epoch.ChainId, "hash", hash, "err", err)
+	panic("unexpected sync epoch to zion")
 	return
 }
