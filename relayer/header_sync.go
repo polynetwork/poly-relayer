@@ -25,8 +25,8 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
-	"github.com/polynetwork/poly-relayer/store"
 	"github.com/polynetwork/poly-relayer/relayer/zion"
+	"github.com/polynetwork/poly-relayer/store"
 )
 
 type HeaderSyncHandler struct {
@@ -96,6 +96,9 @@ LOOP:
 		header, hash, err := h.listener.Header(h.height)
 		log.Debug("Header sync fetched block header", "height", h.height, "chain", h.config.ChainId, "err", err)
 		if err == nil {
+			if header == nil {
+				continue
+			}
 			err = h.store.InsertHeader(h.height, hash, header)
 			if err == nil {
 				err = h.store.SetHeaderHeight(h.height)

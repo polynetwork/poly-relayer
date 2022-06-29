@@ -392,7 +392,7 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 	s.wg.Add(1)
 	defer s.wg.Done()
-	ticker := time.NewTicker(300 * time.Millisecond)
+	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
 		select {
@@ -455,7 +455,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 	s.wg.Add(1)
 	defer s.wg.Done()
-	ticker := time.NewTicker(300 * time.Millisecond)
+	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
 		select {
@@ -571,68 +571,6 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 	}
 }
 
-func (s *Submitter) run(mq bus.TxBus) error {
-	s.wg.Add(1)
-	defer s.wg.Done()
-	ticker := time.NewTicker(800 * time.Millisecond)
-	defer ticker.Stop()
-
-	height := s.ReadyBlock()
-	refresh := true
-
-	for {
-		select {
-		case <-s.Done():
-			log.Info("Submitter is exiting now", "chain", s.name)
-			return nil
-		default:
-		}
-
-		if refresh {
-			select {
-			case <-ticker.C:
-				refresh = false
-				height = s.ReadyBlock()
-			default:
-			}
-		}
-
-		tx, err := mq.Pop(s.Context)
-		if err != nil {
-			log.Error("Bus pop error", "err", err)
-			continue
-		}
-		if tx == nil {
-			time.Sleep(time.Second)
-			continue
-		}
-
-		log.Debug("Poly submitter checking on src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId)
-		retry := true
-
-		if height == 0 || tx.SrcHeight <= height {
-			log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
-			err = s.submit(tx)
-			if err != nil {
-				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
-				tx.Attempts++
-			} else {
-				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
-				retry = false
-			}
-			if height == 0 {
-				refresh = true
-			}
-		} else {
-			refresh = true
-		}
-
-		if retry {
-			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
-		}
-	}
-}
-
 func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, compose msg.PolyComposer) error {
 	return nil
 }
@@ -717,120 +655,11 @@ func (s *Submitter) StartTxVote(
 	return
 }
 
-func (s *Submitter) StartSync(
-	ctx context.Context, wg *sync.WaitGroup, config *config.HeaderSyncConfig,
-	reset chan<- uint64, state bus.ChainStore,
-) (ch chan msg.Header, err error) {
-	s.Context = ctx
-	s.wg = wg
-	s.sync = config
-	s.state = state
-
-	if s.sync.Batch == 0 {
-		s.sync.Batch = 1
-	}
-	if s.sync.Buffer == 0 {
-		s.sync.Buffer = 2 * s.sync.Batch
-	}
-	if s.sync.Timeout == 0 {
-		s.sync.Timeout = 1
-	}
-
-	if s.sync.ChainId == 0 {
-		return nil, fmt.Errorf("Invalid header sync side chain id")
-	}
-
-	ch = make(chan msg.Header, s.sync.Buffer)
-	go s.startSync(ch, reset)
-	return
-}
 
 func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error) {
 	h, err := s.sdk.Node().GetInfoHeight(nil, chainId)
 	height = uint64(h)
 	return
-}
-
-func (s *Submitter) syncHeaderLoop(ch <-chan msg.Header, reset chan<- uint64) {
-	for {
-		select {
-		case <-s.Done():
-			return
-		case header, ok := <-ch:
-			if !ok {
-				return
-			}
-			// NOTE err reponse here will revert header sync with delta - 2
-			headers := [][]byte{header.Data}
-			if header.Data == nil {
-				headers = nil
-			}
-			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers, &header)
-			if err != nil {
-				reset <- header.Height - 2
-			}
-		}
-	}
-}
-
-func (s *Submitter) syncHeaderBatchLoop(ch <-chan msg.Header, reset chan<- uint64) {
-	headers := [][]byte{}
-	commit := false
-	duration := time.Duration(s.sync.Timeout) * time.Second
-	var (
-		height uint64
-		hdr    *msg.Header
-	)
-
-COMMIT:
-	for {
-		select {
-		case <-s.Done():
-			break COMMIT
-		case header, ok := <-ch:
-			if ok {
-				hdr = &header
-				if len(headers) > 0 && height != header.Height-1 {
-					log.Info("Resetting header set", "chain", s.sync.ChainId, "height", height, "current_height", header.Height)
-					headers = [][]byte{}
-				}
-				height = header.Height
-				if hdr.Data == nil {
-					// Update header sync height
-					commit = true
-				} else {
-					headers = append(headers, header.Data)
-					commit = len(headers) >= s.sync.Batch
-				}
-			} else {
-				commit = len(headers) > 0
-				break COMMIT
-			}
-		case <-time.After(duration):
-			commit = len(headers) > 0
-		}
-		if commit {
-			commit = false
-			// NOTE err reponse here will revert header sync with delta -100
-			err := s.SubmitHeadersWithLoop(s.sync.ChainId, headers, hdr)
-			if err != nil {
-				reset <- height - uint64(len(headers)) - 2
-			}
-			headers = [][]byte{}
-		}
-	}
-	if len(headers) > 0 {
-		s.SubmitHeadersWithLoop(s.sync.ChainId, headers, hdr)
-	}
-}
-
-func (s *Submitter) startSync(ch <-chan msg.Header, reset chan<- uint64) {
-	if s.sync.Batch == 1 {
-		s.syncHeaderLoop(ch, reset)
-	} else {
-		s.syncHeaderBatchLoop(ch, reset)
-	}
-	log.Info("Header sync exiting loop now")
 }
 
 func (s *Submitter) Poly() *zion.SDK {
