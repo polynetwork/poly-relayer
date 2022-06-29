@@ -28,7 +28,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
+	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
+	scom "github.com/devfans/zion-sdk/contracts/native/info_sync/common"
+
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
+	hs "github.com/devfans/zion-sdk/contracts/native/go_abi/info_sync_abi"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/eth"
@@ -39,6 +43,7 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/store"
 )
 
 type Submitter struct {
@@ -48,9 +53,11 @@ type Submitter struct {
 	sdk      *zion.SDK
 	name     string
 	sync     *config.HeaderSyncConfig
+	vote     *config.TxVoteConfig
 	composer msg.SrcComposer
 	state    bus.ChainStore // Header sync marking
 	wallet   wallet.IWallet
+	voter    wallet.IWallet
 	signer   *accounts.Account
 
 	// Check last header commit
@@ -58,6 +65,7 @@ type Submitter struct {
 	lastCheck    uint64
 	blocksToWait uint64
 	txabi        abi.ABI
+	hsabi         abi.ABI
 }
 
 type Composer struct {
@@ -92,12 +100,28 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		}
 	}
 
-	/*
-	s.hsabi, err = abi.JSON(strings.NewReader(hs.HeaderSyncABI))
+	if config.Signer == nil {
+		err = fmt.Errorf("Voter signer wallet missing")
+		return
+	}
+
+	{
+		sdk, err := eth.WithOptions(base.POLY, config.Wallet.Nodes, time.Minute, 1)
+		if err != nil {
+			return err
+		}
+		s.voter = wallet.New(config.Wallet, sdk)
+		err = s.voter.Init()
+		if err != nil {
+			return err
+		}
+	}
+
+	s.hsabi, err = abi.JSON(strings.NewReader(hs.InfoSyncABI))
 	if err != nil {
 		return
 	}
-	 */
+
 	s.txabi, err = abi.JSON(strings.NewReader(ccm.CrossChainManagerABI))
 	return
 }
@@ -329,6 +353,167 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	return
 }
 
+func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, batch int) {
+	list, err := store.LoadData(batch)
+	if err != nil {
+		log.Error("Failed to load data list", "err", err)
+	} else {
+		now := time.Now().Unix()
+		for _, tx := range list {
+			if tx.Time > now - 600 {
+				continue
+			}
+			height, pending, err := s.sdk.Node().GetTxHeight(context.Background(), tx.Hash)
+			if err != nil {
+				log.Error("Failed to check tx receipt", "hash", tx.Hash, "err", err)
+			} else if height > 0 {
+				bus.SafeCall(s.Context, tx.Hash,"remove tx item failure", func()error{
+					return store.DeleteData(tx)
+				})
+			} else if !pending {
+				hash, err := s.wallet.SendWithAccount(account, tx.To, big.NewInt(0), 0, nil, nil, tx.Data)
+				// TODO: detect already done tx here
+				if err != nil || hash == "" {
+					log.Error("Failed to send tx during check", "err", err, "hash", hash)
+					continue
+				}
+				bus.SafeCall(s.Context, tx.Hash,"remove tx item failure", func()error{
+					return store.DeleteData(tx)
+				})
+				log.Info("Send tx vote during check", "hash", hash, "chain", s.name)
+				bus.SafeCall(s.Context, hash,"insert data item failure", func()error{
+					return store.InsertData(msg.HexToHash(hash), tx.Data, tx.To)
+				})
+			}
+		}
+	}
+}
+
+func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
+	s.wg.Add(1)
+	defer s.wg.Done()
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.Done():
+			log.Info("Submitter is exiting now", "chain", s.name)
+			return
+		default:
+		}
+
+		select {
+		case <-ticker.C:
+			s.RetryWithData(account, store, s.sync.Batch)
+		default:
+		}
+
+		headers, err := store.LoadHeaders(s.sync.Batch)
+		if err != nil {
+			log.Error("Failed to load txs from store", "err", err)
+			continue
+		}
+		infos := make([][]byte, len(headers))
+		for i, header := range headers {
+			infos[i] = header.Data
+		}
+		param := scom.SyncRootInfoParam{
+			ChainID: s.sync.ChainId,
+			RootInfos: infos,
+		}
+		digest, err := param.Digest()
+		if err != nil {
+			log.Error("Failed to get param digest", "err", err)
+			continue
+		}
+		param.Signature, err = s.voter.SignHash(digest)
+		if err != nil {
+			log.Error("Failed to sign param", "err", err)
+			continue
+		}
+		data, err := s.hsabi.Pack("syncRootInfo", s.sync.ChainId, infos, param.Signature)
+		if err != nil {
+			log.Error("Failed to pack data", "err", err)
+			continue
+		}
+
+		hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+		if err != nil || hash == "" {
+			log.Error("Failed to send header", "err", err, "hash", hash)
+			continue
+		}
+		log.Info("Send header vote", "hash", hash, "chain", s.name)
+		bus.SafeCall(s.Context, hash,"insert data item failure", func()error{
+			return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+		})
+		bus.SafeCall(s.Context, hash,"remove tx item failure", func()error{
+			return store.DeleteHeader(headers...)
+		})
+	}
+}
+
+func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
+	s.wg.Add(1)
+	defer s.wg.Done()
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.Done():
+			log.Info("Submitter is exiting now", "chain", s.name)
+			return
+		default:
+		}
+
+		select {
+		case <-ticker.C:
+			s.RetryWithData(account, store, s.vote.Batch)
+		default:
+		}
+
+		txs, err := store.LoadTxs(s.vote.Batch)
+		if err != nil {
+			log.Error("Failed to load txs from store", "err", err)
+			continue
+		}
+		for _, tx := range txs {
+			param := ccom.EntranceParam{
+				SourceChainID: tx.ChainID,
+				Height: uint32(tx.Height),
+				Extra: tx.Value,
+			}
+			digest, err := param.Digest()
+			if err != nil {
+				log.Error("Failed to get param digest", "err", err)
+				continue
+			}
+			param.Signature, err = s.voter.SignHash(digest)
+			if err != nil {
+				log.Error("Failed to sign param", "err", err)
+				continue
+			}
+			data, err := s.txabi.Pack("importOuterTransfer", tx.ChainID, tx.Height, []byte{}, tx.Value, param.Signature)
+			if err != nil {
+				log.Error("Failed to pack data", "err", err)
+				continue
+			}
+
+			hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+			if err != nil || hash == "" {
+				log.Error("Failed to send tx", "err", err, "hash", hash)
+				continue
+			}
+			log.Info("Send tx vote", "hash", hash, "chain", s.name)
+			bus.SafeCall(s.Context, hash,"insert data item failure", func()error{
+				return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+			})
+			bus.SafeCall(s.Context, hash,"remove tx item failure", func()error{
+				return store.DeleteTxs(tx)
+			})
+		}
+	}
+}
+
 func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
@@ -466,6 +651,70 @@ func (s *Submitter) Run(ctx context.Context, wg *sync.WaitGroup, mq bus.SortedTx
 		go s.consume(a, mq)
 	}
 	return nil
+}
+
+func (s *Submitter) StartHeaderVote(
+	ctx context.Context, wg *sync.WaitGroup, config *config.HeaderSyncConfig, store *store.Store,
+) {
+	s.Context = ctx
+	s.wg = wg
+	s.sync = config
+
+	if s.sync.Batch == 0 {
+		s.sync.Batch = 1
+	}
+	if s.sync.Buffer == 0 {
+		s.sync.Buffer = 2 * s.sync.Batch
+	}
+	if s.sync.Timeout == 0 {
+		s.sync.Timeout = 1
+	}
+
+	if s.sync.ChainId == 0 {
+		log.Fatal("Invalid tx vote side chain id","chain", s.sync.ChainId)
+	}
+
+	accounts := s.wallet.Accounts()
+	if len(accounts) == 0 {
+		log.Warn("No account available for submitter workers", "chain", s.name)
+	}
+	for i, a := range accounts {
+		log.Info("Starting zion submitter worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
+		go s.voteHeader(a, store)
+	}
+	return
+}
+
+func (s *Submitter) StartTxVote(
+	ctx context.Context, wg *sync.WaitGroup, config *config.TxVoteConfig, store *store.Store,
+) {
+	s.Context = ctx
+	s.wg = wg
+	s.vote = config
+
+	if s.vote.Batch == 0 {
+		s.vote.Batch = 1
+	}
+	if s.vote.Buffer == 0 {
+		s.vote.Buffer = 2 * s.sync.Batch
+	}
+	if s.vote.Timeout == 0 {
+		s.vote.Timeout = 1
+	}
+
+	if s.vote.ChainId == 0 {
+		log.Fatal("Invalid tx vote side chain id","chain", s.sync.ChainId)
+	}
+
+	accounts := s.wallet.Accounts()
+	if len(accounts) == 0 {
+		log.Warn("No account available for submitter workers", "chain", s.name)
+	}
+	for i, a := range accounts {
+		log.Info("Starting zion submitter worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
+		go s.voteTx(a, store)
+	}
+	return
 }
 
 func (s *Submitter) StartSync(

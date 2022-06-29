@@ -40,9 +40,10 @@ var (
 )
 
 type Config struct {
-	Env    string
-	Bus    *BusConfig
-	Poly   *PolyChainConfig
+	Env      string
+	Bus      *BusConfig
+	BoltPath string
+	Poly     *PolyChainConfig
 	Chains map[uint64]*ChainConfig
 
 	// Http
@@ -119,7 +120,6 @@ func New(path string) (config *Config, err error) {
 type PolyChainConfig struct {
 	SubmitterConfig `json:",inline"`
 	PolyTxSync      *PolyTxSyncConfig
-	ExtraWallets    *wallet.Config
 }
 
 type ChainConfig struct {
@@ -137,6 +137,7 @@ type ChainConfig struct {
 	DstFilter         *FilterConfig
 
 	HeaderSync   *HeaderSyncConfig   // chain -> ch -> poly
+	TxVote       *TxVoteConfig
 	EpochSync    *EpochSyncConfig    // poly -> chain
 	SrcTxSync    *SrcTxSyncConfig    // chain -> mq
 	SrcTxCommit  *SrcTxCommitConfig  // mq -> poly
@@ -174,6 +175,18 @@ func (c *SubmitterConfig) Fill(o *SubmitterConfig) *SubmitterConfig {
 			p.Path = GetConfigPath(WALLET_PATH, p.Path)
 		}
 	}
+
+	if o.Signer == nil {
+		o.Signer = c.Signer
+	} else {
+		o.Signer.Path = GetConfigPath(WALLET_PATH, o.Signer.Path)
+		if len(o.Signer.Nodes) == 0 {
+			o.Signer.Nodes = c.Signer.Nodes
+		}
+		for _, p := range o.Signer.KeyStoreProviders {
+			p.Path = GetConfigPath(WALLET_PATH, p.Path)
+		}
+	}
 	return o
 }
 
@@ -184,6 +197,7 @@ type SubmitterConfig struct {
 	CCMContract string
 	CCDContract string
 	Wallet      *wallet.Config
+	Signer 		*wallet.Config
 }
 
 type WalletConfig struct {
@@ -211,6 +225,16 @@ func (c *BusConfig) Init() {
 		v, _ := json.Marshal(c.Config)
 		json.Unmarshal(v, c.Redis)
 	}
+}
+
+type TxVoteConfig struct {
+	Batch   int
+	Timeout int
+	Buffer  int
+	Enabled bool
+	Poly    *SubmitterConfig
+	*ListenerConfig
+	Bus *BusConfig
 }
 
 type HeaderSyncConfig struct {
@@ -335,8 +359,14 @@ func (c *PolyChainConfig) Init(bus *BusConfig) (err error) {
 			c.Wallet.Nodes = c.Nodes
 		}
 	}
-	if c.ExtraWallets != nil {
-		c.ExtraWallets.Path = GetConfigPath(WALLET_PATH, c.ExtraWallets.Path)
+	if c.Signer != nil {
+		c.Signer.Path = GetConfigPath(WALLET_PATH, c.Signer.Path)
+		for _, p := range c.Signer.KeyStoreProviders {
+			p.Path = GetConfigPath(WALLET_PATH, p.Path)
+		}
+		if len(c.Signer.Nodes) == 0 {
+			c.Signer.Nodes = c.Nodes
+		}
 	}
 	return
 }
@@ -372,6 +402,16 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		}
 		c.HeaderSync.Poly = poly.SubmitterConfig.Fill(c.HeaderSync.Poly)
 		c.HeaderSync.Poly.ChainId = chain
+	}
+
+	if c.TxVote != nil {
+		c.TxVote.ListenerConfig = c.FillListener(c.TxVote.ListenerConfig, bus)
+		c.TxVote.ChainId = chain
+		if c.TxVote.Bus == nil {
+			c.TxVote.Bus = bus
+		}
+		c.TxVote.Poly = poly.SubmitterConfig.Fill(c.TxVote.Poly)
+		c.TxVote.Poly.ChainId = chain
 	}
 
 	if c.SrcTxSync == nil {

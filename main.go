@@ -607,15 +607,15 @@ func command(method string) func(*cli.Context) error {
 			// poly wallets
 			walletsPath := c.String("wallets")
 			if walletsPath != "" {
-				if conf.Poly.ExtraWallets == nil {
-					conf.Poly.ExtraWallets = new(wallet.Config)
+				if conf.Poly.Signer == nil {
+					conf.Poly.Signer = new(wallet.Config)
 				}
-				conf.Poly.ExtraWallets.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
+				conf.Poly.Signer.Path = config.GetConfigPath(config.WALLET_PATH, walletsPath)
 				password, err := util.ReadPassword("passphrase")
 				if err != nil {
 					return err
 				}
-				conf.Poly.ExtraWallets.Password = string(password)
+				conf.Poly.Signer.Password = string(password)
 			}
 		}
 		err := relayer.HandleCommand(method, c)

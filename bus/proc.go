@@ -23,14 +23,13 @@ import (
 	"time"
 
 	"github.com/polynetwork/bridge-common/log"
-	"github.com/polynetwork/poly-relayer/msg"
 )
 
-func SafeCall(ctx context.Context, tx *msg.Tx, msg string, f func() error) error {
+func SafeCall(ctx context.Context, tx interface{}, msg string, f func() error) error {
 	return Retry(ctx, func() error {
 		err := f()
 		if err != nil {
-			log.Error(fmt.Sprintf("Failed call: %s", msg), "err", err, "body", tx.Encode())
+			log.Error(fmt.Sprintf("Failed call: %s", msg), "err", err, "body", fmt.Sprintf("%s", tx))
 		}
 		return err
 	}, time.Second, 0)

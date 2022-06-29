@@ -19,7 +19,6 @@
 package store
 
 import (
-
 	"github.com/boltdb/bolt"
 )
 
@@ -28,6 +27,7 @@ var (
 )
 
 func Init(file string) (err error) {
+	if db != nil { return }
 	db, err = bolt.Open(file, 0600, nil)
 	return
 }
@@ -59,3 +59,16 @@ func Write(bucket, key, value []byte) (err error) {
 	return
 }
 
+func Transact(bucket []byte, f func(bucket *bolt.Bucket)error) (err error) {
+	err = db.Update(func(tx *bolt.Tx) error {
+		return f(tx.Bucket(bucket))
+	})
+	return
+}
+
+func Scan(bucket []byte, f func(bucket *bolt.Bucket)error) (err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		return f(tx.Bucket(bucket))
+	})
+	return
+}

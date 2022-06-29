@@ -200,6 +200,10 @@ func (tx *Tx) Encode() string {
 	return string(bytes)
 }
 
+func (tx *Tx) String() string {
+	return tx.Encode()
+}
+
 type MakeTxParamShim struct {
 	TxHash              []byte
 	CrossChainID        []byte

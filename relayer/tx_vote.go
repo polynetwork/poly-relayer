@@ -25,29 +25,29 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
-	"github.com/polynetwork/poly-relayer/store"
 	"github.com/polynetwork/poly-relayer/relayer/zion"
+	"github.com/polynetwork/poly-relayer/store"
 )
 
-type HeaderSyncHandler struct {
+type TxVoteHandler struct {
 	context.Context
 	wg        *sync.WaitGroup
 	listener  IChainListener
 	submitter *zion.Submitter
-	store 	  *store.Store
 	height    uint64
-	config    *config.HeaderSyncConfig
+	config    *config.TxVoteConfig
+	store     *store.Store
 }
 
-func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
-	return &HeaderSyncHandler{
+func NewTxVoteHandler(config *config.TxVoteConfig) *TxVoteHandler {
+	return &TxVoteHandler{
 		listener:  GetListener(config.ChainId),
 		submitter: new(zion.Submitter),
 		config:    config,
 	}
 }
 
-func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
+func (h *TxVoteHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
 
@@ -64,12 +64,11 @@ func (h *HeaderSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 	if err != nil {
 		return
 	}
-
 	h.store, err = store.NewStore(h.Chain())
 	return
 }
 
-func (h *HeaderSyncHandler) start() {
+func (h *TxVoteHandler) start() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	confirms := base.BlocksToWait(h.config.ChainId)
@@ -77,28 +76,32 @@ func (h *HeaderSyncHandler) start() {
 		latest uint64
 		ok     bool
 	)
-LOOP:
 	for {
 		select {
 		case <-h.Done():
-			break LOOP
+			log.Info("Src tx vote handler is exiting...", "chain", h.config.ChainId, "height", h.height)
+			return nil
 		default:
 		}
 
 		h.height++
-		log.Debug("Header sync processing block", "height", h.height, "chain", h.config.ChainId)
 		if latest < h.height+confirms {
 			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
 			if !ok {
-				break LOOP
+				continue
 			}
 		}
-		header, hash, err := h.listener.Header(h.height)
-		log.Debug("Header sync fetched block header", "height", h.height, "chain", h.config.ChainId, "err", err)
+		log.Info("Scanning txs in block", "height", h.height, "chain", h.config.ChainId)
+		txs, err := h.listener.Scan(h.height)
 		if err == nil {
-			err = h.store.InsertHeader(h.height, hash, header)
+			var list []*store.Tx
+			for _, tx := range txs {
+				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId, "height", h.height)
+				list = append(list, store.NewTx(tx))
+			}
+			err = h.store.InsertTxs(list)
 			if err == nil {
-				err = h.store.SetHeaderHeight(h.height)
+				err = h.store.SetTxHeight(h.height)
 				if err != nil {
 					log.Error("Update tx vote height failure", "chain", h.config.ChainId, "height", h.height, "err", err)
 				}
@@ -106,27 +109,26 @@ LOOP:
 			}
 		}
 
-		log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
+		log.Error("Fetch block txs failure", "chain", h.config.ChainId, "height", h.height, "err", err)
 		h.height--
 	}
-	log.Info("Header sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
 }
 
-func (h *HeaderSyncHandler) Start() (err error) {
-	h.height, err = h.store.GetHeaderHeight()
+func (h *TxVoteHandler) Start() (err error) {
+	h.height, err = h.store.GetTxHeight()
 	if err != nil {
 		return
 	}
-	log.Info("Header sync will start...", "height", h.height+1, "chain", h.config.ChainId)
-	h.submitter.StartHeaderVote(h.Context, h.wg, h.config, h.store)
+	log.Info("Tx vote will start...", "height", h.height+1, "chain", h.config.ChainId)
+	h.submitter.StartTxVote(h.Context, h.wg, h.config, h.store)
 	go h.start()
 	return
 }
 
-func (h *HeaderSyncHandler) Stop() (err error) {
+func (h *TxVoteHandler) Stop() (err error) {
 	return
 }
 
-func (h *HeaderSyncHandler) Chain() uint64 {
+func (h *TxVoteHandler) Chain() uint64 {
 	return h.config.ChainId
 }

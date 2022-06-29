@@ -562,6 +562,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/polynetwork/bridge-common v0.0.3-2 h1:rRcheM8nlQLvsMfpZ5bpdBpmKBwcNY8X9nIqfiQWQ/w=
 github.com/polynetwork/bridge-common v0.0.3-2/go.mod h1:SBiBwnzt3fIi/j3AhIpQq7C95aB/2EGmra9IKUf1T4A=
+github.com/polynetwork/bridge-common v0.0.5-2 h1:BunziIkeLkYXtA/3AGAglwqruSiy/h8D+pqL7FWTR1o=
+github.com/polynetwork/bridge-common v0.0.5-2/go.mod h1:SBiBwnzt3fIi/j3AhIpQq7C95aB/2EGmra9IKUf1T4A=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829/go.mod h1:p2iRAGwDERtqlqzRXnrOVns+ignqQo//hLXqYxZYVNs=
