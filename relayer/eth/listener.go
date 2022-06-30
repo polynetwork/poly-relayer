@@ -28,14 +28,14 @@ import (
 	"math/big"
 	"time"
 
+	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
 	zcom "github.com/devfans/zion-sdk/common"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/polynetwork/bridge-common/abi/lock_proxy_abi"
-	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
@@ -168,6 +168,17 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
+	hdr, err := l.sdk.Node().GetHeader(height)
+	if err != nil {
+		err = fmt.Errorf("Fetch block header error %v", err)
+		return nil, nil, err
+	}
+	log.Info("Fetched block header", "chain", l.name, "height", height)
+	header = hdr
+	return
+}
+
+func (l *Listener) GetHeader(height uint64) (header []byte, hash []byte, err error) {
 	hdr, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
 	if err != nil {
 		err = fmt.Errorf("Fetch block header error %v", err)
