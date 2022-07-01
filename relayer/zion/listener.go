@@ -27,12 +27,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/devfans/zion-sdk/contracts/native/utils"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/devfans/zion-sdk/contracts/native/utils"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
@@ -55,7 +55,7 @@ type Listener struct {
 	config    *config.ListenerConfig
 	epochs    map[uint64]*node_manager.EpochInfo
 	lastEpoch uint64
-	abi 	  abi.ABI
+	abi       abi.ABI
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error) {
@@ -144,7 +144,9 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	res, err := l.sdk.Node().TransactionReceipt(context.Background(), msg.HexToHash(hash))
-	if err != nil || res == nil { return }
+	if err != nil || res == nil {
+		return
+	}
 	for _, entry := range res.Logs {
 		ev := new(ccm.CrossChainManagerMakeProof)
 		if msg.FilterLog(l.abi, utils.CrossChainManagerContractAddress, "CrossChainEvent", entry, ev) {

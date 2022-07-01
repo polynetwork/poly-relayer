@@ -168,6 +168,24 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
+	ccmContract, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
+	if err != nil {
+		return nil, nil, fmt.Errorf("NewEthCrossChainManagerImplemetation error %v", err)
+	}
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+	crossChainEvents, err := ccmContract.FilterCrossChainEvent(opt, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("FilterCrossChainEvent error %v", err)
+	}
+	if crossChainEvents == nil || !crossChainEvents.Next() {
+		return nil, nil, nil
+	}
+	log.Info("Found cross chain events", "chain", l.name, "height", height)
+
 	hdr, err := l.sdk.Node().GetHeader(height)
 	if err != nil {
 		err = fmt.Errorf("Fetch block header error %v", err)
@@ -282,7 +300,9 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	res, err := l.sdk.Node().TransactionReceipt(context.Background(), msg.HexToHash(hash))
-	if err != nil || res == nil { return }
+	if err != nil || res == nil {
+		return
+	}
 	for _, entry := range res.Logs {
 		ev := new(eccm_abi.EthCrossChainManagerImplementationCrossChainEvent)
 		if msg.FilterLog(l.abi, l.ccm, "CrossChainEvent", entry, ev) {
