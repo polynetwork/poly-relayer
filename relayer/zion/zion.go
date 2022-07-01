@@ -30,7 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
-	scom "github.com/devfans/zion-sdk/contracts/native/info_sync/common"
+	"github.com/devfans/zion-sdk/contracts/native/info_sync"
 
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
 	hs "github.com/devfans/zion-sdk/contracts/native/go_abi/info_sync_abi"
@@ -299,7 +299,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 		}
 		infos := make([][]byte, len(headers))
 		for i, header := range headers {
-			info := &scom.RootInfo{
+			info := &info_sync.RootInfo{
 				Height: uint32(header.Height),
 				Info: header.Data,
 			}
@@ -309,7 +309,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 			}
 			infos[i] = data
 		}
-		param := scom.SyncRootInfoParam{
+		param := info_sync.SyncRootInfoParam{
 			ChainID: s.sync.ChainId,
 			RootInfos: infos,
 		}
