@@ -20,7 +20,9 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"sync"
+	"time"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
@@ -31,12 +33,13 @@ import (
 
 type HeaderSyncHandler struct {
 	context.Context
-	wg        *sync.WaitGroup
-	listener  IChainListener
-	submitter *zion.Submitter
-	store     *store.Store
-	height    uint64
-	config    *config.HeaderSyncConfig
+	wg                  *sync.WaitGroup
+	listener            IChainListener
+	submitter           *zion.Submitter
+	store               *store.Store
+	height              uint64
+	zionReplenishHeight uint64
+	config              *config.HeaderSyncConfig
 }
 
 func NewHeaderSyncHandler(config *config.HeaderSyncConfig) *HeaderSyncHandler {
@@ -115,6 +118,91 @@ LOOP:
 	log.Info("Header sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
 }
 
+func (h *HeaderSyncHandler) startReplenish() {
+	h.wg.Add(1)
+	defer h.wg.Done()
+	srcConfirms := base.BlocksToWait(h.config.ChainId)
+	zionConfirms := base.BlocksToWait(base.ZION)
+	var (
+		srcLatest  uint64
+		zionLatest uint64
+		ok         bool
+	)
+	for {
+		select {
+		case <-h.Done():
+			log.Info("Header sync replenish scan is exiting now", "chain", h.config.ChainId)
+			return
+		default:
+		}
+
+		h.zionReplenishHeight++
+		if zionLatest < h.zionReplenishHeight+zionConfirms {
+			zionLatest, ok = h.submitter.SDK().WaitTillHeight(h.Context, h.zionReplenishHeight+zionConfirms, time.Duration(1)*time.Second)
+		}
+		if !ok {
+			break
+		}
+
+		log.Info("Scanning header sync replenish in block", "zion height", h.zionReplenishHeight, "chain", h.config.ChainId)
+		opt := &bind.FilterOpts{
+			Start:   h.zionReplenishHeight,
+			End:     &h.zionReplenishHeight,
+			Context: context.Background(),
+		}
+		events, err := h.submitter.SDK().Node().InfoSync.FilterReplenishEvent(opt)
+		if err == nil {
+			for events.Next() {
+				ev := events.Event
+				if h.config.ChainId != ev.ChainID {
+					continue
+				}
+
+				for _, height := range ev.Heights {
+					log.Info("Header sync processing block", "height", height, "chain", h.config.ChainId)
+
+					if srcLatest < uint64(height)+srcConfirms {
+						log.Warn("Skip header replenish, block not confirmed", "height", height, "chain", h.config.ChainId)
+						continue
+					}
+
+					header, _, e := h.listener.Header(uint64(height))
+					if e != nil {
+						log.Error("Header sync replenish get header failure", "chain", h.config.ChainId, "height", height, "err", e)
+						continue
+					}
+					if header == nil {
+						log.Warn("Header sync replenish skip nil header", "chain", h.config.ChainId, "height", height)
+						continue
+					}
+
+					e = h.submitter.VoteHeaderOfHeight(height, header, h.store)
+					if e != nil {
+						log.Error("Replenish header vote failure", "chain", h.config.ChainId, "height", height, "err", e)
+						continue
+					}
+				}
+			}
+			continue
+		}
+		log.Error("Fetch header sync replenish events error", "chain", h.config.ChainId, "zion height", h.zionReplenishHeight, "err", err)
+		h.zionReplenishHeight--
+	}
+}
+
+func (h *HeaderSyncHandler) replenish() {
+	zionHeight, err := h.submitter.SDK().Node().GetLatestHeight()
+	if err != nil {
+		log.Error("Failed to get zion latest height err ", "err", err)
+		return
+	}
+	h.zionReplenishHeight = zionHeight
+	log.Info("Header sync replenish will start...", "chain", h.config.ChainId, "zion height", h.zionReplenishHeight)
+
+	go h.startReplenish()
+	return
+}
+
 func (h *HeaderSyncHandler) Start() (err error) {
 	h.height, err = h.store.GetHeaderHeight()
 	if err != nil {
@@ -123,6 +211,7 @@ func (h *HeaderSyncHandler) Start() (err error) {
 	log.Info("Header sync will start...", "height", h.height+1, "chain", h.config.ChainId)
 	h.submitter.StartHeaderVote(h.Context, h.wg, h.config, h.store)
 	go h.start()
+	go h.replenish()
 	return
 }
 

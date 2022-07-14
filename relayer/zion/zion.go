@@ -19,6 +19,7 @@ package zion
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strings"
@@ -163,7 +164,9 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		// For other chains, reversed?
 		// Check done tx existence
 		done, err := s.sdk.Node().CheckDone(nil, tx.SrcChainId, tx.Param.CrossChainID)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if done {
 			log.Info("Tx already imported", "src_hash", tx.SrcHash)
 			return nil
@@ -244,14 +247,14 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 	} else {
 		now := time.Now().Unix()
 		for _, tx := range list {
-			if tx.Time > now - 600 {
+			if tx.Time > now-600 {
 				continue
 			}
 			height, pending, err := s.sdk.Node().GetTxHeight(context.Background(), tx.Hash)
 			if err != nil {
 				log.Error("Failed to check tx receipt", "hash", tx.Hash, "err", err)
 			} else if height > 0 {
-				bus.SafeCall(s.Context, tx.Hash,"remove tx item failure", func()error{
+				bus.SafeCall(s.Context, tx.Hash, "remove tx item failure", func() error {
 					return store.DeleteData(tx)
 				})
 			} else if !pending {
@@ -261,16 +264,61 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 					log.Error("Failed to send tx during check", "err", err, "hash", hash)
 					continue
 				}
-				bus.SafeCall(s.Context, tx.Hash,"remove tx item failure", func()error{
+				bus.SafeCall(s.Context, tx.Hash, "remove tx item failure", func() error {
 					return store.DeleteData(tx)
 				})
 				log.Info("Send tx vote during check", "hash", hash, "chain", s.name)
-				bus.SafeCall(s.Context, hash,"insert data item failure", func()error{
+				bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
 					return store.InsertData(msg.HexToHash(hash), tx.Data, tx.To)
 				})
 			}
 		}
 	}
+}
+
+func (s *Submitter) VoteHeaderOfHeight(height uint32, header []byte, store *store.Store) (err error) {
+	account, _, _ := s.wallet.Select()
+
+	info := &info_sync.RootInfo{
+		Height: height,
+		Info:   header,
+	}
+	headerData, err := rlp.EncodeToBytes(info)
+	if err != nil {
+		log.Error("Failed to rlp root info", "err", err)
+		return
+	}
+
+	infos := [][]byte{headerData}
+	param := info_sync.SyncRootInfoParam{
+		ChainID:   s.sync.ChainId,
+		RootInfos: infos,
+	}
+	digest, err := param.Digest()
+	if err != nil {
+		log.Error("Failed to get param digest", "err", err)
+		return
+	}
+	param.Signature, err = s.voter.SignHash(digest)
+	if err != nil {
+		log.Error("Failed to sign param", "err", err)
+		return
+	}
+	data, err := s.hsabi.Pack("syncRootInfo", s.sync.ChainId, infos, param.Signature)
+	if err != nil {
+		log.Error("Failed to pack data", "err", err)
+		return
+	}
+	hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+	if err != nil || hash == "" {
+		log.Error("Failed to send header", "err", err, "hash", hash)
+		return
+	}
+	log.Info("Send header vote", "src height", height, "zion hash", hash, "chain", s.name)
+	bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
+		return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+	})
+	return
 }
 
 func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
@@ -297,11 +345,16 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 			log.Error("Failed to load txs from store", "err", err)
 			continue
 		}
+		if len(headers) == 0 {
+			time.Sleep(time.Second)
+			continue
+		}
+
 		infos := make([][]byte, len(headers))
 		for i, header := range headers {
 			info := &info_sync.RootInfo{
 				Height: uint32(header.Height),
-				Info: header.Data,
+				Info:   header.Data,
 			}
 			data, err := rlp.EncodeToBytes(info)
 			if err != nil {
@@ -310,7 +363,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 			infos[i] = data
 		}
 		param := info_sync.SyncRootInfoParam{
-			ChainID: s.sync.ChainId,
+			ChainID:   s.sync.ChainId,
 			RootInfos: infos,
 		}
 		digest, err := param.Digest()
@@ -335,13 +388,56 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 			continue
 		}
 		log.Info("Send header vote", "hash", hash, "chain", s.name)
-		bus.SafeCall(s.Context, hash,"insert data item failure", func()error{
+		bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
 			return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
 		})
-		bus.SafeCall(s.Context, hash,"remove tx item failure", func()error{
+		bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
 			return store.DeleteHeader(headers...)
 		})
 	}
+}
+
+func (s *Submitter) VoteTxOfHash(tx *msg.Tx, store *store.Store) (err error) {
+	account, _, _ := s.wallet.Select()
+
+	raw, err := hex.DecodeString(tx.SrcParam)
+	if err != nil || len(raw) == 0 {
+		log.Error("Unexpected empty raw data", "err", err, "hash", tx.SrcHash)
+		return
+	}
+
+	param := ccom.EntranceParam{
+		SourceChainID: tx.SrcChainId,
+		Height:        uint32(tx.SrcHeight),
+		Extra:         raw,
+	}
+
+	digest, err := param.Digest()
+	if err != nil {
+		log.Error("Failed to get param digest", "err", err)
+		return
+	}
+	param.Signature, err = s.voter.SignHash(digest)
+	if err != nil {
+		log.Error("Failed to sign param", "err", err)
+		return
+	}
+	data, err := s.txabi.Pack("importOuterTransfer", param.SourceChainID, param.Height, []byte{}, param.Extra, param.Signature)
+	if err != nil {
+		log.Error("Failed to pack data", "err", err)
+		return
+	}
+
+	hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+	if err != nil || hash == "" {
+		log.Error("Failed to send tx", "err", err, "hash", hash)
+		return
+	}
+	log.Info("Send tx vote", "src height", tx.SrcHeight, "src hash", tx.SrcHash, "zion hash", hash, "chain", s.name)
+	bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
+		return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+	})
+	return
 }
 
 func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
@@ -371,8 +467,8 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 		for _, tx := range txs {
 			param := ccom.EntranceParam{
 				SourceChainID: tx.ChainID,
-				Height: uint32(tx.Height),
-				Extra: tx.Value,
+				Height:        uint32(tx.Height),
+				Extra:         tx.Value,
 			}
 			digest, err := param.Digest()
 			if err != nil {
@@ -396,10 +492,10 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 				continue
 			}
 			log.Info("Send tx vote", "hash", hash, "chain", s.name)
-			bus.SafeCall(s.Context, hash,"insert data item failure", func()error{
+			bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
 				return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
 			})
-			bus.SafeCall(s.Context, hash,"remove tx item failure", func()error{
+			bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
 				return store.DeleteTxs(tx)
 			})
 		}
@@ -501,7 +597,7 @@ func (s *Submitter) StartHeaderVote(
 	}
 
 	if s.sync.ChainId == 0 {
-		log.Fatal("Invalid tx vote side chain id","chain", s.sync.ChainId)
+		log.Fatal("Invalid tx vote side chain id", "chain", s.sync.ChainId)
 	}
 
 	accounts := s.wallet.Accounts()
@@ -533,7 +629,7 @@ func (s *Submitter) StartTxVote(
 	}
 
 	if s.vote.ChainId == 0 {
-		log.Fatal("Invalid tx vote side chain id","chain", s.sync.ChainId)
+		log.Fatal("Invalid tx vote side chain id", "chain", s.sync.ChainId)
 	}
 
 	if s.signer == nil || s.wallet == nil {
@@ -550,7 +646,6 @@ func (s *Submitter) StartTxVote(
 	}
 	return
 }
-
 
 func (s *Submitter) GetSideChainHeight(chainId uint64) (height uint64, err error) {
 	h, err := s.sdk.Node().GetInfoHeight(nil, chainId)
