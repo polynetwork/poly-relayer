@@ -34,7 +34,7 @@ type HeaderSyncHandler struct {
 	wg        *sync.WaitGroup
 	listener  IChainListener
 	submitter *zion.Submitter
-	store 	  *store.Store
+	store     *store.Store
 	height    uint64
 	config    *config.HeaderSyncConfig
 }
