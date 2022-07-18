@@ -64,7 +64,7 @@ func main() {
 		},
 		Before: Init,
 		Commands: []*cli.Command{
-			&cli.Command{
+			{
 				Name:   relayer.CHECK_WALLET,
 				Usage:  "Check wallet status",
 				Action: command(relayer.CHECK_WALLET),
@@ -76,7 +76,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.SET_HEADER_HEIGHT,
 				Usage:  "Set side chain header sync height",
 				Action: command(relayer.SET_HEADER_HEIGHT),
@@ -93,7 +93,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.SET_EPOCH_HEIGHT,
 				Usage:  "Set poly epoch sync height",
 				Action: command(relayer.SET_EPOCH_HEIGHT),
@@ -105,7 +105,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.SET_TX_HEIGHT,
 				Usage:  "Set side chain tx sync height",
 				Action: command(relayer.SET_TX_HEIGHT),
@@ -122,12 +122,12 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.VALIDATE,
 				Usage:  "Validate txs",
 				Action: command(relayer.VALIDATE),
 			},
-			&cli.Command{
+			{
 				Name:   relayer.VALIDATE_BLOCK,
 				Usage:  "Validate txs in block",
 				Action: command(relayer.VALIDATE_BLOCK),
@@ -142,7 +142,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.SET_VALIDATOR_HEIGHT,
 				Usage:  "Set chain tx validator height",
 				Action: command(relayer.SET_VALIDATOR_HEIGHT),
@@ -159,7 +159,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.STATUS,
 				Usage:  "Check side chain header/tx sync height",
 				Action: command(relayer.STATUS),
@@ -171,7 +171,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.TEST,
 				Usage:  "Test",
 				Action: command(relayer.TEST),
@@ -182,7 +182,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.RELAY_TX,
 				Usage:  "Submit cross chain tx",
 				Action: command(relayer.RELAY_TX),
@@ -230,7 +230,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.PATCH,
 				Usage:  "Patch cross chain tx, will do auto patching if auto is set",
 				Action: command(relayer.PATCH),
@@ -270,7 +270,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.HTTP,
 				Usage:  "Run http server",
 				Action: command(relayer.HTTP),
@@ -289,7 +289,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.SKIP,
 				Usage:  "Mark tx hash to skip before sumbit to target chain",
 				Action: command(relayer.SKIP),
@@ -301,7 +301,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.CHECK_SKIP,
 				Usage:  "Check tx skip status",
 				Action: command(relayer.CHECK_SKIP),
@@ -313,7 +313,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.SCAN_POLY_TX,
 				Usage:  "Scan poly txs in range",
 				Action: command(relayer.SCAN_POLY_TX),
@@ -330,7 +330,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.CREATE_ACCOUNT,
 				Usage:  "Create a new eth keystore account",
 				Action: command(relayer.CREATE_ACCOUNT),
@@ -346,7 +346,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.UPDATE_ACCOUNT,
 				Usage:  "Update keystore accounts with new passphrase",
 				Action: command(relayer.UPDATE_ACCOUNT),
@@ -362,7 +362,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.ENCRYPT_FILE,
 				Usage:  "Encrypt a single file with passphrase",
 				Action: command(relayer.ENCRYPT_FILE),
@@ -374,7 +374,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.DECRYPT_FILE,
 				Usage:  "Decrypt a single file with passphrase",
 				Action: command(relayer.DECRYPT_FILE),
@@ -386,7 +386,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.APPROVE_SIDECHAIN,
 				Usage:  "Approve side chain",
 				Action: command(relayer.APPROVE_SIDECHAIN),
@@ -401,7 +401,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.ADD_SIDECHAIN,
 				Usage:  "Register side chain to poly",
 				Action: command(relayer.ADD_SIDECHAIN),
@@ -437,7 +437,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.GET_SIDE_CHAIN,
 				Usage:  "Get side chain instance",
 				Action: command(relayer.GET_SIDE_CHAIN),
@@ -448,7 +448,7 @@ func main() {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:   relayer.INIT_GENESIS,
 				Usage:  "Init genesis for contract",
 				Action: command(relayer.INIT_GENESIS),

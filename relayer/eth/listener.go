@@ -365,7 +365,7 @@ func (l *Listener) LatestHeight() (uint64, error) {
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
 	if l.poly == nil {
-		err = fmt.Errorf("No poly sdk provided for listener", "chain", l.name)
+		err = fmt.Errorf("No poly sdk provided for listener chain %s", l.name)
 		return
 	}
 

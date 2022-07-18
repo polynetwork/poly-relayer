@@ -22,7 +22,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -36,6 +35,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
@@ -566,7 +566,6 @@ func ScanPolyTxs(ctx *cli.Context) (err error) {
 		}
 		start++
 	}
-	return
 }
 
 func ValidateBlock(ctx *cli.Context) (err error) {
@@ -757,6 +756,7 @@ func Dial(target, content string) error {
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	resp, err := client.Do(req)
+	if err != nil { return err }
 	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

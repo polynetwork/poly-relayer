@@ -26,7 +26,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	log.Init()
+	log.Init(nil)
 	path := "../config.json"
 	env := os.Getenv("CONFIG")
 	if env != "" {

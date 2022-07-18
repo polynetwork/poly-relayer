@@ -187,7 +187,6 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		}
 		h.height--
 	}
-	return
 }
 
 func (h *SrcTxSyncHandler) Stop() (err error) {
@@ -300,7 +299,6 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		}
 		h.height--
 	}
-	return
 }
 
 func (h *PolyTxSyncHandler) checkDelayed() (err error) {

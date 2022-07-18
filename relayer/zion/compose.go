@@ -50,16 +50,16 @@ func (s *Submitter) GetPolyParams(tx *msg.Tx) (err error) {
 	}
 	tx.PolyAccountProof, err = msg.RlpEncodeStrings(proof.AccountProof)
 	if err != nil {
-		err = fmt.Errorf("rlp encode poly account proof failed", "poly_hash", tx.PolyHash, "err", err)
+		err = fmt.Errorf("rlp encode poly account proof failed poly_hash %s, err %v", tx.PolyHash, err)
 		return
 	}
 	if len(proof.StorageProofs) == 0 {
-		err = fmt.Errorf("Failed to fetch poly storage proof, got empty", "poly_hash", tx.PolyHash)
+		err = fmt.Errorf("Failed to fetch poly storage proof, got empty poly_hash %s", tx.PolyHash)
 		return
 	}
 	tx.PolyStorageProof, err = msg.RlpEncodeStrings(proof.StorageProofs[0].Proof)
 	if err != nil {
-		err = fmt.Errorf("rlp encode poly storage proof failed", "poly_hash", tx.PolyHash, "err", err)
+		err = fmt.Errorf("rlp encode poly storage proof failed poly_hash %s, err %v", tx.PolyHash, err)
 	}
 	return
 }
