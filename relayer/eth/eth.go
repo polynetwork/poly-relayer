@@ -88,13 +88,13 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	if tx.DstGasPrice != "" {
 		gasPrice, ok = new(big.Int).SetString(tx.DstGasPrice, 10)
 		if !ok {
-			return fmt.Errorf("%s submit invalid gas price %s", tx.DstGasPrice)
+			return fmt.Errorf("submit invalid gas price %s", tx.DstGasPrice)
 		}
 	}
 	if tx.DstGasPriceX != "" {
 		gasPriceX, ok = new(big.Float).SetString(tx.DstGasPriceX)
 		if !ok {
-			return fmt.Errorf("%s submit invalid gas priceX %s", tx.DstGasPriceX)
+			return fmt.Errorf("submit invalid gas priceX %s", tx.DstGasPriceX)
 		}
 	}
 	var (

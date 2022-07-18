@@ -398,80 +398,6 @@ func main() {
 				},
 			},
 			&cli.Command{
-				Name:   relayer.SYNC_GENESIS,
-				Usage:  "Sync side chain genesis to poly",
-				Action: command(relayer.SYNC_GENESIS),
-				Flags: []cli.Flag{
-					&cli.Int64Flag{
-						Name:  "height",
-						Usage: "target block height",
-					},
-					&cli.Int64Flag{
-						Name:     "chain",
-						Usage:    "chain id",
-						Required: true,
-					},
-				},
-			},
-			&cli.Command{
-				Name:   relayer.CREATE_GENESIS,
-				Usage:  "Create raw tx to sync side chain genesis ",
-				Action: command(relayer.CREATE_GENESIS),
-				Flags: []cli.Flag{
-					&cli.Int64Flag{
-						Name:  "height",
-						Usage: "target block height",
-					},
-					&cli.Int64Flag{
-						Name:     "chain",
-						Usage:    "chain id",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "keys",
-						Usage:    "public keys seperated by ','",
-						Required: true,
-					},
-				},
-			},
-			&cli.Command{
-				Name:   relayer.SIGN_POLY_TX,
-				Usage:  "Sign raw poly multi-sig tx",
-				Action: command(relayer.SIGN_POLY_TX),
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "tx",
-						Usage: "raw tx hex or path to hex file",
-					},
-				},
-			},
-			&cli.Command{
-				Name:   relayer.SEND_POLY_TX,
-				Usage:  "Send poly multi-sig tx",
-				Action: command(relayer.SEND_POLY_TX),
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "tx",
-						Usage: "raw tx hex for path to hex file",
-					},
-				},
-			},
-			&cli.Command{
-				Name:   relayer.SYNC_HEADER,
-				Usage:  "Sync side chain header to poly",
-				Action: command(relayer.SYNC_HEADER),
-				Flags: []cli.Flag{
-					&cli.Int64Flag{
-						Name:  "height",
-						Usage: "target block height",
-					},
-					&cli.Int64Flag{
-						Name:  "chain",
-						Usage: "chain id",
-					},
-				},
-			},
-			&cli.Command{
 				Name:   relayer.ADD_SIDECHAIN,
 				Usage:  "Register side chain to poly",
 				Action: command(relayer.ADD_SIDECHAIN),
@@ -534,6 +460,10 @@ func main() {
 					&cli.StringFlag{
 						Name:  "ccm",
 						Usage: "ccm address",
+					},
+					&cli.BoolFlag{
+						Name: "sync:",
+						Usage: "Sync zion epochs to chain",
 					},
 				},
 			},

@@ -97,17 +97,10 @@ func init() {
 	_Handlers[UPDATE_ACCOUNT] = UpdateAccount
 	_Handlers[ENCRYPT_FILE] = EncryptFile
 	_Handlers[DECRYPT_FILE] = DecryptFile
-	/*
 	_Handlers[ADD_SIDECHAIN] = AddSideChain
-	_Handlers[SYNC_GENESIS] = SyncGenesis
-	_Handlers[CREATE_GENESIS] = CreateGenesis
-	_Handlers[SIGN_POLY_TX] = SignPolyTx
-	_Handlers[SEND_POLY_TX] = SendPolyTx
-	_Handlers[SYNC_HEADER] = SyncHeader
 	_Handlers[APPROVE_SIDECHAIN] = ApproveSideChain
 	_Handlers[INIT_GENESIS] = SyncContractGenesis
 	_Handlers[GET_SIDE_CHAIN] = FetchSideChain
-	 */
 	_Handlers[SCAN_POLY_TX] = ScanPolyTxs
 	_Handlers[VALIDATE] = Validate
 	_Handlers[VALIDATE_BLOCK] = ValidateBlock

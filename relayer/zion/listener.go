@@ -338,16 +338,16 @@ func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
 	}
 	info.AccountProof, err = msg.RlpEncodeStrings(proof.AccountProof)
 	if err != nil {
-		err = fmt.Errorf("rlp encode poly epoch account proof failed", "epoch", epoch.ID, "err", err)
+		err = fmt.Errorf("rlp encode poly epoch account proof failed epoch %v, err %v", epoch.ID, err)
 		return
 	}
 	if len(proof.StorageProofs) == 0 {
-		err = fmt.Errorf("Failed to fetch poly epoch storage proof, got empty", "epoch", epoch.ID)
+		err = fmt.Errorf("Failed to fetch poly epoch storage proof, got empty epoch %v", epoch.ID)
 		return
 	}
 	info.StorageProof, err = msg.RlpEncodeStrings(proof.StorageProofs[0].Proof)
 	if err != nil {
-		err = fmt.Errorf("rlp encode poly storage proof failed", "epoch", epoch.ID, "err", err)
+		err = fmt.Errorf("rlp encode poly storage proof failed epoch %v, err %v", epoch.ID, err)
 		return
 	}
 	info.Epoch, err = msg.RlpEncodeEpoch(epoch.ID, epoch.StartHeight, epoch.Peers)

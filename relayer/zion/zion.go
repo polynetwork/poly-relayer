@@ -20,7 +20,6 @@ package zion
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"strings"
 	"sync"
@@ -28,6 +27,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/rlp"
 
 	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	"github.com/devfans/zion-sdk/contracts/native/info_sync"
@@ -157,7 +157,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 	switch tx.SrcChainId {
 	case base.NEO, base.ONT:
 		if len(tx.SrcStateRoot) == 0 || len(tx.SrcProof) == 0 {
-			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %s with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
+			return fmt.Errorf("%s submitter src tx src state root(%x) or src proof(%x) missing for chain %d with tx %s", s.name, tx.SrcStateRoot, tx.SrcProof, tx.SrcChainId, tx.SrcHash)
 		}
 	default:
 		// For other chains, reversed?
@@ -177,7 +177,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		tx.SrcStateRoot,
 	)
 	if err != nil {
-		return fmt.Errorf("Pack zion tx failed", "err", err)
+		return fmt.Errorf("Pack zion tx failed err %v", err)
 	}
 	hash, err := s.wallet.SendWithAccount(*signer, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 	/*
@@ -206,7 +206,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 
 func (s *Submitter) ProcessTx(m *msg.Tx, composer msg.PolyComposer) (err error) {
 	if m.Type() != msg.SRC {
-		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
+		return fmt.Errorf("desired message is not poly tx %v", m.Type())
 	}
 	s.composer = &Composer{composer}
 	return s.submit(m)
@@ -564,5 +564,4 @@ func (s *Submitter) Poly() *zion.SDK {
 
 func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
 	panic("unexpected sync epoch to zion")
-	return
 }
