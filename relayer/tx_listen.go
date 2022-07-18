@@ -263,7 +263,7 @@ func (h *PolyTxSyncHandler) Start() (err error) {
 func (h *PolyTxSyncHandler) start() (err error) {
 	h.wg.Add(1)
 	defer h.wg.Done()
-	confirms := uint64(h.listener.Defer())
+	confirms := base.BlocksToWait(h.config.ChainId)
 	var (
 		latest uint64
 		ok     bool
