@@ -340,6 +340,10 @@ func main() {
 						Usage:    "wallet path",
 						Required: true,
 					},
+					&cli.BoolFlag{
+						Name:  "public",
+						Usage: "include the public key in the output",
+					},
 				},
 			},
 			&cli.Command{
