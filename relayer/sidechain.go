@@ -135,7 +135,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	height, err := sub.GetPolyEpochStartHeight(0)
 	if err != nil { return }
 	if height == 0 {
-		info, err := lis.EpochById(epoch.ID)
+		info, err := lis.EpochById(epoch.ID.Uint64())
 		if err != nil { return err }
 		data, err := zion.SM_ABI.Pack("initGenesisBlock", info.Header)
 		if err != nil { return err }

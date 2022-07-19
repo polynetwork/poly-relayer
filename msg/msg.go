@@ -22,7 +22,6 @@ import (
 	"github.com/ontio/ontology-crypto/sm2"
 
 	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
-	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 )
@@ -84,21 +83,6 @@ type PolyEpoch struct {
 	Seal            []byte `json:"-"`
 	AccountProof    []byte `json:"-"`
 	StorageProof    []byte `json:"-"`
-	Epoch           []byte `json:"-"`
-}
-
-func RlpEncodeEpoch(id, startHeight uint64, peers *node_manager.Peers) (bytes []byte, err error) {
-	return rlp.EncodeToBytes(
-		struct {
-			ID          uint64
-			Peers       *node_manager.Peers
-			StartHeight uint64
-		}{
-			ID:          id,
-			Peers:       peers,
-			StartHeight: startHeight,
-		},
-	)
 }
 
 func (m *PolyEpoch) Encode() {
@@ -106,7 +90,6 @@ func (m *PolyEpoch) Encode() {
 	m.SealHex = hex.EncodeToString(m.Seal)
 	m.AccountProofHex = hex.EncodeToString(m.AccountProof)
 	m.StorageProofHex = hex.EncodeToString(m.StorageProof)
-	m.EpochHex = hex.EncodeToString(m.Epoch)
 }
 
 func (m *PolyEpoch) Decode() {
@@ -114,7 +97,6 @@ func (m *PolyEpoch) Decode() {
 	m.Seal, _ = hex.DecodeString(m.SealHex)
 	m.AccountProof, _ = hex.DecodeString(m.AccountProofHex)
 	m.StorageProof, _ = hex.DecodeString(m.StorageProofHex)
-	m.Epoch, _ = hex.DecodeString(m.EpochHex)
 }
 
 type PolyComposer func(*Tx) error

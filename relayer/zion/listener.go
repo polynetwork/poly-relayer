@@ -234,11 +234,11 @@ LOOP:
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
-		if epoch == nil || epoch.StartHeight <= startHeight || epoch.ID < 2 {
+		if epoch == nil || epoch.StartHeight.Uint64() <= startHeight || epoch.ID.Uint64() < 2 {
 			continue
 		}
 
-		id := epoch.ID
+		id := epoch.ID.Uint64()
 		log.Info("Fetched latest epoch info", "chain", l.config.ChainId, "id", id, "start_height", epoch.StartHeight, "dst_epoch_height", startHeight)
 
 		for id > 1 {
@@ -248,7 +248,7 @@ LOOP:
 				continue LOOP
 			}
 			if info.Height <= startHeight {
-				l.lastEpoch = epoch.ID
+				l.lastEpoch = epoch.ID.Uint64()
 				break
 			} else {
 				epochs = append([]*msg.PolyEpoch{info}, epochs...)
@@ -266,14 +266,10 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 	if err != nil {
 		return
 	}
-	if epoch.Status != node_manager.ProposalStatusPassed && id > 1 {
-		err = fmt.Errorf("Invalid epoch status %v desired: %v", epoch.Status, node_manager.ProposalStatusPassed)
-		return
-	}
 
 	info = &msg.PolyEpoch{
-		EpochId: epoch.ID,
-		Height:  epoch.StartHeight - 1,
+		EpochId: epoch.ID.Uint64(),
+		Height:  epoch.StartHeight.Uint64() - 1,
 	}
 
 	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
@@ -304,15 +300,12 @@ func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
 	if err != nil {
 		return
 	}
-	if epoch.Status != node_manager.ProposalStatusPassed {
-		return
-	}
-	if epoch.ID == l.lastEpoch {
+	if epoch.ID.Uint64() == l.lastEpoch {
 		return
 	}
 
 	info = &msg.PolyEpoch{
-		EpochId: epoch.ID,
+		EpochId: epoch.ID.Uint64(),
 		Height:  height,
 	}
 	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
@@ -332,7 +325,7 @@ func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
 		return
 	}
 
-	proof, err := l.sdk.Node().GetProof(zion.NODE_MANAGER_ADDRESS.Hex(), zion.EpochProofKey(epoch.ID).Hex(), height)
+	proof, err := l.sdk.Node().GetProof(zion.NODE_MANAGER_ADDRESS.Hex(), zion.EpochProofKey(epoch.ID.Uint64()).Hex(), height)
 	if err != nil {
 		return
 	}
@@ -350,11 +343,7 @@ func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
 		err = fmt.Errorf("rlp encode poly storage proof failed epoch %v, err %v", epoch.ID, err)
 		return
 	}
-	info.Epoch, err = msg.RlpEncodeEpoch(epoch.ID, epoch.StartHeight, epoch.Peers)
-	if err != nil {
-		return
-	}
-	l.lastEpoch = epoch.ID
+	l.lastEpoch = epoch.ID.Uint64()
 	return
 }
 
@@ -375,7 +364,7 @@ func (l *Listener) LastHeaderSync(force uint64, last uint64) (uint64, error) {
 			return 0, fmt.Errorf("Get epoch info error %v height %v", err, v-1)
 		}
 
-		l.lastEpoch = epoch.ID
+		l.lastEpoch = epoch.ID.Uint64()
 	}
 
 	return v, nil
