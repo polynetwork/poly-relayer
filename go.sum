@@ -158,8 +158,6 @@ github.com/deckarep/golang-set v1.7.1/go.mod h1:93vsz/8Wt4joVM7c2AVqh+YRMiUSc14y
 github.com/decred/dcrd/lru v1.0.0/go.mod h1:mxKOwFd7lFjN2GZYsiz/ecgqR6kkYAl+0pz0tEMk218=
 github.com/deepmap/oapi-codegen v1.6.0/go.mod h1:ryDa9AgbELGeB+YEXE1dR53yAjHwFvE9iAUlWl9Al3M=
 github.com/deepmap/oapi-codegen v1.8.2/go.mod h1:YLgSKSDv/bZQB7N4ws6luhozi3cEdRktEqrX88CvjIw=
-github.com/devfans/zion-sdk v0.0.9 h1:2NrQD/51flKDBxKGoE3goT9w1L3HwexgJmkDolk777E=
-github.com/devfans/zion-sdk v0.0.9/go.mod h1:Gg/Ob+yfNBdGxCLBym18ku6dSh6z9DYMoTn60uVbSxM=
 github.com/devfans/zion-sdk v0.0.10 h1:umeC+pF5qeHogA5gzunz/I+OcehRkNDxpeKfoYCw2EM=
 github.com/devfans/zion-sdk v0.0.10/go.mod h1:Gg/Ob+yfNBdGxCLBym18ku6dSh6z9DYMoTn60uVbSxM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
@@ -562,8 +560,8 @@ github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6J
 github.com/pkg/term v0.0.0-20180730021639-bffc007b7fd5/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/polynetwork/bridge-common v0.0.10-2 h1:TN8r/GzIfgR3FXvoCAZQhQpSYReoIePPIQLC2Kv/b+k=
-github.com/polynetwork/bridge-common v0.0.10-2/go.mod h1:murz2RSzP81xzOMU3yMJb/gqrWMKcnM9CYiixZT/goI=
+github.com/polynetwork/bridge-common v0.0.11-2 h1:Jmd3s0XRFeLHqrvsON1VbqZWW2Xjuxply2oBXEWGsfg=
+github.com/polynetwork/bridge-common v0.0.11-2/go.mod h1:kEyIj5BbyE9IWGBYTFB4ewns8RfGaSQbGRPNiTPmrdg=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829/go.mod h1:p2iRAGwDERtqlqzRXnrOVns+ignqQo//hLXqYxZYVNs=
