@@ -20,23 +20,25 @@ package relayer
 import (
 	"context"
 	"fmt"
-	"sync"
-
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/relayer/zion"
 	"github.com/polynetwork/poly-relayer/store"
+	"sync"
+	"time"
 )
 
 type TxVoteHandler struct {
 	context.Context
-	wg        *sync.WaitGroup
-	listener  IChainListener
-	submitter *zion.Submitter
-	height    uint64
-	config    *config.TxVoteConfig
-	store     *store.Store
+	wg                  *sync.WaitGroup
+	listener            IChainListener
+	submitter           *zion.Submitter
+	height              uint64
+	zionReplenishHeight uint64
+	config              *config.TxVoteConfig
+	store               *store.Store
 }
 
 func NewTxVoteHandler(config *config.TxVoteConfig) *TxVoteHandler {
@@ -114,6 +116,90 @@ func (h *TxVoteHandler) start() (err error) {
 	}
 }
 
+func (h *TxVoteHandler) startReplenish() {
+	h.wg.Add(1)
+	defer h.wg.Done()
+	srcConfirms := base.BlocksToWait(h.config.ChainId)
+	zionConfirms := base.BlocksToWait(base.ZION)
+	var (
+		srcLatest  uint64
+		zionLatest uint64
+		ok         bool
+	)
+	for {
+		select {
+		case <-h.Done():
+			log.Info("Tx vote replenish scan is exiting now", "chain", h.config.ChainId)
+			return
+		default:
+		}
+
+		h.zionReplenishHeight++
+		if zionLatest < h.zionReplenishHeight+zionConfirms {
+			zionLatest, ok = h.submitter.SDK().WaitTillHeight(h.Context, h.zionReplenishHeight+zionConfirms, time.Duration(1)*time.Second)
+		}
+		if !ok {
+			break
+		}
+
+		log.Info("Scanning tx vote replenish in block", "zion height", h.zionReplenishHeight, "chain", h.config.ChainId)
+		opt := &bind.FilterOpts{
+			Start:   h.zionReplenishHeight,
+			End:     &h.zionReplenishHeight,
+			Context: context.Background(),
+		}
+		events, err := h.submitter.SDK().Node().CrossChainManager.FilterReplenishEvent(opt)
+		if err == nil {
+			for events.Next() {
+				ev := events.Event
+				if h.config.ChainId != ev.ChainID {
+					continue
+				}
+
+				for _, hash := range ev.TxHashes {
+					height, e := h.listener.GetTxBlock(hash)
+					if e != nil {
+						log.Error("Tx vote replenish get tx block failure", "chain", h.config.ChainId, "hash", hash, "err", e)
+						continue
+					}
+					if srcLatest < height+srcConfirms {
+						log.Warn("Skip tx vote replenish, block not confirmed", "src hash", hash, "height", height, "chain", h.config.ChainId)
+						continue
+					}
+
+					tx, e := h.listener.ScanTx(hash)
+					if e != nil {
+						log.Error("Tx vote replenish scan tx failure", "chain", h.config.ChainId, "hash", hash, "err", e)
+						continue
+					}
+
+					e = h.submitter.VoteTxOfHash(tx, h.store)
+					if e != nil {
+						log.Error("Replenish tx vote failure", "chain", h.config.ChainId, "height", height, "hash", hash, "err", e)
+						continue
+					}
+				}
+			}
+			continue
+		}
+		log.Error("Fetch tx vote replenish events error", "chain", h.config.ChainId, "zion height", h.zionReplenishHeight, "err", err)
+		h.zionReplenishHeight--
+	}
+}
+
+func (h *TxVoteHandler) replenish() {
+	zionHeight, err := h.submitter.SDK().Node().GetLatestHeight()
+	if err != nil {
+		log.Error("Failed to get zion latest height err ", "err", err)
+		return
+	}
+	h.zionReplenishHeight = zionHeight
+	log.Info("Tx vote replenish will start...", "chain", h.config.ChainId, "zion height", h.zionReplenishHeight)
+
+	go h.startReplenish()
+	return
+}
+
 func (h *TxVoteHandler) Start() (err error) {
 	h.height, err = h.store.GetTxHeight()
 	if err != nil {
@@ -122,6 +208,7 @@ func (h *TxVoteHandler) Start() (err error) {
 	log.Info("Tx vote will start...", "height", h.height+1, "chain", h.config.ChainId)
 	h.submitter.StartTxVote(h.Context, h.wg, h.config, h.store)
 	go h.start()
+	go h.replenish()
 	return
 }
 
