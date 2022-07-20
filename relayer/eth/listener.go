@@ -191,8 +191,19 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 		err = fmt.Errorf("Fetch block header error %v", err)
 		return nil, nil, err
 	}
-	log.Info("Fetched block header", "chain", l.name, "height", height)
-	header = hdr
+
+	root := &struct {
+		Root common.Hash `json:"stateRoot"        gencodec:"required"`
+	}{}
+	err = json.Unmarshal(hdr, root)
+	if err != nil {
+		return nil, nil, err
+	}
+	header, err = json.Marshal(root)
+	if err != nil {
+		return nil, nil, err
+	}
+	log.Info("Fetched block header", "chain", l.name, "height", height, "Root", root.Root.Hex())
 	return
 }
 
