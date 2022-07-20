@@ -22,6 +22,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -444,18 +445,43 @@ func UpdateAccount(ctx *cli.Context) (err error) {
 
 func CreateAccount(ctx *cli.Context) (err error) {
 	path := ctx.String("path")
+	showPublic := ctx.Bool("public")
 	if path == "" {
 		log.Error("Wallet patch can not be empty")
 		return
 	}
 	pass, err := msg.ReadPassword("passphrase")
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	ks := keystore.NewKeyStore(path, keystore.StandardScryptN, keystore.StandardScryptP)
 	account, err := ks.NewAccount(string(pass))
 	if err != nil {
 		return
 	}
-	log.Info("Created new account", "address", account.Address.Hex())
+
+	fmt.Printf("\nYour new key was generated\n\n")
+	fmt.Printf("Address:   %s\n", account.Address.Hex())
+
+	if showPublic {
+		keyJson, err := os.ReadFile(account.URL.Path)
+		if err != nil {
+			log.Error("Failed to read the keystore", "keystore path", account.URL.Path, "error", err)
+			return err
+		}
+		key, err := keystore.DecryptKey(keyJson, string(pass))
+		if err != nil {
+			log.Error("DecryptKey the keystore file error", "keystore path", account.URL.Path, "error", err)
+			return err
+		}
+		publicKey := hex.EncodeToString(crypto.FromECDSAPub(&key.PrivateKey.PublicKey))
+		fmt.Printf("Public key:   %s\n", publicKey)
+	}
+	fmt.Printf("Path of the keystore file: %s\n\n", account.URL.Path)
+	fmt.Printf("- You can share your public address with anyone. Others need it to interact with you.\n")
+	fmt.Printf("- You must NEVER share the secret key with anyone! The key controls access to your funds!\n")
+	fmt.Printf("- You must BACKUP your key file! Without the key, it's impossible to access account funds!\n")
+	fmt.Printf("- You must REMEMBER your password! Without the password, it's impossible to decrypt the key!\n\n")
 	/*
 		data, err := ks.Export(account, password, password)
 		if err != nil {
