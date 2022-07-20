@@ -30,6 +30,7 @@ Reimplement poly relayer
 |zkSync      |main |:x:|:x:|:white_check_mark:|
 |Celo        |main |:x:|:x:|:white_check_mark:|
 |CLV P-Chain |main |:x:|:x:|:white_check_mark:|
+|Conflux     |main |:x:|:x:|:white_check_mark:|
 
 
 
