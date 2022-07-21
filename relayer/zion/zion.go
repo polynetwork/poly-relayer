@@ -21,6 +21,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/devfans/zion-sdk/contracts/native/utils"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"strings"
 	"sync"
@@ -277,8 +279,6 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 }
 
 func (s *Submitter) VoteHeaderOfHeight(height uint32, header []byte, store *store.Store) (err error) {
-	account, _, _ := s.wallet.Select()
-
 	info := &info_sync.RootInfo{
 		Height: height,
 		Info:   header,
@@ -309,7 +309,7 @@ func (s *Submitter) VoteHeaderOfHeight(height uint32, header []byte, store *stor
 		log.Error("Failed to pack data", "err", err)
 		return
 	}
-	hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+	hash, err := s.wallet.Send(zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 	if err != nil || hash == "" {
 		log.Error("Failed to send header", "err", err, "hash", hash)
 		return
@@ -318,6 +318,20 @@ func (s *Submitter) VoteHeaderOfHeight(height uint32, header []byte, store *stor
 	bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
 		return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
 	})
+	return
+}
+
+func (s *Submitter) ReplenishHeaderSync(chainId uint64, heights []uint32) (hash common.Hash, err error) {
+	method := "replenish"
+	data, err := zion.SYNC_ABI.Pack(method, chainId, heights)
+	if err != nil {
+		return
+	}
+	hashStr, err := s.wallet.Send(utils.InfoSyncContractAddress, big.NewInt(0), 0, nil, nil, data)
+	if err != nil {
+		return
+	}
+	hash = common.HexToHash(hashStr)
 	return
 }
 
@@ -398,8 +412,6 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 }
 
 func (s *Submitter) VoteTxOfHash(tx *msg.Tx, store *store.Store) (err error) {
-	account, _, _ := s.wallet.Select()
-
 	raw, err := hex.DecodeString(tx.SrcParam)
 	if err != nil || len(raw) == 0 {
 		log.Error("Unexpected empty raw data", "err", err, "hash", tx.SrcHash)
@@ -428,7 +440,7 @@ func (s *Submitter) VoteTxOfHash(tx *msg.Tx, store *store.Store) (err error) {
 		return
 	}
 
-	hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+	hash, err := s.wallet.Send(zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 	if err != nil || hash == "" {
 		log.Error("Failed to send tx", "err", err, "hash", hash)
 		return
@@ -437,6 +449,20 @@ func (s *Submitter) VoteTxOfHash(tx *msg.Tx, store *store.Store) (err error) {
 	bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
 		return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
 	})
+	return
+}
+
+func (s *Submitter) ReplenishTxVote(chainId uint64, txHashes []string) (hash common.Hash, err error) {
+	method := "replenish"
+	data, err := zion.CCM_ABI.Pack(method, chainId, txHashes)
+	if err != nil {
+		return
+	}
+	hashStr, err := s.wallet.Send(utils.CrossChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
+	if err != nil {
+		return
+	}
+	hash = common.HexToHash(hashStr)
 	return
 }
 
