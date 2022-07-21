@@ -100,7 +100,7 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 			s.signer = &accounts[0]
 		}
 		if config.Signer != nil {
-			s.voter = wallet.New(config.Wallet, sdk)
+			s.voter = wallet.New(config.Signer, sdk)
 			err = s.voter.Init()
 			if err != nil {
 				return err
