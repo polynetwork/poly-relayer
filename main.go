@@ -466,8 +466,28 @@ func main() {
 						Usage: "ccm address",
 					},
 					&cli.BoolFlag{
-						Name: "sync:",
+						Name:  "sync:",
 						Usage: "Sync zion epochs to chain",
+					},
+				},
+			},
+			{
+				Name:   relayer.REPLENISH,
+				Usage:  "Replenish header sync or tx vote",
+				Action: command(relayer.REPLENISH),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:     "chain",
+						Usage:    "chain id",
+						Required: true,
+					},
+					&cli.Int64Flag{
+						Name:  "height",
+						Usage: "target block height",
+					},
+					&cli.StringFlag{
+						Name:  "hash",
+						Usage: "target tx hash",
 					},
 				},
 			},

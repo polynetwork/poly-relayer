@@ -22,6 +22,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -78,6 +79,7 @@ const (
 	VALIDATE             = "validate"
 	VALIDATE_BLOCK       = "validateblock"
 	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
+	REPLENISH            = "replenish"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -106,6 +108,7 @@ func init() {
 	_Handlers[VALIDATE] = Validate
 	_Handlers[VALIDATE_BLOCK] = ValidateBlock
 	_Handlers[SET_VALIDATOR_HEIGHT] = SetTxValidatorHeight
+	_Handlers[REPLENISH] = Replenish
 
 }
 
@@ -756,7 +759,9 @@ func Dial(target, content string) error {
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	resp, err := client.Do(req)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -764,4 +769,35 @@ func Dial(target, content string) error {
 	}
 	log.Info("Dail success", "to", target, "content", content, "data", string(data))
 	return nil
+}
+
+func Replenish(ctx *cli.Context) (err error) {
+	chain := uint64(ctx.Int("chain"))
+	height := uint32(ctx.Int("height"))
+	hash := ctx.String("hash")
+
+	ps, err := PolySubmitter()
+	if err != nil {
+		log.Error("Failed to create poly submitter", "err", err)
+		return
+	}
+	var polyHash common.Hash
+	if height != 0 {
+		polyHash, err = ps.ReplenishHeaderSync(chain, []uint32{height})
+		if err != nil {
+			log.Error("Failed to replenish header sync", "chain", chain, "height", height, "err", err)
+			return
+		}
+	} else if len(hash) != 0 {
+		polyHash, err = ps.ReplenishTxVote(chain, []string{hash})
+		if err != nil {
+			log.Error("Failed to replenish tx vote", "chain", chain, "hash", hash, "err", err)
+			return err
+		}
+	} else {
+		log.Error("Invalid height or hash", "height", height, "hash", hash)
+		return
+	}
+	log.Info("Replenish success", "poly hash", polyHash.Hex())
+	return
 }
