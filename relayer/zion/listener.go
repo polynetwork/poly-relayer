@@ -68,7 +68,7 @@ func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error
 		l.sdk, err = zion.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	}
 	if err == nil {
-		l.abi, err = abi.JSON(strings.NewReader(ccm.CrossChainManagerABI))
+		l.abi, err = abi.JSON(strings.NewReader(ccm.ICrossChainManagerABI))
 	}
 	return
 }
@@ -79,7 +79,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := ccm.NewCrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
+	ccm, err := ccm.NewICrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 		return
 	}
 	for _, entry := range res.Logs {
-		ev := new(ccm.CrossChainManagerMakeProof)
+		ev := new(ccm.ICrossChainManagerMakeProof)
 		if msg.FilterLog(l.abi, utils.CrossChainManagerContractAddress, "CrossChainEvent", entry, ev) {
 			param := new(zcom.ToMerkleValue)
 			value, err := hex.DecodeString(ev.MerkleValueHex)

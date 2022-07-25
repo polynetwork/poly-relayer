@@ -109,12 +109,12 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 			}
 		}
 	}
-	s.hsabi, err = abi.JSON(strings.NewReader(hs.InfoSyncABI))
+	s.hsabi, err = abi.JSON(strings.NewReader(hs.IInfoSyncABI))
 	if err != nil {
 		return
 	}
 
-	s.txabi, err = abi.JSON(strings.NewReader(ccm.CrossChainManagerABI))
+	s.txabi, err = abi.JSON(strings.NewReader(ccm.ICrossChainManagerABI))
 	return
 }
 

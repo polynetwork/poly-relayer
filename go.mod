@@ -13,3 +13,13 @@ require (
 	github.com/polynetwork/bridge-common v0.0.14-2
 	github.com/urfave/cli/v2 v2.3.0
 )
+
+replace (
+	github.com/devfans/zion-sdk => github.com/wuyachi/zion-sdk v0.0.0-20220725105305-ff4e1c9a495d
+	github.com/polynetwork/bridge-common => github.com/wuyachi/bridge-common v0.0.0-20220726031913-6929b4826ed5
+)
+
+//replace (
+//	github.com/devfans/zion-sdk => ../zion-sdk
+//	github.com/polynetwork/bridge-common => ../bridge-common-v2
+//)

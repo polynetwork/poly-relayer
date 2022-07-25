@@ -150,7 +150,7 @@ func (h *HeaderSyncHandler) startReplenish() {
 			End:     &h.zionReplenishHeight,
 			Context: context.Background(),
 		}
-		events, err := h.submitter.SDK().Node().InfoSync.FilterReplenishEvent(opt)
+		events, err := h.submitter.SDK().Node().IInfoSync.FilterReplenishEvent(opt)
 		if err == nil {
 			for events.Next() {
 				ev := events.Event
