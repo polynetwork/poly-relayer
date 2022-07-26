@@ -665,10 +665,10 @@ github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPU
 github.com/valyala/fasttemplate v1.2.1/go.mod h1:KHLXt3tVN2HBp8eijSv/kGJopbvo7S+qRAEEKiv+SiQ=
 github.com/willf/bitset v1.1.3/go.mod h1:RjeCKbqT1RxIR/KWY6phxZiaY1IyutSBfGjNPySAYV4=
 github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208/go.mod h1:IotVbo4F+mw0EzQ08zFqg7pK3FebNXpaMsRy2RT+Ees=
-github.com/wuyachi/bridge-common v0.0.0-20220726031913-6929b4826ed5 h1:DJa3kXV+CmLLEi8iMs/4h5NQXd1rWWJFP3+mBbm6Jts=
-github.com/wuyachi/bridge-common v0.0.0-20220726031913-6929b4826ed5/go.mod h1:4z8kbwNwmgffH/x6f5cQ+RpIvPv9yLk3ilB+puwSIto=
-github.com/wuyachi/zion-sdk v0.0.0-20220725105305-ff4e1c9a495d h1:B3TA4ddXA0lp1c04kT/Ol9jg0SRx+uyKTSFLgAsC28E=
-github.com/wuyachi/zion-sdk v0.0.0-20220725105305-ff4e1c9a495d/go.mod h1:FvNiMLw6IubOOYQ5waar5hwNV5nNrZ/45EyskL75NoI=
+github.com/wuyachi/bridge-common v0.0.0-20220727031714-27c427e22a28 h1:l58ffhTKS+dxwbY5yuzQm3FAibU7i8aM85MiYa03T88=
+github.com/wuyachi/bridge-common v0.0.0-20220727031714-27c427e22a28/go.mod h1:dXenV1TqReZJ6HNq8IKS6/6Pms1eVjZno6tPO/AVU+s=
+github.com/wuyachi/zion-sdk v0.0.0-20220727024926-4a47382fc8e7 h1:j7Mzc/DAYuk6H1oX1OKKS/lCm/6FYpZHhhPb8fpDI70=
+github.com/wuyachi/zion-sdk v0.0.0-20220727024926-4a47382fc8e7/go.mod h1:FvNiMLw6IubOOYQ5waar5hwNV5nNrZ/45EyskL75NoI=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xlab/treeprint v0.0.0-20180616005107-d6fb6747feb6/go.mod h1:ce1O1j6UtZfjr22oyGxGLbauSBp2YVXpARAosm7dHBg=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

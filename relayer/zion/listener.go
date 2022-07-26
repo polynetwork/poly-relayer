@@ -282,7 +282,7 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		return nil, fmt.Errorf("Failed to fetch header at height %v, err %v", info.Height, err)
 	}
 
-	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
+	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header))
 	if err != nil {
 		log.Error("EncodeToBytes HotstuffFilteredHeader", "err", err)
 		return nil, err
@@ -315,7 +315,7 @@ func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
 	if err != nil {
 		return nil, err
 	}
-	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
+	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header))
 	if err != nil {
 		return nil, err
 	}

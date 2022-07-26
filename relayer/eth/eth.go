@@ -160,7 +160,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		return fmt.Errorf("Poly param merke value missing or invalid")
 	}
 
-	hsHeader, err := rlp.EncodeToBytes(types.HotstuffFilteredHeader(tx.AnchorHeader, false))
+	hsHeader, err := rlp.EncodeToBytes(types.HotstuffFilteredHeader(tx.AnchorHeader))
 	if err != nil {
 		return err
 	}

@@ -15,8 +15,8 @@ require (
 )
 
 replace (
-	github.com/devfans/zion-sdk => github.com/wuyachi/zion-sdk v0.0.0-20220725105305-ff4e1c9a495d
-	github.com/polynetwork/bridge-common => github.com/wuyachi/bridge-common v0.0.0-20220726031913-6929b4826ed5
+	github.com/devfans/zion-sdk => github.com/wuyachi/zion-sdk v0.0.0-20220727024926-4a47382fc8e7
+	github.com/polynetwork/bridge-common => github.com/wuyachi/bridge-common v0.0.0-20220727031714-27c427e22a28
 )
 
 //replace (
