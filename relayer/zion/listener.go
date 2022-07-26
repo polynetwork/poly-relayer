@@ -267,9 +267,14 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		return
 	}
 
+	lastEpochEndHeight := epoch.StartHeight.Uint64()
+	if lastEpochEndHeight != 0 {
+		lastEpochEndHeight -= 1
+	}
+
 	info = &msg.PolyEpoch{
 		EpochId: epoch.ID.Uint64(),
-		Height:  epoch.StartHeight.Uint64() - 1,
+		Height:  lastEpochEndHeight,
 	}
 
 	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
@@ -277,21 +282,19 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		return nil, fmt.Errorf("Failed to fetch header at height %v, err %v", info.Height, err)
 	}
 
-	if l.config.ChainId == base.POLY {
-		info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
-	} else {
-		info.Header, err = header.MarshalJSON()
-		info.ChainId = l.config.ChainId
-	}
+	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
 	if err != nil {
+		log.Error("EncodeToBytes HotstuffFilteredHeader", "err", err)
 		return nil, err
 	}
 
 	extra, err := types.ExtractHotstuffExtra(header)
 	if err != nil {
+		log.Error("ExtractHotstuffExtra", "err", err)
 		return
 	}
 	info.Seal, err = rlp.EncodeToBytes(extra.CommittedSeal)
+	log.Info("EncodeToBytes extra.CommittedSeal", "err", err)
 	return
 }
 
