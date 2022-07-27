@@ -21,11 +21,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"math/big"
+	"strings"
 
 	"github.com/devfans/zion-sdk/contracts/native/go_abi/side_chain_manager_abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/poly-relayer/msg"
@@ -40,7 +42,9 @@ func FetchSideChain(ctx *cli.Context) (err error) {
 		return
 	}
 	chain, err := ps.GetSideChain(chainID)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if chain == nil {
 		log.Info("No such chain", "id", chainID)
 	} else {
@@ -64,18 +68,23 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	}
 
 	ps, err := PolySubmitter()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	var chain *side_chain_manager_abi.ISideChainManagerSideChain
 	if update {
 		chain, err = ps.GetSideChain(chainID)
-		if err != nil { return }
-		if chain == nil { return fmt.Errorf("side chain not found") }
+		if err != nil {
+			return
+		}
+		if chain == nil {
+			return fmt.Errorf("side chain not found")
+		}
 	} else if !isVoting && router == 0 {
 		err = fmt.Errorf("missing router")
 		return
 	} else {
 		chain = new(side_chain_manager_abi.ISideChainManagerSideChain)
-		
 	}
 	chain.Name = ctx.String("name")
 	chain.BlocksToWait = ctx.Uint64("blocks")
@@ -89,14 +98,15 @@ func AddSideChain(ctx *cli.Context) (err error) {
 
 	if ccm != "" {
 		chain.CCMCAddress, err = hex.DecodeString(util.LowerHex(ccm))
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 	}
 
 	hash, err := ps.RegisterSideChain(chain.ChainID, chain.Router, chain.Name, chain.BlocksToWait, chain.CCMCAddress, chain.ExtraInfo, update)
 	log.Info("Sent tx", "hash", hash, "err", err)
 	return
 }
-
 
 func ApproveSideChain(ctx *cli.Context) (err error) {
 	chainID := ctx.Uint64("chain")
@@ -106,10 +116,9 @@ func ApproveSideChain(ctx *cli.Context) (err error) {
 		return
 	}
 
-    _, err = ps.ApproveRegisterSideChain(chainID, update)
+	_, err = ps.ApproveRegisterSideChain(chainID, update)
 	return
 }
-
 
 func SyncContractGenesis(ctx *cli.Context) (err error) {
 	chainID := ctx.Uint64("chain")
@@ -121,26 +130,48 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	}
 
 	epoch, err := ps.SDK().Node().GetEpochInfo(0)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if epoch == nil {
 		return fmt.Errorf("epoch not found in zion?")
 	}
-	
+
 	sub, err := ChainSubmitter(chainID)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	lis, err := PolyListener()
-	if err != nil { return }
-	
+	if err != nil {
+		return
+	}
 
 	height, err := sub.GetPolyEpochStartHeight(0)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if height == 0 {
 		info, err := lis.EpochById(epoch.ID.Uint64())
-		if err != nil { return err }
-		data, err := zion.SM_ABI.Pack("initGenesisBlock", info.Header)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
+
+		eccmAbi, err := abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
+		if err != nil {
+			return err
+		}
+
+		data, err := eccmAbi.Pack("initGenesisBlock", info.Header)
+		if err != nil {
+			return err
+		}
+		log.Info("info.Header", "", common.Bytes2Hex(info.Header))
+
 		hash, err := sub.(*eth.Submitter).Send(common.HexToAddress(ccm), big.NewInt(0), 0, nil, nil, data)
-		if err != nil { return err }
+		if err != nil {
+			log.Error("Send", "err", err)
+			return err
+		}
 		log.Info("Send tx for initGenesisBlock", "chain", chainID, "hash", hash)
 	} else if sync {
 		epochs, err := lis.EpochUpdate(context.Background(), height)
@@ -163,4 +194,3 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	}
 	return
 }
-

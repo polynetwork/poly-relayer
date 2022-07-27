@@ -284,17 +284,14 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 
 	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header))
 	if err != nil {
-		log.Error("EncodeToBytes HotstuffFilteredHeader", "err", err)
 		return nil, err
 	}
 
 	extra, err := types.ExtractHotstuffExtra(header)
 	if err != nil {
-		log.Error("ExtractHotstuffExtra", "err", err)
 		return
 	}
 	info.Seal, err = rlp.EncodeToBytes(extra.CommittedSeal)
-	log.Info("EncodeToBytes extra.CommittedSeal", "err", err)
 	return
 }
 
