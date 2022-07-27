@@ -38,8 +38,6 @@ github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e h1:ahyvB3q25Yn
 github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e/go.mod h1:kGUqhHd//musdITWjFvNTHn90WG9bMLBEPQZ17Cmlpw=
 github.com/JohnCGriffin/overflow v0.0.0-20170615021017-4d914c927216 h1:2ZboyJ8vl75fGesnG9NpMTD2DyQI3FzMXy4x752rGF0=
 github.com/JohnCGriffin/overflow v0.0.0-20170615021017-4d914c927216/go.mod h1:X0CRv0ky0k6m906ixxpzmDRLvX58TFUKS2eePweuyxk=
-github.com/KSlashh/poly-abi v0.0.0-20211223040949-f9bf1fe7c709 h1:Ho4LUnEg6+p2bapVREaUboc61Nr8iQT6OwvXfh3tOwE=
-github.com/KSlashh/poly-abi v0.0.0-20211223040949-f9bf1fe7c709/go.mod h1:5pbvzROvsM8e3f58HEDIxP70GHc2h0elDyzvy2Ox1VE=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/OneOfOne/xxhash v1.2.5/go.mod h1:eZbhyaAYD41SGSSsnmcpxVoRiQ/MPUTjUdIIOT9Um7Q=
@@ -665,8 +663,8 @@ github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPU
 github.com/valyala/fasttemplate v1.2.1/go.mod h1:KHLXt3tVN2HBp8eijSv/kGJopbvo7S+qRAEEKiv+SiQ=
 github.com/willf/bitset v1.1.3/go.mod h1:RjeCKbqT1RxIR/KWY6phxZiaY1IyutSBfGjNPySAYV4=
 github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208/go.mod h1:IotVbo4F+mw0EzQ08zFqg7pK3FebNXpaMsRy2RT+Ees=
-github.com/wuyachi/bridge-common v0.0.0-20220727031714-27c427e22a28 h1:l58ffhTKS+dxwbY5yuzQm3FAibU7i8aM85MiYa03T88=
-github.com/wuyachi/bridge-common v0.0.0-20220727031714-27c427e22a28/go.mod h1:dXenV1TqReZJ6HNq8IKS6/6Pms1eVjZno6tPO/AVU+s=
+github.com/wuyachi/bridge-common v0.0.0-20220727081618-be166a2d1bfc h1:R2fQCuGqrld98pDaN9ahpANr3b6v4FAf0kj+y2DAxcE=
+github.com/wuyachi/bridge-common v0.0.0-20220727081618-be166a2d1bfc/go.mod h1:dXenV1TqReZJ6HNq8IKS6/6Pms1eVjZno6tPO/AVU+s=
 github.com/wuyachi/zion-sdk v0.0.0-20220727024926-4a47382fc8e7 h1:j7Mzc/DAYuk6H1oX1OKKS/lCm/6FYpZHhhPb8fpDI70=
 github.com/wuyachi/zion-sdk v0.0.0-20220727024926-4a47382fc8e7/go.mod h1:FvNiMLw6IubOOYQ5waar5hwNV5nNrZ/45EyskL75NoI=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=

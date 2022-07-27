@@ -3,7 +3,6 @@ module github.com/polynetwork/poly-relayer
 go 1.15
 
 require (
-	github.com/KSlashh/poly-abi v0.0.0-20211223040949-f9bf1fe7c709
 	github.com/boltdb/bolt v1.3.1
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/devfans/zion-sdk v0.0.11
@@ -16,7 +15,7 @@ require (
 
 replace (
 	github.com/devfans/zion-sdk => github.com/wuyachi/zion-sdk v0.0.0-20220727024926-4a47382fc8e7
-	github.com/polynetwork/bridge-common => github.com/wuyachi/bridge-common v0.0.0-20220727031714-27c427e22a28
+	github.com/polynetwork/bridge-common => github.com/wuyachi/bridge-common v0.0.0-20220727081618-be166a2d1bfc
 )
 
 //replace (

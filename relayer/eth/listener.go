@@ -23,12 +23,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"strings"
 
 	"math/big"
 	"time"
 
-	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
 	zcom "github.com/devfans/zion-sdk/common"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"

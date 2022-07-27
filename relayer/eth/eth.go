@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/polynetwork/bridge-common/abi/eccd_abi"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"math/big"
 	"strings"
 	"sync"
@@ -15,8 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
-	eccm_abi "github.com/KSlashh/poly-abi/abi_1.10.7/ccm"
-	eccd_abi "github.com/KSlashh/poly-abi/abi_1.10.7/eccd"
 	"github.com/devfans/zion-sdk/core/types"
 
 	"github.com/polynetwork/bridge-common/base"
