@@ -148,7 +148,7 @@ func (h *TxVoteHandler) startReplenish() {
 			End:     &h.zionReplenishHeight,
 			Context: context.Background(),
 		}
-		events, err := h.submitter.SDK().Node().CrossChainManager.FilterReplenishEvent(opt)
+		events, err := h.submitter.SDK().Node().ICrossChainManager.FilterReplenishEvent(opt)
 		if err == nil {
 			for events.Next() {
 				ev := events.Event

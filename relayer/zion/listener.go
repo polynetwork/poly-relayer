@@ -68,7 +68,7 @@ func (l *Listener) Init(config *config.ListenerConfig, sdk *zion.SDK) (err error
 		l.sdk, err = zion.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	}
 	if err == nil {
-		l.abi, err = abi.JSON(strings.NewReader(ccm.CrossChainManagerABI))
+		l.abi, err = abi.JSON(strings.NewReader(ccm.ICrossChainManagerABI))
 	}
 	return
 }
@@ -79,7 +79,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := ccm.NewCrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
+	ccm, err := ccm.NewICrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 		return
 	}
 	for _, entry := range res.Logs {
-		ev := new(ccm.CrossChainManagerMakeProof)
+		ev := new(ccm.ICrossChainManagerMakeProof)
 		if msg.FilterLog(l.abi, utils.CrossChainManagerContractAddress, "CrossChainEvent", entry, ev) {
 			param := new(zcom.ToMerkleValue)
 			value, err := hex.DecodeString(ev.MerkleValueHex)
@@ -234,7 +234,7 @@ LOOP:
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
-		if epoch == nil || epoch.StartHeight.Uint64() <= startHeight || epoch.ID.Uint64() < 2 {
+		if epoch == nil || epoch.StartHeight.Uint64()+1 <= startHeight || epoch.ID.Uint64() < 2 {
 			continue
 		}
 
@@ -247,7 +247,7 @@ LOOP:
 				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id, "err", err)
 				continue LOOP
 			}
-			if info.Height <= startHeight {
+			if info.Height+1 <= startHeight {
 				l.lastEpoch = epoch.ID.Uint64()
 				break
 			} else {
@@ -269,7 +269,7 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 
 	info = &msg.PolyEpoch{
 		EpochId: epoch.ID.Uint64(),
-		Height:  epoch.StartHeight.Uint64() - 1,
+		Height:  epoch.StartHeight.Uint64(),
 	}
 
 	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
@@ -277,12 +277,7 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		return nil, fmt.Errorf("Failed to fetch header at height %v, err %v", info.Height, err)
 	}
 
-	if l.config.ChainId == base.POLY {
-		info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
-	} else {
-		info.Header, err = header.MarshalJSON()
-		info.ChainId = l.config.ChainId
-	}
+	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header))
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +307,7 @@ func (l *Listener) Epoch(height uint64) (info *msg.PolyEpoch, err error) {
 	if err != nil {
 		return nil, err
 	}
-	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header, false))
+	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header))
 	if err != nil {
 		return nil, err
 	}

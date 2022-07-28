@@ -466,7 +466,7 @@ func main() {
 						Usage: "ccm address",
 					},
 					&cli.BoolFlag{
-						Name:  "sync:",
+						Name:  "sync",
 						Usage: "Sync zion epochs to chain",
 					},
 				},
