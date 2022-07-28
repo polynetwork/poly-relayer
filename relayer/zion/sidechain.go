@@ -28,10 +28,9 @@ import (
 	"github.com/polynetwork/bridge-common/log"
 )
 
-
- func (s *Submitter) RegisterSideChain(chainID uint64, router uint64, name string, blocksToWait uint64, ccmcAddress []byte, extraInfo []byte, update bool) (hash common.Hash, err error) {
-	accounts := s.voter.Accounts()
-	if len(accounts) == 0{
+func (s *Submitter) RegisterSideChain(chainID uint64, router uint64, name string, blocksToWait uint64, ccmcAddress []byte, extraInfo []byte, update bool) (hash common.Hash, err error) {
+	accounts := s.wallet.Accounts()
+	if len(accounts) == 0 {
 		err = fmt.Errorf("missing available account")
 		return
 	}
@@ -40,7 +39,9 @@ import (
 		method = "updateSideChain"
 		var chain *side_chain_manager_abi.ISideChainManagerSideChain
 		chain, err = s.GetSideChain(chainID)
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 		if chain == nil {
 			err = fmt.Errorf("side chain not found, id %d", chainID)
 			return
@@ -48,17 +49,20 @@ import (
 	}
 	log.Info("Using account", "address", accounts[0].Address.String())
 	data, err := zion.SM_ABI.Pack(method, chainID, router, name, blocksToWait, ccmcAddress, extraInfo)
-	if err != nil { return }
-	hashStr , err := s.voter.SendWithAccount(accounts[0], utils.SideChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
+	hashStr, err := s.wallet.SendWithAccount(accounts[0], utils.SideChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
+	if err != nil {
+		return
+	}
 	hash = common.HexToHash(hashStr)
 	return
- }
+}
 
-
- func (s *Submitter) ApproveRegisterSideChain(chainID uint64, update bool) (hash common.Hash, err error) {
+func (s *Submitter) ApproveRegisterSideChain(chainID uint64, update bool) (hash common.Hash, err error) {
 	accounts := s.voter.Accounts()
-	if len(accounts) == 0{
+	if len(accounts) == 0 {
 		err = fmt.Errorf("missing available account")
 		return
 	}
@@ -71,18 +75,24 @@ import (
 		log.Info("Using account", "address", account.Address.String())
 		var data []byte
 		data, err = zion.SM_ABI.Pack(method, chainID)
-		if err != nil { return }
-		hashStr , err = s.voter.SendWithAccount(account, utils.SideChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
-		if err != nil { return }
+		if err != nil {
+			return
+		}
+		hashStr, err = s.voter.SendWithAccount(account, utils.SideChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
+		if err != nil {
+			return
+		}
 		log.Info("Approved", "index", i, "account", account.Address.String(), "hash", hashStr)
 	}
 	hash = common.HexToHash(hashStr)
 	return
- }
+}
 
 func (s *Submitter) GetSideChain(chainID uint64) (chain *side_chain_manager_abi.ISideChainManagerSideChain, err error) {
 	c, err := s.sdk.Node().GetSideChain(nil, chainID)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if c.ChainID != 0 {
 		chain = &c
 	}
