@@ -234,7 +234,7 @@ LOOP:
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
-		if epoch == nil || epoch.StartHeight.Uint64() <= startHeight || epoch.ID.Uint64() < 2 {
+		if epoch == nil || epoch.StartHeight.Uint64()+1 <= startHeight || epoch.ID.Uint64() < 2 {
 			continue
 		}
 
@@ -247,7 +247,7 @@ LOOP:
 				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id, "err", err)
 				continue LOOP
 			}
-			if info.Height <= startHeight {
+			if info.Height+1 <= startHeight {
 				l.lastEpoch = epoch.ID.Uint64()
 				break
 			} else {
@@ -267,14 +267,9 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		return
 	}
 
-	lastEpochEndHeight := epoch.StartHeight.Uint64()
-	if lastEpochEndHeight != 0 {
-		lastEpochEndHeight -= 1
-	}
-
 	info = &msg.PolyEpoch{
 		EpochId: epoch.ID.Uint64(),
-		Height:  lastEpochEndHeight,
+		Height:  epoch.StartHeight.Uint64(),
 	}
 
 	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
