@@ -249,7 +249,7 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 	} else {
 		now := time.Now().Unix()
 		for _, tx := range list {
-			if tx.Time > now-600 {
+			if tx.Time > uint64(now-600) {
 				continue
 			}
 			height, pending, err := s.sdk.Node().GetTxHeight(context.Background(), tx.Hash)
@@ -403,7 +403,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 		}
 		log.Info("Send header vote", "hash", hash, "chain", s.name)
 		bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
-			return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+			return store.InsertData(msg.HexToHash(hash), data, zion.INFO_SYNC_ADDRESS)
 		})
 		bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
 			return store.DeleteHeader(headers...)
