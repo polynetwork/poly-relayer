@@ -44,7 +44,7 @@ type Config struct {
 	Bus      *BusConfig
 	BoltPath string
 	Poly     *PolyChainConfig
-	Chains map[uint64]*ChainConfig
+	Chains   map[uint64]*ChainConfig
 
 	// Http
 	Host string
@@ -136,7 +136,7 @@ type ChainConfig struct {
 	SrcFilter         *FilterConfig
 	DstFilter         *FilterConfig
 
-	HeaderSync   *HeaderSyncConfig   // chain -> ch -> poly
+	HeaderSync   *HeaderSyncConfig // chain -> ch -> poly
 	TxVote       *TxVoteConfig
 	EpochSync    *EpochSyncConfig    // poly -> chain
 	SrcTxSync    *SrcTxSyncConfig    // chain -> mq
@@ -197,7 +197,7 @@ type SubmitterConfig struct {
 	CCMContract string
 	CCDContract string
 	Wallet      *wallet.Config
-	Signer 		*wallet.Config
+	Signer      *wallet.Config
 }
 
 type WalletConfig struct {
@@ -238,11 +238,12 @@ type TxVoteConfig struct {
 }
 
 type HeaderSyncConfig struct {
-	Batch   int
-	Timeout int
-	Buffer  int
-	Enabled bool
-	Poly    *SubmitterConfig
+	Batch       int
+	Timeout     int
+	Buffer      int
+	Enabled     bool
+	Poly        *SubmitterConfig
+	StartHeight uint64
 	*ListenerConfig
 	Bus *BusConfig
 }
