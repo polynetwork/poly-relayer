@@ -398,7 +398,15 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 
 		hash, err := s.wallet.SendWithAccount(account, zion.INFO_SYNC_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 		if err != nil || hash == "" {
-			log.Error("Failed to send header", "err", err, "hash", hash)
+			info := err.Error()
+			if strings.Contains(info, "signer already exist") {
+				log.Warn("signer already exist, drop duplicate signature", "chain", s.sync.ChainId)
+				bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
+					return store.DeleteHeader(headers...)
+				})
+			} else {
+				log.Error("Failed to send header", "err", err, "hash", hash)
+			}
 			continue
 		}
 		log.Info("Send header vote", "hash", hash, "chain", s.name)

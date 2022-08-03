@@ -113,6 +113,7 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 	}
 	proofKey := hexutil.Encode(bytes)
 	height, err = l.GetProofHeight(txHeight)
+	log.Info("GetProofHeight", "height", height, "chain", l.ChainId())
 	if err != nil {
 		err = fmt.Errorf("%s chain get proof height error %v", l.name, err)
 		return
