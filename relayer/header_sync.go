@@ -128,9 +128,8 @@ func (h *HeaderSyncHandler) startReplenish() {
 	srcConfirms := base.BlocksToWait(h.config.ChainId)
 	zionConfirms := base.BlocksToWait(base.ZION)
 	var (
-		srcLatest  uint64
-		zionLatest uint64
-		ok         bool
+		zionLatestHeight uint64
+		ok               bool
 	)
 	for {
 		select {
@@ -141,8 +140,8 @@ func (h *HeaderSyncHandler) startReplenish() {
 		}
 
 		h.zionReplenishHeight++
-		if zionLatest < h.zionReplenishHeight+zionConfirms {
-			zionLatest, ok = h.submitter.SDK().WaitTillHeight(h.Context, h.zionReplenishHeight+zionConfirms, time.Duration(1)*time.Second)
+		if zionLatestHeight < h.zionReplenishHeight+zionConfirms {
+			zionLatestHeight, ok = h.submitter.SDK().WaitTillHeight(h.Context, h.zionReplenishHeight+zionConfirms, time.Duration(1)*time.Second)
 		}
 		if !ok {
 			break
@@ -162,10 +161,16 @@ func (h *HeaderSyncHandler) startReplenish() {
 					continue
 				}
 
+				srcLatestHeight, e := h.listener.LatestHeight()
+				if err != nil {
+					log.Error("Get LatestHeight failed", "chain", h.config.ChainId, "err", e)
+					continue
+				}
+
 				for _, height := range ev.Heights {
 					log.Info("Header sync replenish processing block", "height", height, "chain", h.config.ChainId)
 
-					if srcLatest < uint64(height)+srcConfirms {
+					if srcLatestHeight < uint64(height)+srcConfirms {
 						log.Warn("Skip header replenish, block not confirmed", "height", height, "chain", h.config.ChainId)
 						continue
 					}

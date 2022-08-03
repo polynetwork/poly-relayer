@@ -122,9 +122,8 @@ func (h *TxVoteHandler) startReplenish() {
 	srcConfirms := base.BlocksToWait(h.config.ChainId)
 	zionConfirms := base.BlocksToWait(base.ZION)
 	var (
-		srcLatest  uint64
-		zionLatest uint64
-		ok         bool
+		zionLatestHeight uint64
+		ok               bool
 	)
 	for {
 		select {
@@ -135,8 +134,8 @@ func (h *TxVoteHandler) startReplenish() {
 		}
 
 		h.zionReplenishHeight++
-		if zionLatest < h.zionReplenishHeight+zionConfirms {
-			zionLatest, ok = h.submitter.SDK().WaitTillHeight(h.Context, h.zionReplenishHeight+zionConfirms, time.Duration(1)*time.Second)
+		if zionLatestHeight < h.zionReplenishHeight+zionConfirms {
+			zionLatestHeight, ok = h.submitter.SDK().WaitTillHeight(h.Context, h.zionReplenishHeight+zionConfirms, time.Duration(1)*time.Second)
 		}
 		if !ok {
 			break
@@ -156,13 +155,19 @@ func (h *TxVoteHandler) startReplenish() {
 					continue
 				}
 
+				srcLatestHeight, e := h.listener.LatestHeight()
+				if err != nil {
+					log.Error("Get LatestHeight failed", "chain", h.config.ChainId, "err", e)
+					continue
+				}
+
 				for _, hash := range ev.TxHashes {
 					height, e := h.listener.GetTxBlock(hash)
 					if e != nil {
 						log.Error("Tx vote replenish get tx block failure", "chain", h.config.ChainId, "hash", hash, "err", e)
 						continue
 					}
-					if srcLatest < height+srcConfirms {
+					if srcLatestHeight < height+srcConfirms {
 						log.Warn("Skip tx vote replenish, block not confirmed", "src hash", hash, "height", height, "chain", h.config.ChainId)
 						continue
 					}
