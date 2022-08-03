@@ -309,7 +309,7 @@ func (s *Submitter) VoteHeaderOfHeight(height uint32, header []byte, store *stor
 		log.Error("Failed to pack data", "err", err)
 		return
 	}
-	hash, err := s.wallet.Send(zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+	hash, err := s.wallet.Send(zion.INFO_SYNC_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 	if err != nil || hash == "" {
 		log.Error("Failed to send header", "err", err, "hash", hash)
 		return
@@ -396,7 +396,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 			continue
 		}
 
-		hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+		hash, err := s.wallet.SendWithAccount(account, zion.INFO_SYNC_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 		if err != nil || hash == "" {
 			log.Error("Failed to send header", "err", err, "hash", hash)
 			continue
