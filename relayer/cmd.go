@@ -656,7 +656,7 @@ func Mock(ctx *cli.Context) (err error) {
 		}
 		sigs = append(sigs, s...)
 	}
-	data, err := abi.Pack("verifyHeaderAndExecuteTx", path, header.GetMessage(), nil, nil, sigs)
+	data, err := abi.Pack("verifyHeaderAndExecuteTx", path, header.GetMessage(), []byte{}, []byte{}, sigs)
 	if err != nil { return }
 	dstHash, err := sub.(*eth.Submitter).Send(common.HexToAddress(ccm), big.NewInt(0), 0, nil, nil, data)
 	log.Info("Submitting dst tx", "hash", dstHash, "err", "err")
