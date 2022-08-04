@@ -174,12 +174,19 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			return nil
 		}
 	}
+
+	raw, err := hex.DecodeString(tx.SrcParam)
+	if err != nil || len(raw) == 0 {
+		log.Error("Unexpected empty raw data", "err", err, "hash", tx.SrcHash)
+		return err
+	}
+
 	data, err := s.txabi.Pack("importOuterTransfer",
-		tx.SrcChainId, uint32(tx.SrcProofHeight),
+		tx.SrcChainId,
+		uint32(tx.SrcProofHeight),
 		tx.SrcProof,
-		signer.Address[:],
-		tx.SrcEvent,
-		tx.SrcStateRoot,
+		raw,
+		nil,
 	)
 	if err != nil {
 		return fmt.Errorf("Pack zion tx failed err %v", err)
@@ -316,7 +323,7 @@ func (s *Submitter) VoteHeaderOfHeight(height uint32, header []byte, store *stor
 	}
 	log.Info("Send header vote", "src height", height, "zion hash", hash, "chain", s.name)
 	bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
-		return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+		return store.InsertData(msg.HexToHash(hash), data, zion.INFO_SYNC_ADDRESS)
 	})
 	return
 }
