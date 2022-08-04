@@ -181,13 +181,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		return err
 	}
 
-	data, err := s.txabi.Pack("importOuterTransfer",
-		tx.SrcChainId,
-		uint32(tx.SrcProofHeight),
-		tx.SrcProof,
-		raw,
-		nil,
-	)
+	data, err := s.txabi.Pack("importOuterTransfer", tx.SrcChainId, uint32(tx.SrcProofHeight), tx.SrcProof, raw, []byte{})
 	if err != nil {
 		return fmt.Errorf("Pack zion tx failed err %v", err)
 	}
