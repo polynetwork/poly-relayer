@@ -590,8 +590,12 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 			if err == msg.ERR_TX_PENDING {
 				block += 69
 			}
+			switch s.config.ChainId {
+			case base.BSC, base.HECO:
+				block += 50
+			}
 			tx.Attempts++
-			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block)
+			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block, "attempts", tx.Attempts)
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
 		} else {
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
