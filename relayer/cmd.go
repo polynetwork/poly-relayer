@@ -627,6 +627,7 @@ func Mock(ctx *cli.Context) (err error) {
 	tx.MakeTxParam.FromContractAddress = common.HexToAddress(origin).Bytes()
 	tx.MakeTxParam.ToContractAddress = common.HexToAddress(target).Bytes()
 	tx.MakeTxParam.Args = common.Hex2Bytes(args)
+	tx.MakeTxParam.CrossChainID = tx.TxHash
 
 	sink := pcom.NewZeroCopySink(nil)
 	tx.Serialization(sink)
