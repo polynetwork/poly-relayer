@@ -681,7 +681,7 @@ func handleAlarm(o tools.CardEvent) {
 		cmd.Stderr = os.Stdout
 		err := cmd.Run()
 		if err != nil {
-			log.Error("Run handle event command error %v %v", err, util.Json(o))
+			log.Error("Run handle event command", "err", err, "event", util.Json(o))
 		}
 	}()
 	go Notify(fmt.Sprintf(config.CONFIG.Validators.DialTemplate, "Poly", "Invalid Unlock"))
