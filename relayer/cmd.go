@@ -646,7 +646,7 @@ func Mock(ctx *cli.Context) (err error) {
 		header.Bookkeepers = []keypair.PublicKey{acc.GetPublicKey()}
 		sigData, err := signature.Serialize(sig)
 		if err != nil { return err }
-		header.SigData = [][]byte{sigData}
+		header.SigData = append(header.SigData, sigData)
 	}
 
 	var sigs []byte
