@@ -22,8 +22,8 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,8 +35,14 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/urfave/cli/v2"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/ontio/ontology-crypto/keypair"
+	"github.com/ontio/ontology-crypto/signature"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/poly"
@@ -47,6 +53,10 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
+	pcom "github.com/polynetwork/poly/common"
+	"github.com/polynetwork/poly/core/types"
+	"github.com/polynetwork/poly/merkle"
+	ccom "github.com/polynetwork/poly/native/service/cross_chain_manager/common"
 )
 
 const (
@@ -74,6 +84,8 @@ const (
 	GET_SIDE_CHAIN    = "getsidechain"
 	SCAN_POLY_TX      = "scanpolytx"
 	VALIDATE          = "validate"
+	VOTE              = "vote"
+	MOCK              = "mock"
 	VALIDATE_BLOCK    = "validateblock"
 	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
 )
@@ -107,6 +119,8 @@ func init() {
 	_Handlers[VALIDATE] = Validate
 	_Handlers[VALIDATE_BLOCK] = ValidateBlock
 	_Handlers[SET_VALIDATOR_HEIGHT] = SetTxValidatorHeight
+	_Handlers[VOTE] = Vote
+	_Handlers[MOCK] = Mock
 }
 
 func CheckWallet(ctx *cli.Context) (err error) {
@@ -583,6 +597,100 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 		fmt.Println(util.Json(tx))
 	}
 	return nil
+}
+
+func Mock(ctx *cli.Context) (err error) {
+	fromChain := ctx.Uint64("from")
+	toChain := ctx.Uint64("to")
+	origin := ctx.String("origin")
+	target := ctx.String("target")
+	ccm := ctx.String("ccm")
+	hash := ctx.String("hash")
+	args := util.LowerHex(ctx.String("args"))
+	sub, err := ChainSubmitter(toChain)
+	if err != nil { return }
+	accounts, err := GetPolyWallets()
+	if err != nil { return }
+
+	abi, err := abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
+	if err != nil { return }
+
+	tx := new(ccom.ToMerkleValue)
+	tx.MakeTxParam = new(ccom.MakeTxParam)
+	polyHash, err := pcom.Uint256FromHexString(hash)
+	if err != nil { return }
+	tx.TxHash = polyHash[:]
+	tx.MakeTxParam.TxHash = tx.TxHash
+	tx.FromChainID = fromChain
+	tx.MakeTxParam.ToChainID = toChain
+	tx.MakeTxParam.Method = ctx.String("method")
+	tx.MakeTxParam.FromContractAddress = common.HexToAddress(origin).Bytes()
+	tx.MakeTxParam.ToContractAddress = common.HexToAddress(target).Bytes()
+	tx.MakeTxParam.Args = common.Hex2Bytes(args)
+
+	sink := pcom.NewZeroCopySink(nil)
+	tx.Serialization(sink)
+	state := sink.Bytes()
+	hashes := []pcom.Uint256{merkle.HashLeaf(state)}
+	path, err := merkle.MerkleLeafPath(state, hashes)
+	if err != nil { return }
+	header := new(types.Header)
+	header.CrossStateRoot = merkle.TreeHasher{}.HashFullTreeWithLeafHash(hashes)
+	headerHash := header.Hash()
+	for _, acc := range accounts {
+		sig, err := signature.Sign(acc.SigScheme, acc.GetPrivateKey(), headerHash[:], nil)
+		if err != nil { return err }
+		header.Bookkeepers = []keypair.PublicKey{acc.GetPublicKey()}
+		sigData, err := signature.Serialize(sig)
+		if err != nil { return err }
+		header.SigData = [][]byte{sigData}
+	}
+
+	var sigs []byte
+	for _, sig := range header.SigData {
+		temp := make([]byte, len(sig))
+		copy(temp, sig)
+		s, err := signature.ConvertToEthCompatible(temp)
+		if err != nil {
+			return fmt.Errorf("MakeTx signature.ConvertToEthCompatible %v", err)
+		}
+		sigs = append(sigs, s...)
+	}
+	data, err := abi.Pack("verifyHeaderAndExecuteTx", path, header.GetMessage(), nil, nil, sigs)
+	if err != nil { return }
+	dstHash, err := sub.(*eth.Submitter).Send(common.HexToAddress(ccm), big.NewInt(0), 0, nil, nil, data)
+	log.Info("Submitting dst tx", "hash", dstHash, "err", "err")
+	return
+}
+
+func Vote(ctx *cli.Context) (err error) {
+	fromChain := ctx.Uint64("from")
+	toChain := ctx.Uint64("to")
+	id := ctx.Int64("id")
+	args := util.LowerHex(ctx.String("args"))
+	origin := ctx.String("origin")
+	target := ctx.String("target")
+	sink := pcom.NewZeroCopySink(nil)
+	param := new(ccom.MakeTxParam)
+	param.Method = ctx.String("method")
+	param.FromContractAddress = common.HexToAddress(origin).Bytes()
+	param.ToContractAddress = common.HexToAddress(target).Bytes()
+	param.CrossChainID = big.NewInt(id).Bytes()
+	param.ToChainID = toChain
+	param.Args = common.Hex2Bytes(args)
+	param.Serialization(sink)
+	
+	value := sink.Bytes()
+	accounts, err := GetPolyWallets()
+	if err != nil { return }
+	pl, err := PolyListener()
+	if err != nil { return }
+	for _, account := range accounts {
+		tx, err := pl.SDK().Node().Native.Ccm.ImportOuterTransfer(fromChain, value, 100, nil, account.Address[:], []byte{}, account)
+		if err != nil { return err }
+		log.Info("Voting to poly", "signer", account.Address.ToHexString(), "hash", tx.ToHexString(), "err", err)
+	}
+	return
 }
 
 func Validate(ctx *cli.Context) (err error) {

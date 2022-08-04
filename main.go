@@ -522,6 +522,82 @@ func main() {
 					},
 				},
 			},
+			&cli.Command{
+				Name:   relayer.MOCK,
+				Usage:  "Mock submit",
+				Action: command(relayer.MOCK),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "method",
+						Usage: "target method",
+						Value: "unlock",
+					},
+					&cli.Int64Flag{
+						Name:  "from",
+						Usage: "from chain id",
+					},
+					&cli.Int64Flag{
+						Name:  "to",
+						Usage: "target chain id",
+					},
+					&cli.StringFlag{
+						Name:  "origin",
+						Usage: "origin address",
+					},
+					&cli.StringFlag{
+						Name:  "target",
+						Usage: "target address",
+					},
+					&cli.StringFlag{
+						Name:  "args",
+						Usage: "args hex",
+					},
+					&cli.StringFlag{
+						Name:  "hash",
+						Usage: "cross chain hash",
+					},
+					&cli.StringFlag{
+						Name:  "ccm",
+						Usage: "ccm address",
+					},
+				},
+			},
+			&cli.Command{
+				Name:   relayer.VOTE,
+				Usage:  "Mock vote",
+				Action: command(relayer.VOTE),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "method",
+						Usage: "target method",
+						Value: "unlock",
+					},
+					&cli.Int64Flag{
+						Name:  "from",
+						Usage: "from chain id",
+					},
+					&cli.Int64Flag{
+						Name:  "to",
+						Usage: "target chain id",
+					},
+					&cli.StringFlag{
+						Name:  "origin",
+						Usage: "origin address",
+					},
+					&cli.StringFlag{
+						Name:  "target",
+						Usage: "target address",
+					},
+					&cli.StringFlag{
+						Name:  "args",
+						Usage: "args hex",
+					},
+					&cli.Int64Flag{
+						Name:  "id",
+						Usage: "cross chain id",
+					},
+				},
+			},
 		},
 	}
 
