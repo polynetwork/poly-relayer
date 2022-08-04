@@ -169,23 +169,35 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
-	ccmContract, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
-	if err != nil {
-		return nil, nil, fmt.Errorf("NewEthCrossChainManagerImplemetation error %v", err)
-	}
-	opt := &bind.FilterOpts{
-		Start:   height,
-		End:     &height,
-		Context: context.Background(),
-	}
-	crossChainEvents, err := ccmContract.FilterCrossChainEvent(opt, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("FilterCrossChainEvent error %v", err)
-	}
-	if crossChainEvents == nil || !crossChainEvents.Next() {
+	lastHeaderSyncHeight, err := l.LastHeaderSync(0, 0)
+	if height <= lastHeaderSyncHeight {
+		log.Warn("Header already synced to zion", "height", height, "lastHeaderSyncHeight", lastHeaderSyncHeight, "chain", l.name)
 		return nil, nil, nil
 	}
-	log.Info("Found cross chain events", "chain", l.name, "height", height)
+
+	fetchHeader := (height-lastHeaderSyncHeight)%l.config.HeaderSyncInterval == 0
+	if !fetchHeader {
+		ccmContract, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
+		if err != nil {
+			return nil, nil, fmt.Errorf("NewEthCrossChainManagerImplemetation error %v", err)
+		}
+		opt := &bind.FilterOpts{
+			Start:   height,
+			End:     &height,
+			Context: context.Background(),
+		}
+		crossChainEvents, err := ccmContract.FilterCrossChainEvent(opt, nil)
+		if err != nil {
+			return nil, nil, fmt.Errorf("FilterCrossChainEvent error %v", err)
+		}
+		if crossChainEvents != nil && crossChainEvents.Next() {
+			fetchHeader = true
+			log.Info("Found cross chain events", "chain", l.name, "height", height)
+		}
+	}
+	if !fetchHeader {
+		return nil, nil, nil
+	}
 
 	hdr, err := l.sdk.Node().GetHeader(height)
 	if err != nil {

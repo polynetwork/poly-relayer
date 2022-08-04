@@ -145,15 +145,16 @@ type ChainConfig struct {
 }
 
 type ListenerConfig struct {
-	ChainId           uint64
-	Nodes             []string
-	ExtraNodes        []string
-	LockProxyContract []string
-	CCMContract       string
-	CCDContract       string
-	ListenCheck       int
-	Bus               *BusConfig
-	Defer             int
+	ChainId            uint64
+	Nodes              []string
+	ExtraNodes         []string
+	LockProxyContract  []string
+	CCMContract        string
+	CCDContract        string
+	ListenCheck        int
+	Bus                *BusConfig
+	Defer              int
+	HeaderSyncInterval uint64
 }
 
 func (c *SubmitterConfig) Fill(o *SubmitterConfig) *SubmitterConfig {
@@ -238,12 +239,13 @@ type TxVoteConfig struct {
 }
 
 type HeaderSyncConfig struct {
-	Batch       int
-	Timeout     int
-	Buffer      int
-	Enabled     bool
-	Poly        *SubmitterConfig
-	StartHeight uint64
+	Batch        int
+	Timeout      int
+	Buffer       int
+	Enabled      bool
+	Poly         *SubmitterConfig
+	StartHeight  uint64
+	SyncInterval uint64
 	*ListenerConfig
 	Bus *BusConfig
 }
@@ -396,6 +398,9 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 	}
 
 	if c.HeaderSync != nil {
+		if c.HeaderSync.SyncInterval == 0 {
+			c.HeaderSync.SyncInterval = 50
+		}
 		c.HeaderSync.ListenerConfig = c.FillListener(c.HeaderSync.ListenerConfig, bus)
 		c.HeaderSync.ChainId = chain
 		if c.HeaderSync.Bus == nil {
@@ -536,6 +541,10 @@ func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerC
 
 	if o.ListenCheck == 0 {
 		o.ListenCheck = c.ListenCheck
+	}
+
+	if c.HeaderSync != nil {
+		o.HeaderSyncInterval = c.HeaderSync.SyncInterval
 	}
 
 	if o.Bus == nil {
