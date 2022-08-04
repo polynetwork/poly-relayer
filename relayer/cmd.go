@@ -636,6 +636,7 @@ func Mock(ctx *cli.Context) (err error) {
 	path, err := merkle.MerkleLeafPath(state, hashes)
 	if err != nil { return }
 	header := new(types.Header)
+	header.ConsensusPayload = []byte{0}
 	header.CrossStateRoot = merkle.TreeHasher{}.HashFullTreeWithLeafHash(hashes)
 	headerHash := header.Hash()
 	for _, acc := range accounts {
