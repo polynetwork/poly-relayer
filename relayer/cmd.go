@@ -702,7 +702,7 @@ func handleAlarm(o tools.CardEvent) {
 			log.Error("Run handle event command", "err", err, "event", util.Json(o))
 		}
 	}()
-	go Notify(fmt.Sprintf(config.CONFIG.Validators.DialTemplate, "Poly", "Invalid Unlock"))
+	go Notify(fmt.Sprintf(config.CONFIG.Validators.DialTemplate, "Poly", info))
 }
 
 func Notify(content string) {
