@@ -169,7 +169,6 @@ func (h *HeaderSyncHandler) startReplenish() {
 
 				for _, height := range ev.Heights {
 					log.Info("Header sync replenish processing block", "height", height, "chain", h.config.ChainId)
-
 					if srcLatestHeight < uint64(height)+srcConfirms {
 						log.Warn("Skip header replenish, block not confirmed", "height", height, "chain", h.config.ChainId)
 						continue

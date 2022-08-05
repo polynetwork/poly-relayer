@@ -121,8 +121,6 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		tx.SrcProxy = hex.EncodeToString(param.MakeTxParam.FromContractAddress)
 		tx.DstProxy = hex.EncodeToString(param.MakeTxParam.ToContractAddress)
 		tx.PolyKey = ev.Key
-		key, _ := hex.DecodeString(ev.Key)
-		tx.PolyKey = state.Key2Slot(key[common.AddressLength:]).String()
 		tx.PolyHeight = height
 		tx.PolyHash = ev.Raw.TxHash
 		tx.TxType = msg.POLY
