@@ -156,7 +156,7 @@ func (h *TxVoteHandler) startReplenish() {
 				}
 
 				srcLatestHeight, e := h.listener.LatestHeight()
-				if err != nil {
+				if e != nil {
 					log.Error("Get LatestHeight failed", "chain", h.config.ChainId, "err", e)
 					continue
 				}
