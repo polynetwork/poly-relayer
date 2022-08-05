@@ -22,7 +22,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -36,6 +35,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/bridge"
@@ -666,13 +666,31 @@ func watchAlarms(outputs chan tools.CardEvent) {
 }
 
 func handleAlarm(o tools.CardEvent) {
-	switch o.(type) {
-	case *msg.InvalidUnlockEvent, *msg.InvalidPolyCommitEvent:
+	info := "Invalid Unlock "
+    pause := true
+	switch ev := o.(type) {
+	case *msg.InvalidUnlockEvent:
+		info += ev.DstHash
+		err := ev.Error.Error()
+		for _, token := range []string{"</html>", "timed out", "refused", "limit"} {
+			if strings.Contains(err, token) {
+				pause = false
+			}
+		}
+	case *msg.InvalidPolyCommitEvent:
+		info += ev.PolyHash
+		err := ev.Error.Error()
+		for _, token := range []string{"</html>", "timed out", "refused", "limit"} {
+			if strings.Contains(err, token) {
+				pause = false
+			}
+		}
 	default:
+		pause = false
 		return
 	}
 
-	if len(config.CONFIG.Validators.PauseCommand) == 0 {
+	if !pause || len(config.CONFIG.Validators.PauseCommand) == 0 {
 		return
 	}
 	go func() {
@@ -713,12 +731,13 @@ func Dial(target, content string) error {
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	resp, err := client.Do(req)
+	if err != nil { return err }
 	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	log.Info("Dail success", "to", target, "content", content, "data", string(data))
+	log.Info("Dial success", "to", target, "content", content, "data", string(data))
 	return nil
 }
 

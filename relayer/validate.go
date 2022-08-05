@@ -92,7 +92,7 @@ func (v *Validator) start() (err error) {
 					log.Info("Skipping validating tx", "chain", chainID, "origin", tx.SrcChainId, "hash", hash)
 					continue
 				}
-				for i := 0; i < 100; i++ {
+				for i := 0; i < 20; i++ {
 					err = validator.Validate(tx)
 					print := log.Info
 					if err != nil {
@@ -100,7 +100,7 @@ func (v *Validator) start() (err error) {
 					}
 					print("Validating tx", "chain", chainID, "origin", tx.SrcChainId, "hash", hash, "err", err)
 					if err == nil || errors.Is(err, msg.ERR_TX_VOILATION) { break }
-					time.Sleep(time.Second)
+					time.Sleep(time.Second * 5)
 				}
 				if err != nil {
 					if chainID > 0 {
