@@ -26,6 +26,7 @@ import (
 )
 
 type Role struct {
+	TxVote     bool // Tx vote
 	HeaderSync bool // header sync
 	EpochSync  bool // epoch sync
 	TxListen   bool // chain(src) -> mq
@@ -82,11 +83,15 @@ func (c *Config) ApplyRoles(roles Roles) {
 			if chain.EpochSync == nil {
 				chain.EpochSync = new(EpochSyncConfig)
 			}
+			if chain.TxVote == nil {
+				chain.TxVote = new(TxVoteConfig)
+			}
 			chain.SrcTxSync.Enabled = role.TxListen
 			chain.SrcTxCommit.Enabled = role.TxCommit
 			chain.PolyTxCommit.Enabled = role.PolyCommit
 			chain.HeaderSync.Enabled = role.HeaderSync
 			chain.EpochSync.Enabled = role.EpochSync
+			chain.TxVote.Enabled = role.TxVote
 		}
 	}
 }

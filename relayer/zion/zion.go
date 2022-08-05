@@ -174,13 +174,14 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			return nil
 		}
 	}
-	data, err := s.txabi.Pack("importOuterTransfer",
-		tx.SrcChainId, uint32(tx.SrcProofHeight),
-		tx.SrcProof,
-		signer.Address[:],
-		tx.SrcEvent,
-		tx.SrcStateRoot,
-	)
+
+	raw, err := hex.DecodeString(tx.SrcParam)
+	if err != nil || len(raw) == 0 {
+		log.Error("Unexpected empty raw data", "err", err, "hash", tx.SrcHash)
+		return err
+	}
+
+	data, err := s.txabi.Pack("importOuterTransfer", tx.SrcChainId, uint32(tx.SrcProofHeight), tx.SrcProof, raw, []byte{})
 	if err != nil {
 		return fmt.Errorf("Pack zion tx failed err %v", err)
 	}
@@ -249,7 +250,7 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 	} else {
 		now := time.Now().Unix()
 		for _, tx := range list {
-			if tx.Time > now-600 {
+			if tx.Time > uint64(now-600) {
 				continue
 			}
 			height, pending, err := s.sdk.Node().GetTxHeight(context.Background(), tx.Hash)
@@ -309,14 +310,14 @@ func (s *Submitter) VoteHeaderOfHeight(height uint32, header []byte, store *stor
 		log.Error("Failed to pack data", "err", err)
 		return
 	}
-	hash, err := s.wallet.Send(zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+	hash, err := s.wallet.Send(zion.INFO_SYNC_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 	if err != nil || hash == "" {
 		log.Error("Failed to send header", "err", err, "hash", hash)
 		return
 	}
 	log.Info("Send header vote", "src height", height, "zion hash", hash, "chain", s.name)
 	bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
-		return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+		return store.InsertData(msg.HexToHash(hash), data, zion.INFO_SYNC_ADDRESS)
 	})
 	return
 }
@@ -396,14 +397,22 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 			continue
 		}
 
-		hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
+		hash, err := s.wallet.SendWithAccount(account, zion.INFO_SYNC_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 		if err != nil || hash == "" {
-			log.Error("Failed to send header", "err", err, "hash", hash)
+			info := err.Error()
+			if strings.Contains(info, "signer already exist") {
+				log.Warn("signer already exist, drop duplicate signature", "chain", s.sync.ChainId)
+				bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
+					return store.DeleteHeader(headers...)
+				})
+			} else {
+				log.Error("Failed to send header", "err", err, "hash", hash)
+			}
 			continue
 		}
 		log.Info("Send header vote", "hash", hash, "chain", s.name)
 		bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
-			return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+			return store.InsertData(msg.HexToHash(hash), data, zion.INFO_SYNC_ADDRESS)
 		})
 		bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
 			return store.DeleteHeader(headers...)
@@ -575,8 +584,12 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 			if err == msg.ERR_TX_PENDING {
 				block += 69
 			}
+			switch s.config.ChainId {
+			case base.BSC, base.HECO:
+				block += 50
+			}
 			tx.Attempts++
-			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block)
+			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block, "attempts", tx.Attempts)
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
 		} else {
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })

@@ -165,11 +165,9 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 		if err != nil {
 			return err
 		}
-		log.Info("info.Header", "", common.Bytes2Hex(info.Header))
 
 		hash, err := sub.(*eth.Submitter).Send(common.HexToAddress(ccm), big.NewInt(0), 0, nil, nil, data)
 		if err != nil {
-			log.Error("Send", "err", err)
 			return err
 		}
 		log.Info("Send tx for initGenesisBlock", "chain", chainID, "hash", hash)

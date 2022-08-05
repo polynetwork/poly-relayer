@@ -49,7 +49,7 @@ func (s *Server) Start() (err error) {
 	// Create handlers
 	for id, chain := range s.config.Chains {
 		if s.config.Active(id) {
-			s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit, chain.EpochSync)
+			s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit, chain.EpochSync, chain.TxVote)
 		}
 	}
 
