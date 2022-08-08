@@ -141,7 +141,7 @@ func (h *TxVoteHandler) startReplenish() {
 			break
 		}
 
-		log.Info("Scanning tx vote replenish in block", "zion height", h.zionReplenishHeight, "chain", h.config.ChainId)
+		log.Debug("Scanning tx vote replenish in block", "zion height", h.zionReplenishHeight, "chain", h.config.ChainId)
 		opt := &bind.FilterOpts{
 			Start:   h.zionReplenishHeight,
 			End:     &h.zionReplenishHeight,
