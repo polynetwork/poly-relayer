@@ -660,9 +660,9 @@ func (s *Submitter) StartTxVote(
 	if s.vote.Batch == 0 {
 		s.vote.Batch = 1
 	}
-	if s.vote.Buffer == 0 {
-		s.vote.Buffer = 2 * s.sync.Batch
-	}
+	//if s.vote.Buffer == 0 {
+	//	s.vote.Buffer = 2 * s.sync.Batch
+	//}
 	if s.vote.Timeout == 0 {
 		s.vote.Timeout = 1
 	}
