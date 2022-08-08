@@ -206,8 +206,10 @@ func (h *TxVoteHandler) replenish() {
 }
 
 func (h *TxVoteHandler) Start() (err error) {
+	log.Info("TxVote Start")
 	h.height, err = h.store.GetTxHeight()
 	if err != nil {
+		log.Error("TxVote", "err", err)
 		return
 	}
 	log.Info("Tx vote will start...", "height", h.height+1, "chain", h.config.ChainId)
