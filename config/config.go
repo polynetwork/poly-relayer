@@ -229,11 +229,12 @@ func (c *BusConfig) Init() {
 }
 
 type TxVoteConfig struct {
-	Batch   int
-	Timeout int
-	Buffer  int
-	Enabled bool
-	Poly    *SubmitterConfig
+	Batch       int
+	Timeout     int
+	Buffer      int
+	Enabled     bool
+	StartHeight uint64
+	Poly        *SubmitterConfig
 	*ListenerConfig
 	Bus *BusConfig
 }
