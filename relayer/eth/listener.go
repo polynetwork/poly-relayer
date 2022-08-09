@@ -305,7 +305,7 @@ func (l *Listener) LatestHeight() (uint64, error) {
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
 	if l.poly == nil {
-		err = fmt.Errorf("No poly sdk provided for listener", "chain", l.name)
+		err = fmt.Errorf("No poly sdk provided for listener, chain %s", l.name)
 		return
 	}
 
@@ -341,7 +341,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 	} else {
 		err = fmt.Errorf("proof value hash does not match")
 	}
-	err = fmt.Errorf("%w CheckProofResult failed, err: %v", msg.ERR_TX_VOILATION, err)
+	err = fmt.Errorf("CheckProofResult failed, err: %v", err)
 	return
 }
 
