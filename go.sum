@@ -385,6 +385,8 @@ github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHW
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/joeqian10/neo-gogogo v1.4.0 h1:MPCzSpndFAvnVnS+uEbIhnfBkEJIEaGj7tNtAK9MdAQ=
 github.com/joeqian10/neo-gogogo v1.4.0/go.mod h1:1fVDp4U1ROZQBRIooecbGNHHJpfs3bG9528sqlZ096g=
+github.com/joeqian10/neo3-gogogo v1.1.2 h1:sw2KRoBBW9tIWNpi/Nqn6xeCwf+oGRN02Xz1lUBXbSI=
+github.com/joeqian10/neo3-gogogo v1.1.2/go.mod h1:k0wb1hcBjjspDpyHtEXIpDUEXAw5SfX7coi5AkNtxoU=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/jrick/logrotate v1.0.0/go.mod h1:LNinyqDIJnpAur+b8yyulnQw/wDuN1+BYKlTRt3OuAQ=
 github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
@@ -556,8 +558,8 @@ github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6J
 github.com/pkg/term v0.0.0-20180730021639-bffc007b7fd5/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/polynetwork/bridge-common v0.0.16-2 h1:DmbLdZPeS8RRAv/03DKDLNut/MTkVIRYbNRVFzt887Q=
-github.com/polynetwork/bridge-common v0.0.16-2/go.mod h1:oNMJNr8fVQ6A6CxjiedDthpZX0DgpFSrZN5yq3XnVKY=
+github.com/polynetwork/bridge-common v0.0.18-2 h1:ERkYtZ1YNX3m7KmYaCbY8Rgvo+8joAhTgptTbNbdrgo=
+github.com/polynetwork/bridge-common v0.0.18-2/go.mod h1:C6RAvhDBLGItf+EVazsUls+hlaIN8F4eKbNSE6pvjXs=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829/go.mod h1:p2iRAGwDERtqlqzRXnrOVns+ignqQo//hLXqYxZYVNs=

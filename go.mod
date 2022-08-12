@@ -8,7 +8,8 @@ require (
 	github.com/devfans/zion-sdk v0.0.12
 	github.com/ethereum/go-ethereum v1.10.11
 	github.com/go-redis/redis/v8 v8.11.3
+	github.com/joeqian10/neo3-gogogo v1.1.2
 	github.com/ontio/ontology-crypto v1.2.1
-	github.com/polynetwork/bridge-common v0.0.16-2
+	github.com/polynetwork/bridge-common v0.0.18-2
 	github.com/urfave/cli/v2 v2.3.0
 )
