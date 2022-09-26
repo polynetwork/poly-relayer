@@ -298,7 +298,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			case base.MATIC, base.PLT:
 				tsp = time.Now().Unix() + 60*3
 			case base.ARBITRUM, base.XDAI, base.OPTIMISM, base.AVA, base.FANTOM, base.RINKEBY, base.BOBA, base.OASIS,
-				base.KAVA, base.CUBE, base.ZKSYNC, base.CELO, base.CLOVER, base.CONFLUX:
+				base.KAVA, base.CUBE, base.ZKSYNC, base.CELO, base.CLOVER, base.CONFLUX, base.ASTAR:
 				tsp = time.Now().Unix() + 60*25
 			case base.BSC, base.HECO, base.OK, base.KCC, base.BYTOM, base.HSC, base.MILKO:
 				tsp = time.Now().Unix() + 60*4
