@@ -31,6 +31,7 @@ Reimplement poly relayer
 |Celo        |main |:x:|:x:|:white_check_mark:|
 |CLV P-Chain |main |:x:|:x:|:white_check_mark:|
 |Conflux     |main |:x:|:x:|:white_check_mark:|
+|Astar       |main |:x:|:x:|:white_check_mark:|
 
 
 
