@@ -91,12 +91,15 @@ type Tx struct {
 	DstData                 []byte                `json:"-"`
 	DstProxy                string                `json:",omitempty"`
 	SkipCheckFee            bool                  `json:",omitempty"`
-	CheckFeeOff             bool                  `json:"-"` 			// CheckFee disabled in submitter
+	CheckFeeOff             bool                  `json:"-"` // CheckFee disabled in submitter
 	Skipped                 bool                  `json:",omitempty"`
 	PaidGas                 float64               `json:",omitempty"`
 	CheckFeeStatus          bridge.CheckFeeStatus `json:",omitempty"`
 	DstAsset                string                `json:"-"`
 	DstAmount               *big.Int              `json:"-"`
+
+	// aptos
+	ToAssetAddress string
 
 	Extra interface{} `json:"-"`
 }
