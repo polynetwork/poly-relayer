@@ -39,4 +39,8 @@ var (
 	ERR_TX_CHECK_ESTIMATEGAS = errors.New("Tx check estimategas err")
 	ERR_TX_CHECK_GAS         = errors.New("Tx check gas err")
 	ERR_FEE_INSUFFICIENT      = errors.New("Fee insufficient")
+	
+	ERR_COIN_STORE_NOT_PUBLISHED = errors.New("Account hasn't registered CoinStore for CoinType")
+	ERR_TREASURY_NOT_EXIST       = errors.New("Asset not exist in lock proxy")
+	ERR_SEQUENCE_NUMBER_INVALID  = errors.New("Sequence number is invalid")
 )

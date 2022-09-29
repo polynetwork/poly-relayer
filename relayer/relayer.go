@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/relayer/aptos"
 	"github.com/polynetwork/poly-relayer/relayer/ripple"
 	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 	"sync"
@@ -112,6 +113,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(ripple.Submitter)
 	case base.FLOW:
 		submitter = new(flow.Submitter)
+	case base.APTOS:
+		submitter = new(aptos.Submitter)
 
 	default:
 		if base.SameAsETH(chain) {
@@ -134,11 +137,14 @@ func PolyListener() (l *po.Listener, err error) {
 }
 
 func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
-	if chain == base.ONT {
+	switch chain {
+	case base.ONT:
 		sub = new(ont.Submitter)
-	} else if chain == base.NEO {
+	case base.NEO:
 		sub = new(neo.Submitter)
-	} else {
+	case base.APTOS:
+		sub = new(aptos.Submitter)
+	default:
 		for _, v := range base.ETH_CHAINS {
 			if v == chain {
 				sub = new(eth.Submitter)

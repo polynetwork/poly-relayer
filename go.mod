@@ -17,6 +17,7 @@ require (
 	github.com/polynetwork/bridge-common v0.0.0-20221025130351-b971aacd432c
 	github.com/polynetwork/poly v1.9.1-0.20220424092935-f54fa45801fe
 	github.com/polynetwork/poly-go-sdk v0.0.0-20220425024155-af1927301211
+	github.com/portto/aptos-go-sdk v0.0.0-20221031095136-21bd4a704b90
 	github.com/polynetwork/ripple-sdk v0.0.0-20220616022641-d64d4aa053fe
 	github.com/starcoinorg/starcoin-go v0.0.0-20220105024102-530daedc128b
 	github.com/urfave/cli/v2 v2.3.0

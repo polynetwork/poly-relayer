@@ -103,6 +103,9 @@ type Tx struct {
 	Sigs         [][]byte `json:",omitempty"`
 	Signers      [][]byte `json:",omitempty"`
 	ResourcePath string   `json:",omitempty"`
+	
+	// aptos
+	ToAssetAddress string
 
 	ChainTxJson string `json:",omitempty"`
 
