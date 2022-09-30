@@ -102,7 +102,7 @@ func GetListener(chain uint64) (listener IChainListener) {
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
 	case base.ETH, base.BSC, base.HECO, base.O3, base.ARBITRUM, base.XDAI, base.OPTIMISM, base.FANTOM, base.AVA,
-		base.METIS, base.RINKEBY, base.BOBA, base.PIXIE, base.OASIS, base.HSC, base.BYTOM, base.HARMONY, base.ONTEVM, base.KCC:
+		base.METIS, base.RINKEBY, base.GOERLI, base.BOBA, base.PIXIE, base.OASIS, base.HSC, base.BYTOM, base.HARMONY, base.ONTEVM, base.KCC:
 		submitter = new(eth.Submitter)
 	case base.NEO:
 		submitter = new(neo.Submitter)
