@@ -19,10 +19,15 @@ package eth
 
 import (
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/util"
 	"github.com/polynetwork/bridge-common/wallet"
+	"math/big"
 )
 
 func init() {
 	wallet.SetGasLimit(base.ARBITRUM, 4000000)
 	wallet.SetGasLimit(base.OPTIMISM, 4000000)
+
+	//balanceLimit
+	wallet.SetBalanceLimit(base.BSC, util.SetDecimals(big.NewInt(1), 16))
 }
