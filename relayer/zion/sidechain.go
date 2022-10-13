@@ -28,7 +28,7 @@ import (
 	"github.com/polynetwork/bridge-common/log"
 )
 
-func (s *Submitter) RegisterSideChain(chainID uint64, router uint64, name string, blocksToWait uint64, ccmcAddress []byte, extraInfo []byte, update bool) (hash common.Hash, err error) {
+func (s *Submitter) RegisterSideChain(chainID uint64, router uint64, name string, ccmcAddress []byte, extraInfo []byte, update bool) (hash common.Hash, err error) {
 	accounts := s.wallet.Accounts()
 	if len(accounts) == 0 {
 		err = fmt.Errorf("missing available account")
@@ -48,7 +48,7 @@ func (s *Submitter) RegisterSideChain(chainID uint64, router uint64, name string
 		}
 	}
 	log.Info("Using account", "address", accounts[0].Address.String())
-	data, err := zion.SM_ABI.Pack(method, chainID, router, name, blocksToWait, ccmcAddress, extraInfo)
+	data, err := zion.SM_ABI.Pack(method, chainID, router, name, ccmcAddress, extraInfo)
 	if err != nil {
 		return
 	}

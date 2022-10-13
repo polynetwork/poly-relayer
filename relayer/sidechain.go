@@ -87,7 +87,7 @@ func AddSideChain(ctx *cli.Context) (err error) {
 		chain = new(side_chain_manager_abi.ISideChainManagerSideChain)
 	}
 	chain.Name = ctx.String("name")
-	chain.BlocksToWait = ctx.Uint64("blocks")
+	//chain.BlocksToWait = ctx.Uint64("blocks")
 	chain.ExtraInfo = []byte{}
 	chain.ChainID = chainID
 	chain.Router = ctx.Uint64("router")
@@ -103,7 +103,7 @@ func AddSideChain(ctx *cli.Context) (err error) {
 		}
 	}
 
-	hash, err := ps.RegisterSideChain(chain.ChainID, chain.Router, chain.Name, chain.BlocksToWait, chain.CCMCAddress, chain.ExtraInfo, update)
+	hash, err := ps.RegisterSideChain(chain.ChainID, chain.Router, chain.Name, chain.CCMCAddress, chain.ExtraInfo, update)
 	log.Info("Sent tx", "hash", hash, "err", err)
 	return
 }
