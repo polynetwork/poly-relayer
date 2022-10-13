@@ -515,7 +515,7 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 				log.Error("Failed to sign param", "err", err)
 				continue
 			}
-			data, err := s.txabi.Pack("importOuterTransfer", tx.ChainID, tx.Height, []byte{}, tx.Value, param.Signature)
+			data, err := s.txabi.Pack("importOuterTransfer", tx.ChainID, uint32(tx.Height), []byte{}, tx.Value, param.Signature)
 			if err != nil {
 				log.Error("Failed to pack data", "err", err)
 				continue
@@ -660,9 +660,9 @@ func (s *Submitter) StartTxVote(
 	if s.vote.Batch == 0 {
 		s.vote.Batch = 1
 	}
-	if s.vote.Buffer == 0 {
-		s.vote.Buffer = 2 * s.sync.Batch
-	}
+	//if s.vote.Buffer == 0 {
+	//	s.vote.Buffer = 2 * s.sync.Batch
+	//}
 	if s.vote.Timeout == 0 {
 		s.vote.Timeout = 1
 	}
