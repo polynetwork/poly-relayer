@@ -140,12 +140,14 @@ func (s *Submitter) GetPolyEpochStartHeight(uint64) (height uint64, err error) {
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	ccd, err := eccd_abi.NewEthCrossChainData(s.ccd, s.sdk.Node())
 	if err != nil {
+		log.Error("NewEthCrossChainData failed", "polyHash", tx.PolyHash.Hex(), "err", err)
 		return
 	}
 	txId := [32]byte{}
 	copy(txId[:], tx.MerkleValue.TxHash[:32])
 	exist, err := ccd.CheckIfFromChainTxExist(nil, tx.SrcChainId, txId)
 	if err != nil {
+		log.Error("CheckIfFromChainTxExist failed", "polyHash", tx.PolyHash.Hex(), "err", err)
 		return err
 	}
 
@@ -162,14 +164,17 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 
 	hsHeader, err := rlp.EncodeToBytes(types.HotstuffFilteredHeader(tx.AnchorHeader))
 	if err != nil {
+		log.Error("EncodeToBytes Hotstuff failed", "polyHash", tx.PolyHash.Hex(), "err", err)
 		return err
 	}
 	extra, err := types.ExtractHotstuffExtra(tx.AnchorHeader)
 	if err != nil {
+		log.Error("ExtractHotstuffExtra failed", "polyHash", tx.PolyHash.Hex(), "err", err)
 		return
 	}
 	rawSeals, err := rlp.EncodeToBytes(extra.CommittedSeal)
 	if err != nil {
+		log.Error("rlp.EncodeToBytes failed", "polyHash", tx.PolyHash.Hex(), "err", err)
 		return
 	}
 
@@ -240,6 +245,7 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	}
 	err = compose(m)
 	if err != nil {
+		log.Error("compose failed", "polyHash", m.PolyHash.Hex(), "err", err)
 		return
 	}
 	err = s.processPolyTx(m)
@@ -302,17 +308,22 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 		}
 		tx.DstSender = &account
 		if tx.Type() == msg.POLY {
-			log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
+			log.Info("Processing poly tx", "poly_hash", tx.PolyHash.Hex(), "account", account.Address)
 			err = s.ProcessTx(tx, compose)
 			if err == nil {
 				err = s.SubmitTx(tx)
+				if err != nil {
+					log.Error("SubmitTx failed", "polyHash", tx.PolyHash.Hex(), "err", err)
+				}
+			} else {
+				log.Error("ProcessTx failed", "polyHash", tx.PolyHash.Hex(), "err", err)
 			}
 		} else if tx.Type() == msg.POLY_EPOCH {
 			log.Info("Processing poly epoch", "poly_epoch", tx.PolyEpoch.EpochId, "account", account.Address)
 			err = s.ProcessEpochs([]*msg.Tx{tx})
 		}
 		if err != nil {
-			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash, "err", err)
+			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash.Hex(), "err", err)
 			log.Json(log.ERROR, tx)
 			if errors.Is(err, msg.ERR_INVALID_TX) || errors.Is(err, msg.ERR_TX_BYPASS) {
 				log.Error("Skipped poly tx for error", "poly_hash", tx.PolyHash, "err", err)

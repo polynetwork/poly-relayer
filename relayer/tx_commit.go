@@ -132,9 +132,9 @@ type CommitFilter struct {
 	name string
 	bus.TxBus
 	checkFee bool
-	delay  bus.DelayedTxBus
-	ch     chan *msg.Tx
-	bridge *bridge.SDK
+	delay    bus.DelayedTxBus
+	ch       chan *msg.Tx
+	bridge   *bridge.SDK
 }
 
 func (b *CommitFilter) Pop(ctx context.Context) (tx *msg.Tx, err error) {
@@ -232,7 +232,7 @@ LOOP:
 					log.Error("Dropping failed tx for too many retries in testnet", "chain", b.name, "poly_hash", tx.PolyHash)
 					continue
 				}
-				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash, "process_pending", len(b.ch))
+				log.Info("Check fee pending", "chain", b.name, "poly_hash", tx.PolyHash.Hex(), "process_pending", len(b.ch))
 
 				// Skip tx check fee
 				if !b.checkFee {
