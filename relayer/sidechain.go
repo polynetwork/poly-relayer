@@ -136,6 +136,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if epoch == nil {
 		return fmt.Errorf("epoch not found in zion?")
 	}
+	log.Info("zion GetCurrentEpochInfo", "epoch id", epoch.ID.Uint64())
 
 	sub, err := ChainSubmitter(chainID)
 	if err != nil {
@@ -150,6 +151,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if err != nil {
 		return
 	}
+	log.Info("", "chain", chainID, "CurEpochStartHeight", height)
 	if height == 0 {
 		info, err := lis.EpochById(epoch.ID.Uint64())
 		if err != nil {
