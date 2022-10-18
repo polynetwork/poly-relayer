@@ -585,7 +585,7 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 				block += 69
 			}
 			switch s.config.ChainId {
-			case base.BSC, base.HECO:
+			case base.BSC, base.HECO, base.GOERLI:
 				block += 50
 			}
 			tx.Attempts++
