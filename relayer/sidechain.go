@@ -58,7 +58,7 @@ func FetchSideChain(ctx *cli.Context) (err error) {
 func AddSideChain(ctx *cli.Context) (err error) {
 	chainID := ctx.Uint64("chain")
 	router := ctx.Uint64("router")
-	ccm := ctx.String("ccm")
+	ccd := ctx.String("ccd")
 	isVoting := ctx.Bool("vote")
 	update := ctx.Bool("update")
 
@@ -96,8 +96,8 @@ func AddSideChain(ctx *cli.Context) (err error) {
 		return
 	}
 
-	if ccm != "" {
-		chain.CCMCAddress, err = hex.DecodeString(util.LowerHex(ccm))
+	if ccd != "" {
+		chain.CCMCAddress, err = hex.DecodeString(util.LowerHex(ccd))
 		if err != nil {
 			return
 		}
@@ -136,6 +136,16 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if epoch == nil {
 		return fmt.Errorf("epoch not found in zion?")
 	}
+	log.Info("zion GetCurrentEpochInfo", "epoch id", epoch.ID.Uint64())
+
+	//debug
+	anchorHeight, err := ps.SDK().Node().GetLatestHeight()
+	if err != nil {
+		return
+	}
+	anchorHeader, err := ps.SDK().Node().HeaderByNumber(context.Background(), big.NewInt(int64(anchorHeight-1)))
+	fmt.Printf("anchorHeader: %+v\n", *anchorHeader)
+	//
 
 	sub, err := ChainSubmitter(chainID)
 	if err != nil {
@@ -150,24 +160,30 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if err != nil {
 		return
 	}
+	log.Info("", "chain", chainID, "CurEpochStartHeight", height)
 	if height == 0 {
+		fmt.Printf("height=%d\n", height)
 		info, err := lis.EpochById(epoch.ID.Uint64())
 		if err != nil {
+			log.Error("lis.EpochById failed", "err", err)
 			return err
 		}
 
 		eccmAbi, err := abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
 		if err != nil {
+			log.Error("abi.JSON failed", "err", err)
 			return err
 		}
 
 		data, err := eccmAbi.Pack("initGenesisBlock", info.Header)
 		if err != nil {
+			log.Error("eccmAbi.Pack failed", "err", err)
 			return err
 		}
 
 		hash, err := sub.(*eth.Submitter).Send(common.HexToAddress(ccm), big.NewInt(0), 0, nil, nil, data)
 		if err != nil {
+			log.Error("Send failed", "err", err)
 			return err
 		}
 		log.Info("Send tx for initGenesisBlock", "chain", chainID, "hash", hash)

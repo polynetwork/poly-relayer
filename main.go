@@ -419,8 +419,8 @@ func main() {
 						Usage: "blocks to wait",
 					},
 					&cli.StringFlag{
-						Name:  "ccm",
-						Usage: "ccm data address",
+						Name:  "ccd",
+						Usage: "ccd address",
 					},
 					&cli.StringFlag{
 						Name:  "name",
