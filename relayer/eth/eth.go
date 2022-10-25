@@ -261,7 +261,14 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
 		if err == nil {
-			err = s.SubmitTx(tx)
+			if tx.DstHash != "" {
+				_, isPending, _ := s.sdk.Node().TransactionByHash(s.Context, common.HexToHash(tx.DstHash))
+				if !isPending {
+					err = s.SubmitTx(tx)
+				}
+			} else {
+				err = s.SubmitTx(tx)
+			}
 		}
 		if err != nil {
 			log.Error("Process poly tx error", "chain", s.name, "poly_hash", tx.PolyHash, "err", err)
