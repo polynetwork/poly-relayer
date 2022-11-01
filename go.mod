@@ -19,7 +19,7 @@ require (
 	github.com/polynetwork/bridge-common v0.0.36-zeta
 	github.com/polynetwork/poly v1.3.1
 	github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4
-	github.com/portto/aptos-go-sdk v0.0.0-20220923072903-ff01c1b3e3dc
+	github.com/portto/aptos-go-sdk v0.0.0-20221031095136-21bd4a704b90
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect

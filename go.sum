@@ -881,8 +881,9 @@ github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4 h1:jjBIPfj
 github.com/polynetwork/poly-go-sdk v0.0.0-20210114035303-84e1615f4ad4/go.mod h1:19WVxn2sLemZZgYFJh+AIC57WGLu1D0Q8qUTlGQcK+0=
 github.com/polynetwork/poly-io-test v0.0.0-20200819093740-8cf514b07750 h1:deB0JDwuU95U36gnOjBXHGihUenU6/mLK0MSGBb/UxU=
 github.com/polynetwork/poly-io-test v0.0.0-20200819093740-8cf514b07750/go.mod h1:Y/xz9uHdO0HPz0p+x0bZxNuo1ufVcln3dDjmchSUgso=
-github.com/portto/aptos-go-sdk v0.0.0-20220923072903-ff01c1b3e3dc h1:AQPOEWFse5FgJvJ1qSuUjiMAbTkxYhXmmswT3L0cxjU=
 github.com/portto/aptos-go-sdk v0.0.0-20220923072903-ff01c1b3e3dc/go.mod h1:RJ8svHe+js7bzxT9TOu0+QUYFRknhVRdKIyDnj32JOc=
+github.com/portto/aptos-go-sdk v0.0.0-20221031095136-21bd4a704b90 h1:OaeyR1bDfWl7lOHidoJyoe4fJyZmEoWyMG6sDHo/DoM=
+github.com/portto/aptos-go-sdk v0.0.0-20221031095136-21bd4a704b90/go.mod h1:8+XTYv0iwHE5fjS8G6231LUhy2GYwl2BTlzxIqjIxyU=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/posener/complete v1.2.3/go.mod h1:WZIdtGGp+qx0sLrYKtIRAruyNpv6hFCicSgv7Sy7s/s=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
