@@ -19,6 +19,7 @@ import (
 	"github.com/polynetwork/poly/common"
 	"github.com/portto/aptos-go-sdk/models"
 	"golang.org/x/crypto/sha3"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -268,16 +269,6 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		tran.SetChainID(mainnetChainID)
 	}
 	tran.SetSender(address)
-	//tran.SetPayload(models.ScriptPayload{
-	//	Code: fileBytes,
-	//	Arguments: []models.TransactionArgument{
-	//		models.TxArgU8Vector{Bytes: proof},
-	//		models.TxArgU8Vector{Bytes: rawHeader},
-	//		models.TxArgU8Vector{Bytes: headerProof},
-	//		models.TxArgU8Vector{Bytes: anchor},
-	//		models.TxArgU8Vector{Bytes: headerSig},
-	//	},
-	//})
 
 	contractAddr, _ := models.HexToAccountAddress(s.ccm)
 	coinTypeTag, err := getAptosCoinTypeTag(tx.ToAssetAddress)
@@ -287,9 +278,6 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	fmt.Printf("getAptosCoinTypeTag result: %+v\n", coinTypeTag)
 
 	functionName := "relay_unlock_tx"
-	//if base.ENV == "testnet" {
-	//	functionName = "realy_unlock_tx"
-	//}
 
 	tran.SetPayload(models.EntryFunctionPayload{
 		Module: models.Module{
@@ -307,15 +295,45 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		},
 	})
 
-	tran.SetExpirationTimestampSecs(uint64(time.Now().
-		Add(3 * time.Minute).Unix())).
-		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(50000)).
-		SetSequenceNumber(accountInfo.SequenceNumber)
+	tran.SetExpirationTimestampSecs(uint64(time.Now().Add(2 * time.Minute).Unix()))
+	tran.SetSequenceNumber(accountInfo.SequenceNumber)
+
+	err = s.SimulateTransaction(&tran, priv)
+	if err != nil {
+		return err
+	}
+
+	msgBytes, err := tran.GetSigningMessage()
+	if err != nil {
+		return fmt.Errorf("aptos GetSigningMessage error: %s", err)
+	}
+	signature := ed25519.Sign(priv, msgBytes)
+	tran.SetAuthenticator(models.TransactionAuthenticatorEd25519{
+		PublicKey: priv.Public().(ed25519.PublicKey),
+		Signature: signature,
+	})
+
 	if tran.Error() != nil {
 		return fmt.Errorf("compose aptos transaction failed. err: %v", err)
 	}
 
+	computedHash, err := tran.GetHash()
+	if err != nil {
+		return fmt.Errorf("aptos GetHash error: %s", err)
+	}
+	log.Info("aptos", "tx computedHash", computedHash)
+
+	rawTx, err := s.sdk.Node().SubmitTransaction(ctx, tran.UserTransaction)
+	if err != nil {
+		return fmt.Errorf("aptos SubmitTransaction error: %s", err)
+	}
+
+	log.Info("aptos", "script payload tx hash", rawTx.Hash)
+
+	return
+}
+
+func (s *Submitter) SimulateTransaction(tran *models.Transaction, priv ed25519.PrivateKey) error {
 	msgBytes, err := tran.GetSigningMessage()
 	if err != nil {
 		return fmt.Errorf("aptos GetSigningMessage error: %s", err)
@@ -326,28 +344,27 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		PublicKey: priv.Public().(ed25519.PublicKey),
 		Signature: signature,
 	})
-	computedHash, err := tran.GetHash()
-	if err != nil {
-		return fmt.Errorf("aptos GetHash error: %s", err)
-	}
-	log.Info("aptos", "tx computedHash", computedHash)
 
-	simulateTxResp, err := s.sdk.Node().SimulateTransaction(ctx, tran.UserTransaction, true, true)
-	if err != nil {
+	simulateTxResp, err := s.sdk.Node().SimulateTransaction(context.Background(), tran.UserTransaction, true, true)
+	fmt.Printf("simulateTxResp: %+v\n", simulateTxResp)
+	if err != nil || len(simulateTxResp) == 0 {
 		return fmt.Errorf("aptos SimulateTransaction error: %s", err)
 	}
-	// simulateTxResp: GasUnitPrice:100 GasUsed:1454 SetMaxGasAmount // todo estimate gas limit
 
-	fmt.Printf("simulateTxResp: %+v\n", simulateTxResp)
-
-	rawTx, err := s.sdk.Node().SubmitTransaction(ctx, tran.UserTransaction)
-	if err != nil {
-		return fmt.Errorf("aptos SubmitTransaction error: %s", err)
+	simulate := simulateTxResp[0]
+	if !simulate.Success {
+		return fmt.Errorf("aptos SimulateTransaction failed. VmStatus: %s", simulate.VmStatus)
 	}
 
-	log.Info("aptos", "script payload tx hash", rawTx.Hash)
+	tran.SetGasUnitPrice(101)
 
-	return
+	gasUsed, err := strconv.ParseUint(simulate.GasUsed, 10, 32)
+	if err != nil {
+		log.Warn("aptos", "estimate gas limit failed, will use default gas limit. error", err)
+		tran.SetMaxGasAmount(100000)
+	}
+	tran.SetMaxGasAmount(uint64(float32(gasUsed) * 1.5))
+	return nil
 }
 
 func getAptosCoinTypeTag(toAssetAddress string) (models.TypeTag, error) {
