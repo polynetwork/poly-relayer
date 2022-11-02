@@ -235,14 +235,14 @@ LOOP:
 		}
 		marshal, _ := json.Marshal(epoch)
 		log.Info("epoch sync", "chain", l.name, "startHeight", startHeight, "zion current epoch", string(marshal))
-		if epoch == nil || epoch.StartHeight.Uint64()+1 <= startHeight || epoch.ID.Uint64() < 2 {
+		if epoch == nil || epoch.StartHeight.Uint64()+1 < startHeight || epoch.ID.Uint64() < 2 {
 			continue
 		}
 
 		id := epoch.ID.Uint64()
 		log.Info("Fetched latest epoch info", "chain", l.config.ChainId, "id", id, "start_height", epoch.StartHeight, "dst_epoch_height", startHeight)
 
-		for id > 1 {
+		for id > 0 {
 			info, err := l.EpochById(id)
 			if err != nil {
 				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id, "err", err)
