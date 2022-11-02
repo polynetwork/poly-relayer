@@ -19,6 +19,7 @@ package relayer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -100,6 +101,8 @@ LOOP:
 			log.Error("Failed to fetch epoch update", "chain", h.name)
 			continue
 		}
+		marshal, _ := json.Marshal(epochs)
+		log.Info("epoch update", "epochs", string(marshal))
 
 		txs := []*msg.Tx{}
 		for _, epoch := range epochs {

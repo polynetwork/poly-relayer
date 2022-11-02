@@ -577,16 +577,20 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 			log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
 			err = s.submit(tx)
 			if err == nil {
-				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
+				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash.String())
 				continue
 			}
-			block += 1
+			//block += 1
+			block = height + 1
 			if err == msg.ERR_TX_PENDING {
-				block += 69
+				block = height + 69
 			}
 			switch s.config.ChainId {
-			case base.BSC, base.HECO, base.GOERLI:
-				block += 50
+			case base.BSC, base.HECO:
+				block = height + 50
+			case base.ETH, base.GOERLI:
+				block = height + 10
+
 			}
 			tx.Attempts++
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block, "attempts", tx.Attempts)

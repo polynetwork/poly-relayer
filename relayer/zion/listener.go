@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 
 	"math/big"
@@ -232,6 +233,8 @@ LOOP:
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
+		marshal, _ := json.Marshal(epoch)
+		log.Info("epoch sync", "chain", l.name, "startHeight", startHeight, "zion current epoch", string(marshal))
 		if epoch == nil || epoch.StartHeight.Uint64()+1 <= startHeight || epoch.ID.Uint64() < 2 {
 			continue
 		}
@@ -245,6 +248,8 @@ LOOP:
 				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id, "err", err)
 				continue LOOP
 			}
+			marshal, _ := json.Marshal(info)
+			log.Info("EpochById", "id", id, "epoch", string(marshal))
 			if info.Height+1 <= startHeight {
 				l.lastEpoch = epoch.ID.Uint64()
 				break
