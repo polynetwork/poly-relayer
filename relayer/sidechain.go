@@ -188,7 +188,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 		}
 		log.Info("Send tx for initGenesisBlock", "chain", chainID, "hash", hash)
 	} else if sync {
-		epochs, err := lis.EpochUpdate(context.Background(), height)
+		epochs, err := lis.EpochUpdate(context.Background(), 0)
 		if err != nil {
 			return err
 		}
