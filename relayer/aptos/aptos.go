@@ -116,21 +116,30 @@ func (s *Submitter) run(wallet *wallet.AptosWallet, mq bus.TxBus, delay bus.Dela
 				continue
 			}
 			tx.Attempts++
-			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) {
-				tsp := time.Now().Unix() + 60*3
+			if errors.Is(err, msg.ERR_SEQUENCE_NUMBER_INVALID) {
+				tsp := time.Now().Unix() + 60
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
-			} else if errors.Is(err, msg.ERR_FEE_CHECK_FAILURE) {
-				tsp := time.Now().Unix() + 10
+			} else if errors.Is(err, msg.ERR_LOW_BALANCE) {
+				tsp := time.Now().Unix() + 60*10
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else if errors.Is(err, msg.ERR_COIN_STORE_NOT_PUBLISHED) {
+				tsp := time.Now().Unix() + 60*10
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+			} else if errors.Is(err, msg.ERR_TREASURY_NOT_EXIST) {
+				tsp := time.Now().Unix() + 60*10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
-				// todo analyze which err need to retry
-				//tsp := time.Now().Unix() + 60
-				//bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
-				//bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
+				tsp := time.Now().Unix() + 60*3
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
-			// todo verify a successful submit
+
+			// Retry to verify a successful submit
+			tsp := time.Now().Unix() + 60*3
+			if tx.DstHash != "" {
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
+			}
 		}
 	}
 }
@@ -188,10 +197,6 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	txJson, _ := json.Marshal(tx)
 	fmt.Printf("tx: %s\n", string(txJson))
 
-	fmt.Printf("tx.MerkleValue: %+v\n", tx.MerkleValue)
-	fmt.Printf("tx.MerkleValue.MakeTxParam: %+v\n", tx.MerkleValue.MakeTxParam)
-	fmt.Printf("tx.Param: %+v\n", tx.Param)
-
 	argsZS := common.NewZeroCopySource(tx.MerkleValue.MakeTxParam.Args)
 	argsAssetAddress, eof := argsZS.NextVarBytes()
 	if eof {
@@ -199,26 +204,6 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	}
 	fmt.Println("argsAssetAddress=", string(argsAssetAddress))
 	tx.ToAssetAddress = string(argsAssetAddress)
-
-	//proof, err := hex.DecodeString(tx.AuditPath)
-	//if err != nil {
-	//	return fmt.Errorf("%s failed to decode audit path %v", s.name, err)
-	//}
-	//
-	//rawHeader := tx.PolyHeader.GetMessage()
-	//
-	//headerProof, err := hex.DecodeString(tx.AnchorProof)
-	//if err != nil {
-	//	return fmt.Errorf("%s processPolyTx decode anchor proof hex error %v", s.name, err)
-	//}
-	//
-	//var anchor []byte
-	//if tx.AnchorHeader != nil {
-	//	anchor = tx.AnchorHeader.GetMessage()
-	//}
-	//
-	//headerSig := tx.PolySigs
-
 	return
 }
 
@@ -242,11 +227,6 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	}
 
 	headerSig := tx.PolySigs
-
-	//fileBytes, err := os.ReadFile("./wrapper_v1.mv")
-	//if err != nil {
-	//	return fmt.Errorf("read contract mv file error: %v", err)
-	//}
 
 	seed, err := hex.DecodeString(s.wallet.PrivateKey)
 	if err != nil {
@@ -298,9 +278,14 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	tran.SetExpirationTimestampSecs(uint64(time.Now().Add(2 * time.Minute).Unix()))
 	tran.SetSequenceNumber(accountInfo.SequenceNumber)
 
-	err = s.SimulateTransaction(&tran, priv)
+	isExecuted, err := s.SimulateTransaction(&tran, priv, tx.DstHash)
 	if err != nil {
 		return err
+	}
+	if isExecuted {
+		log.Info("ProcessPolyTx dst tx already relayed", "chain", s.name, "poly_hash", tx.PolyHash, "dst_hash", tx.DstHash)
+		tx.DstHash = ""
+		return nil
 	}
 
 	msgBytes, err := tran.GetSigningMessage()
@@ -314,7 +299,7 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	})
 
 	if tran.Error() != nil {
-		return fmt.Errorf("compose aptos transaction failed. err: %v", err)
+		return fmt.Errorf("compose aptos transaction failed. err: %v", tran.Error())
 	}
 
 	computedHash, err := tran.GetHash()
@@ -325,18 +310,38 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 
 	rawTx, err := s.sdk.Node().SubmitTransaction(ctx, tran.UserTransaction)
 	if err != nil {
-		return fmt.Errorf("aptos SubmitTransaction error: %s", err)
+		info := err.Error()
+		if strings.Contains(info, "SEQUENCE_NUMBER_TOO_OLD") || strings.Contains(info, "SEQUENCE_NUMBER_TOO_NEW") {
+			err = msg.ERR_SEQUENCE_NUMBER_INVALID
+		} else if strings.Contains(info, "INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE") {
+			err = msg.ERR_LOW_BALANCE
+		} else if strings.Contains(info, "ECOIN_STORE_NOT_PUBLISHED") {
+			err = msg.ERR_COIN_STORE_NOT_PUBLISHED
+		} else if strings.Contains(info, "ETREASURY_NOT_EXIST") {
+			err = msg.ERR_TREASURY_NOT_EXIST
+		}
+	} else {
+		log.Info("aptos", "script payload tx hash", rawTx.Hash)
+		tx.DstHash = rawTx.Hash
 	}
-
-	log.Info("aptos", "script payload tx hash", rawTx.Hash)
 
 	return
 }
 
-func (s *Submitter) SimulateTransaction(tran *models.Transaction, priv ed25519.PrivateKey) error {
+func (s *Submitter) SimulateTransaction(tran *models.Transaction, priv ed25519.PrivateKey, hash string) (isExecuted bool, err error) {
+	if hash != "" {
+		tx, err := s.sdk.Node().GetTransactionByHash(context.Background(), hash)
+		if err != nil {
+			return false, fmt.Errorf("aptos GetTransactionByHash failed. err: %v", err)
+		}
+		if tx.Success {
+			return true, nil
+		}
+	}
+
 	msgBytes, err := tran.GetSigningMessage()
 	if err != nil {
-		return fmt.Errorf("aptos GetSigningMessage error: %s", err)
+		return false, fmt.Errorf("aptos GetSigningMessage error: %s", err)
 	}
 	signature := ed25519.Sign(priv, msgBytes)
 
@@ -346,29 +351,37 @@ func (s *Submitter) SimulateTransaction(tran *models.Transaction, priv ed25519.P
 	})
 
 	simulateTxResp, err := s.sdk.Node().SimulateTransaction(context.Background(), tran.UserTransaction, true, true)
-	fmt.Printf("simulateTxResp: %+v\n", simulateTxResp)
+	//fmt.Printf("simulateTxResp: %+v\n", simulateTxResp)
 	if err != nil || len(simulateTxResp) == 0 {
-		return fmt.Errorf("aptos SimulateTransaction error: %s", err)
+		return false, fmt.Errorf("aptos SimulateTransaction error: %s", err)
 	}
 
 	simulate := simulateTxResp[0]
 	if !simulate.Success {
-		return fmt.Errorf("aptos SimulateTransaction failed. VmStatus: %s", simulate.VmStatus)
+		if strings.Contains(simulate.VmStatus, "EALREADY_EXECUTED") {
+			return true, nil
+		} else {
+			return false, fmt.Errorf("aptos SimulateTransaction failed. VmStatus: %s", simulate.VmStatus)
+		}
 	}
 
-	tran.SetGasUnitPrice(101)
+	tran.SetGasUnitPrice(uint64(101))
 
 	gasUsed, err := strconv.ParseUint(simulate.GasUsed, 10, 32)
 	if err != nil {
 		log.Warn("aptos", "estimate gas limit failed, will use default gas limit. error", err)
-		tran.SetMaxGasAmount(100000)
+		tran.SetMaxGasAmount(uint64(100000))
 	}
 	tran.SetMaxGasAmount(uint64(float32(gasUsed) * 1.5))
-	return nil
+	return false, nil
 }
 
 func getAptosCoinTypeTag(toAssetAddress string) (models.TypeTag, error) {
 	parts := strings.Split(toAssetAddress, "<")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)
+	}
+
 	parts = strings.Split(strings.TrimSuffix(parts[1], ">"), "::")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)

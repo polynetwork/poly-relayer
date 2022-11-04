@@ -99,7 +99,7 @@ type Tx struct {
 	DstAmount               *big.Int              `json:"-"`
 
 	// aptos
-	ToAssetAddress string
+	ToAssetAddress string `json:",omitempty"`
 
 	Extra interface{} `json:"-"`
 }
