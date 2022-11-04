@@ -136,7 +136,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if epoch == nil {
 		return fmt.Errorf("epoch not found in zion?")
 	}
-	log.Info("zion GetCurrentEpochInfo", "epoch id", epoch.ID.Uint64())
+	log.Info("zion GetCurrentEpochInfo", "epoch id", epoch.ID.Uint64(), "epoch start height", epoch.StartHeight.Uint64(), "epoch end height", epoch.EndHeight.Uint64())
 
 	//debug
 	anchorHeight, err := ps.SDK().Node().GetLatestHeight()
@@ -188,7 +188,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 		}
 		log.Info("Send tx for initGenesisBlock", "chain", chainID, "hash", hash)
 	} else if sync {
-		epochs, err := lis.EpochUpdate(context.Background(), 0)
+		epochs, err := lis.EpochUpdate(context.Background(), height)
 		if err != nil {
 			return err
 		}
