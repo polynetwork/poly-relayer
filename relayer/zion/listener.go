@@ -277,14 +277,9 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		Height:  epoch.StartHeight.Uint64(),
 	}
 
-	height := info.Height
-	if height == 0 {
-		fmt.Println("change height from 0 to 200000")
-		height = 200000
-	}
-	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(height)))
+	header, err := l.sdk.Node().HeaderByNumber(context.Background(), big.NewInt(int64(info.Height)))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to fetch header at height %v, err %v", height, err)
+		return nil, fmt.Errorf("Failed to fetch header at height %v, err %v", info.Height, err)
 	}
 
 	log.Info("originHeader", "id", id, "header.Extra", hex.EncodeToString(header.Extra))
