@@ -500,6 +500,23 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			continue
 		}
 		for _, tx := range txs {
+			txParam, err := msg.DecodeTxParam(tx.Value)
+			if err != nil {
+				log.Error("Tx vote DecodeTxParam failed", "src hash", tx.Hash, "err", err)
+				continue
+			}
+
+			// Check done tx existence
+			done, err := s.sdk.Node().CheckDone(nil, tx.ChainID, txParam.CrossChainID)
+			if err != nil {
+				log.Error("Tx vote check done failed", "src hash", tx.Hash, "err", err)
+				continue
+			}
+			if done {
+				log.Info("Tx already imported", "src_hash", tx.Hash)
+				continue
+			}
+
 			param := ccom.EntranceParam{
 				SourceChainID: tx.ChainID,
 				Height:        uint32(tx.Height),
