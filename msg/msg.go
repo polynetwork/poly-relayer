@@ -79,7 +79,7 @@ type PolyEpoch struct {
 	AccountProofHex string `json:",omitempty"`
 	StorageProofHex string `json:",omitempty"`
 	EpochHex        string `json:",omitempty"`
-	Header          []byte
+	Header          []byte `json:"-"`
 	Seal            []byte `json:"-"`
 	AccountProof    []byte `json:"-"`
 	StorageProof    []byte `json:"-"`

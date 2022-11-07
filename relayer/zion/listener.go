@@ -233,8 +233,8 @@ LOOP:
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
-		marshal, _ := json.Marshal(epoch)
-		log.Info("epoch sync", "chain", l.name, "startHeight", startHeight, "zion current epoch", string(marshal))
+		//marshal, _ := json.Marshal(epoch)
+		//log.Info("epoch sync", "chain", l.name, "startHeight", startHeight, "zion current epoch", string(marshal))
 		if epoch == nil || epoch.StartHeight.Uint64()+1 <= startHeight || epoch.ID.Uint64() < 2 {
 			continue
 		}
