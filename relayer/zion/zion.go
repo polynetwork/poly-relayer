@@ -370,7 +370,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 			continue
 		}
 		if len(headers) == 0 {
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 5)
 			continue
 		}
 
@@ -508,6 +508,12 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			log.Error("Failed to load txs from store", "err", err)
 			continue
 		}
+
+		if len(txs) == 0 {
+			time.Sleep(time.Second * 5)
+			continue
+		}
+
 		for _, tx := range txs {
 			txParam, err := msg.DecodeTxParam(tx.Value)
 			if err != nil {
