@@ -253,13 +253,16 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 			if tx.Time > uint64(now-600) {
 				continue
 			}
+			needRetry := true
+			hash := tx.Hash
 			height, pending, err := s.sdk.Node().GetTxHeight(context.Background(), tx.Hash)
 			if err != nil {
 				log.Error("Failed to check tx receipt", "hash", tx.Hash, "err", err)
 			} else if height > 0 {
-				bus.SafeCall(s.Context, tx.Hash, "remove tx item failure", func() error {
-					return store.DeleteData(tx)
-				})
+				needRetry = false
+				//bus.SafeCall(s.Context, tx.Hash, "remove tx item failure", func() error {
+				//	return store.DeleteData(tx)
+				//})
 			} else if !pending {
 				hash, err := s.wallet.SendWithAccount(account, tx.To, big.NewInt(0), 0, nil, nil, tx.Data)
 				// TODO: detect already done tx here
@@ -267,12 +270,18 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 					log.Error("Failed to send tx during check", "err", err, "hash", hash)
 					continue
 				}
-				bus.SafeCall(s.Context, tx.Hash, "remove tx item failure", func() error {
-					return store.DeleteData(tx)
-				})
+				tx.Hash = msg.HexToHash(hash)
 				log.Info("Send tx vote during check", "hash", hash, "chain", s.name)
-				bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
-					return store.InsertData(msg.HexToHash(hash), tx.Data, tx.To)
+			}
+
+			// Delete old data
+			bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
+				return store.DeleteData(tx)
+			})
+			if needRetry {
+				// Insert new data for the next retry
+				bus.SafeCall(s.Context, tx.Hash, "insert data item failure", func() error {
+					return store.InsertData(tx.Hash, tx.Data, tx.To)
 				})
 			}
 		}
@@ -513,7 +522,10 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 				continue
 			}
 			if done {
-				log.Info("Tx already imported", "src_hash", tx.Hash)
+				log.Info("Tx already imported", "src_hash", tx.Hash.Hex())
+				bus.SafeCall(s.Context, tx.Hash.Hex(), "remove tx item failure", func() error {
+					return store.DeleteTxs(tx)
+				})
 				continue
 			}
 
