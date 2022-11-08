@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/urfave/cli/v2"
 
@@ -493,7 +496,6 @@ func main() {
 			},
 		},
 	}
-
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatal("Start error", "err", err)
@@ -501,6 +503,7 @@ func main() {
 }
 
 func start(c *cli.Context) error {
+
 	config, err := config.New(c.String("config"))
 	if err != nil {
 		log.Error("Failed to parse config file", "err", err)
@@ -521,6 +524,28 @@ func start(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	status := 0
 	err = relayer.Start(ctx, wg, config)
+
+	// pprof analyse
+	f, err := os.Create("pprof")
+	if err != nil {
+		log.Fatal("could not create CPU profile: ", err)
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("could not start CPU profile: ", err)
+	}
+
+	ticker := time.NewTicker(2 * time.Minute)
+PPROF:
+	for {
+		select {
+		case <-ticker.C:
+			fmt.Println("stop pprof")
+			pprof.StopCPUProfile()
+			break PPROF
+		default:
+		}
+	}
+
 	if err == nil {
 		sc := make(chan os.Signal, 10)
 		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGSTOP, syscall.SIGQUIT)
