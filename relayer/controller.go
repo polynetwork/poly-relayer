@@ -122,14 +122,14 @@ func (c *Controller) composeDstTx(hash string) (data interface{}, err error) {
 	case base.ONT:
 		payload["data"] = tx.Extra
 	case base.APTOS:
-		aptosPayload, err := getAptosUnlockPayload(tx)
-		if err != nil {
-			err = fmt.Errorf("get aptos paylod err %v", err)
+		aptosPayload, e := getAptosUnlockPayload(tx)
+		if e != nil {
+			err = fmt.Errorf("get aptos paylod err %v", e)
 			return
 		}
-		marshal, err := json.Marshal(aptosPayload)
-		if err != nil {
-			err = fmt.Errorf("marshal aptos paylod err %v", err)
+		marshal, e := json.Marshal(aptosPayload)
+		if e != nil {
+			err = fmt.Errorf("marshal aptos paylod err %v", e)
 			return
 		}
 		payload["data"] = string(marshal)
