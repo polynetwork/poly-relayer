@@ -40,7 +40,7 @@ type Submitter struct {
 	wallet *wallet.AptosWallet
 }
 
-func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
+func (s *Submitter) Init(config *config.SubmitterConfig, polyConfig *config.PolySubmitterConfig) (err error) {
 	s.config = config
 	s.sdk, err = aptos.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err != nil {
@@ -75,7 +75,7 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer) error {
+func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer, sequence bus.Sequence) error {
 	fmt.Printf("Submitter=%+v\n", s)
 	s.Context = ctx
 	s.wg = wg
@@ -378,6 +378,9 @@ func (s *Submitter) SimulateTransaction(tran *models.Transaction, priv ed25519.P
 
 func getAptosCoinTypeTag(toAssetAddress string) (models.TypeTag, error) {
 	parts := strings.Split(toAssetAddress, "<")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)
+	}
 	parts = strings.Split(strings.TrimSuffix(parts[1], ">"), "::")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)

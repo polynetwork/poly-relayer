@@ -19,9 +19,12 @@ package relayer
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/msg"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
@@ -51,6 +54,15 @@ func SetupController() (err error) {
 type Controller struct {
 	listener  *po.Listener
 	submitter *po.Submitter
+}
+
+type AptosUnlockPayload struct {
+	TypeArgument string
+	Proof        []byte
+	RawHeader    []byte
+	HeaderProof  []byte
+	Anchor       []byte
+	HeaderSig    []byte
 }
 
 func (c *Controller) SubmitTx(w http.ResponseWriter, r *http.Request) {
@@ -109,9 +121,56 @@ func (c *Controller) composeDstTx(hash string) (data interface{}, err error) {
 	switch tx.DstChainId {
 	case base.ONT:
 		payload["data"] = tx.Extra
+	case base.APTOS:
+		aptosPayload, err := getAptosUnlockPayload(tx)
+		if err != nil {
+			err = fmt.Errorf("get aptos paylod err %v", err)
+			return
+		}
+		marshal, err := json.Marshal(aptosPayload)
+		if err != nil {
+			err = fmt.Errorf("marshal aptos paylod err %v", err)
+			return
+		}
+		payload["data"] = string(marshal)
 	default:
 		payload["data"] = hex.EncodeToString(tx.DstData)
 	}
 	data = payload
 	return
+}
+
+func getAptosUnlockPayload(tx *msg.Tx) (*AptosUnlockPayload, error) {
+	// tx.ToAssetAddress: 0x1::coin::Coin<0xf12a4ff673797d20307f081103186c6a725a6c8609a551bdc13ee30862f2ce15::nb::NBCoin>
+	paylod := new(AptosUnlockPayload)
+	parts := strings.Split(tx.ToAssetAddress, "<")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid toAssetAddress: %s", tx.ToAssetAddress)
+	}
+
+	paylod.TypeArgument = strings.TrimSuffix(parts[1], ">")
+
+	proof, err := hex.DecodeString(tx.AuditPath)
+	if err != nil {
+		return nil, fmt.Errorf("%s failed to decode audit path %v", err)
+	}
+	paylod.Proof = proof
+
+	paylod.RawHeader = tx.PolyHeader.GetMessage()
+
+	headerProof, err := hex.DecodeString(tx.AnchorProof)
+	if err != nil {
+		return nil, fmt.Errorf("%s processPolyTx decode anchor proof hex error %v", err)
+	}
+	paylod.HeaderProof = headerProof
+
+	var anchor []byte
+	if tx.AnchorHeader != nil {
+		anchor = tx.AnchorHeader.GetMessage()
+	}
+	paylod.Anchor = anchor
+
+	paylod.HeaderSig = tx.PolySigs
+
+	return paylod, nil
 }
