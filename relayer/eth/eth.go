@@ -224,7 +224,7 @@ func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
 				err = fmt.Errorf("Failed to find the transaction %v", err)
 				return
 			}
-			log.Warn("Tx wait confirm timeout", "chain", s.name, "hash", hash, "pending", pending)
+			log.Warn("Tx wait confirm timeout", "chain", s.name, "hash", hash, "pending", pending, "err", err)
 		}
 
 	}
@@ -349,7 +349,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				}
 			}
 		} else {
-			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
+			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash.Hex(), "chain", s.name, "dst_hash", tx.DstHash)
 			// Retry to verify a successful submit
 			after := base.CheckAfter(s.config.ChainId)
 			if after > 0 && tx.DstHash != "" {

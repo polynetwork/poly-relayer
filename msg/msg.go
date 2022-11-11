@@ -30,7 +30,7 @@ var TxParam abi.Arguments
 
 var (
 	HexToAddress = common.HexToAddress
-	HexToHash = common.HexToHash
+	HexToHash    = common.HexToHash
 )
 
 func init() {
@@ -152,7 +152,7 @@ type Tx struct {
 	DstData                 []byte                `json:"-"`
 	DstProxy                string                `json:",omitempty"`
 	SkipCheckFee            bool                  `json:",omitempty"`
-	CheckFeeOff             bool                  `json:"-"` 			// CheckFee disabled in submitter
+	CheckFeeOff             bool                  `json:"-"` // CheckFee disabled in submitter
 	Skipped                 bool                  `json:",omitempty"`
 	PaidGas                 float64               `json:",omitempty"`
 	CheckFeeStatus          bridge.CheckFeeStatus `json:",omitempty"`
@@ -363,7 +363,7 @@ func RlpEncodeStrings(strs []string) ([]byte, error) {
 	return rlp.EncodeToBytes(bytes)
 }
 
-func FilterLog(abi abi.ABI, address common.Address,  event string, data *types.Log, out interface{}) bool {
+func FilterLog(abi abi.ABI, address common.Address, event string, data *types.Log, out interface{}) bool {
 	if data.Address != address {
 		return false
 	}

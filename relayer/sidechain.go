@@ -136,7 +136,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 	if epoch == nil {
 		return fmt.Errorf("epoch not found in zion?")
 	}
-	log.Info("zion GetCurrentEpochInfo", "epoch id", epoch.ID.Uint64())
+	log.Info("zion GetCurrentEpochInfo", "epoch id", epoch.ID.Uint64(), "epoch start height", epoch.StartHeight.Uint64(), "epoch end height", epoch.EndHeight.Uint64())
 
 	//debug
 	anchorHeight, err := ps.SDK().Node().GetLatestHeight()
