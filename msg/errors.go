@@ -32,6 +32,10 @@ var (
 	ERR_LOW_BALANCE           = errors.New("Insufficient balance")
 	ERR_PAID_FEE_TOO_LOW      = errors.New("Paid fee too low")
 
-	ERR_TX_VOILATION          = errors.New("Possible cross chain voilation")
-	ERR_TX_PROOF_MISSING      = errors.New("Possible cross chain proof missing")
+	ERR_TX_VOILATION     = errors.New("Possible cross chain voilation")
+	ERR_TX_PROOF_MISSING = errors.New("Possible cross chain proof missing")
+
+	ERR_COIN_STORE_NOT_PUBLISHED = errors.New("Account hasn't registered CoinStore for CoinType")
+	ERR_TREASURY_NOT_EXIST       = errors.New("Asset not exist in lock proxy")
+	ERR_SEQUENCE_NUMBER_INVALID  = errors.New("Sequence number is invalid")
 )
