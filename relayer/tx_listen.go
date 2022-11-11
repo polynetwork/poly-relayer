@@ -287,7 +287,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
-				log.Info("Found poly tx", "hash", tx.PolyHash)
+				log.Info("Found poly tx", "hash", tx.PolyHash.Hex())
 				bus.SafeCall(h.Context, tx, "push to target chain tx bus", func() error {
 					return h.bus.PushToChain(context.Background(), tx)
 				})
@@ -320,18 +320,18 @@ func (h *PolyTxSyncHandler) checkDelayed() (err error) {
 		if tx != nil && score > 0 {
 			skip, _ := h.skip.CheckSkip(h.Context, tx)
 			if skip {
-				log.Warn("Skipping tx for marked to skip", "poly_hash", tx.PolyHash)
+				log.Warn("Skipping tx for marked to skip", "poly_hash", tx.PolyHash.Hex())
 				continue
 			}
 			if score <= time.Now().Unix() {
 				bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
-					log.Info("Pushing back delayed tx", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
+					log.Info("Pushing back delayed tx", "chain", tx.DstChainId, "poly_hash", tx.PolyHash.Hex())
 					return h.bus.PushToChain(context.Background(), tx)
 				})
 				continue
 			} else {
 				bus.SafeCall(h.Context, tx, "push to delay queue", func() error {
-					log.Trace("Pushing back delayed tx for not active yet", "chain", tx.DstChainId, "poly_hash", tx.PolyHash)
+					log.Trace("Pushing back delayed tx for not active yet", "chain", tx.DstChainId, "poly_hash", tx.PolyHash.Hex())
 					return h.queue.Delay(context.Background(), tx, score)
 				})
 			}
@@ -372,7 +372,7 @@ func (h *PolyTxSyncHandler) patchTxs() {
 		if height == 0 && !msg.Empty(tx.PolyHash) {
 			height, err = h.listener.GetTxBlock(tx.PolyHash.Hex())
 			if err != nil {
-				log.Error("Failed to get poly tx block", "hash", tx.PolyHash, "chain", h.config.ChainId)
+				log.Error("Failed to get poly tx block", "hash", tx.PolyHash.Hex(), "chain", h.config.ChainId)
 				continue
 			}
 		}
@@ -391,13 +391,13 @@ func (h *PolyTxSyncHandler) patchTxs() {
 		for _, t := range txs {
 			if msg.Empty(tx.PolyHash) || util.LowerHex(tx.PolyHash.Hex()) == util.LowerHex(t.PolyHash.Hex()) {
 				count++
-				log.Info("Found patch target poly tx", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
+				log.Info("Found patch target poly tx", "hash", t.PolyHash.Hex(), "chain", h.config.ChainId, "height", height)
 				t.CapturePatchParams(tx)
 				bus.SafeCall(h.Context, t, "push to target chain tx bus", func() error {
 					return h.bus.PushToChain(context.Background(), t)
 				})
 			} else {
-				log.Info("Found poly tx in block not targeted", "hash", t.PolyHash, "chain", h.config.ChainId, "height", height)
+				log.Info("Found poly tx in block not targeted", "hash", t.PolyHash.Hex(), "chain", h.config.ChainId, "height", height)
 			}
 		}
 		log.Info("Patching poly txs per request", "count", count)

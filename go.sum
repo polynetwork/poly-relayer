@@ -156,8 +156,9 @@ github.com/deckarep/golang-set v1.7.1/go.mod h1:93vsz/8Wt4joVM7c2AVqh+YRMiUSc14y
 github.com/decred/dcrd/lru v1.0.0/go.mod h1:mxKOwFd7lFjN2GZYsiz/ecgqR6kkYAl+0pz0tEMk218=
 github.com/deepmap/oapi-codegen v1.6.0/go.mod h1:ryDa9AgbELGeB+YEXE1dR53yAjHwFvE9iAUlWl9Al3M=
 github.com/deepmap/oapi-codegen v1.8.2/go.mod h1:YLgSKSDv/bZQB7N4ws6luhozi3cEdRktEqrX88CvjIw=
-github.com/devfans/zion-sdk v0.0.12 h1:Q2cU8gseR87jz2XGiVwqfRYOwz0BbqaDpiwHZMhGPZ0=
 github.com/devfans/zion-sdk v0.0.12/go.mod h1:FvNiMLw6IubOOYQ5waar5hwNV5nNrZ/45EyskL75NoI=
+github.com/devfans/zion-sdk v0.0.22 h1:B/6y3zfoUA/SLJB/3mUGnf2vQDBFRxn+7qpL9ahSYa0=
+github.com/devfans/zion-sdk v0.0.22/go.mod h1:FvNiMLw6IubOOYQ5waar5hwNV5nNrZ/45EyskL75NoI=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-bitstream v0.0.0-20180413035011-3522498ce2c8/go.mod h1:VMaSuZ+SZcx/wljOQKvp5srsbCiKDEb6K2wC4+PiBmQ=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
@@ -558,8 +559,8 @@ github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6J
 github.com/pkg/term v0.0.0-20180730021639-bffc007b7fd5/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/polynetwork/bridge-common v0.0.18-2 h1:ERkYtZ1YNX3m7KmYaCbY8Rgvo+8joAhTgptTbNbdrgo=
-github.com/polynetwork/bridge-common v0.0.18-2/go.mod h1:C6RAvhDBLGItf+EVazsUls+hlaIN8F4eKbNSE6pvjXs=
+github.com/polynetwork/bridge-common v0.0.20-2 h1:W5aMWy9ShpjMGLjE1U6ipofciE9zxIZrGVaujNamMOY=
+github.com/polynetwork/bridge-common v0.0.20-2/go.mod h1:C6RAvhDBLGItf+EVazsUls+hlaIN8F4eKbNSE6pvjXs=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829/go.mod h1:p2iRAGwDERtqlqzRXnrOVns+ignqQo//hLXqYxZYVNs=

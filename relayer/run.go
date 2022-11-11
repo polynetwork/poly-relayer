@@ -86,11 +86,6 @@ func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) 
 	if reflect.ValueOf(conf).IsZero() || !reflect.ValueOf(conf).Elem().FieldByName("Enabled").Interface().(bool) {
 		return
 	}
-	switch chain {
-	case base.OK, base.MATIC, base.HEIMDALL:
-		return nil
-	}
-
 	switch c := conf.(type) {
 	case *config.HeaderSyncConfig:
 		handler = NewHeaderSyncHandler(c)

@@ -253,13 +253,13 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 			if tx.Time > uint64(now-600) {
 				continue
 			}
+			needRetry := true
+			hash := tx.Hash
 			height, pending, err := s.sdk.Node().GetTxHeight(context.Background(), tx.Hash)
 			if err != nil {
 				log.Error("Failed to check tx receipt", "hash", tx.Hash, "err", err)
 			} else if height > 0 {
-				bus.SafeCall(s.Context, tx.Hash, "remove tx item failure", func() error {
-					return store.DeleteData(tx)
-				})
+				needRetry = false
 			} else if !pending {
 				hash, err := s.wallet.SendWithAccount(account, tx.To, big.NewInt(0), 0, nil, nil, tx.Data)
 				// TODO: detect already done tx here
@@ -267,12 +267,18 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 					log.Error("Failed to send tx during check", "err", err, "hash", hash)
 					continue
 				}
-				bus.SafeCall(s.Context, tx.Hash, "remove tx item failure", func() error {
-					return store.DeleteData(tx)
-				})
+				tx.Hash = msg.HexToHash(hash)
 				log.Info("Send tx vote during check", "hash", hash, "chain", s.name)
-				bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
-					return store.InsertData(msg.HexToHash(hash), tx.Data, tx.To)
+			}
+
+			// Delete old data
+			bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
+				return store.DeleteData(tx)
+			})
+			if needRetry {
+				// Insert new data for the next retry
+				bus.SafeCall(s.Context, tx.Hash, "insert data item failure", func() error {
+					return store.InsertData(tx.Hash, tx.Data, tx.To)
 				})
 			}
 		}
@@ -361,7 +367,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 			continue
 		}
 		if len(headers) == 0 {
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 5)
 			continue
 		}
 
@@ -499,7 +505,33 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			log.Error("Failed to load txs from store", "err", err)
 			continue
 		}
+
+		if len(txs) == 0 {
+			time.Sleep(time.Second * 5)
+			continue
+		}
+
 		for _, tx := range txs {
+			txParam, err := msg.DecodeTxParam(tx.Value)
+			if err != nil {
+				log.Error("Tx vote DecodeTxParam failed", "src hash", tx.Hash, "err", err)
+				continue
+			}
+
+			// Check done tx existence
+			done, err := s.sdk.Node().CheckDone(nil, tx.ChainID, txParam.CrossChainID)
+			if err != nil {
+				log.Error("Tx vote check done failed", "src hash", tx.Hash, "err", err)
+				continue
+			}
+			if done {
+				log.Info("Tx already imported", "src_hash", tx.Hash.Hex())
+				bus.SafeCall(s.Context, tx.Hash.Hex(), "remove tx item failure", func() error {
+					return store.DeleteTxs(tx)
+				})
+				continue
+			}
+
 			param := ccom.EntranceParam{
 				SourceChainID: tx.ChainID,
 				Height:        uint32(tx.Height),
@@ -515,7 +547,7 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 				log.Error("Failed to sign param", "err", err)
 				continue
 			}
-			data, err := s.txabi.Pack("importOuterTransfer", tx.ChainID, tx.Height, []byte{}, tx.Value, param.Signature)
+			data, err := s.txabi.Pack("importOuterTransfer", tx.ChainID, uint32(tx.Height), []byte{}, tx.Value, param.Signature)
 			if err != nil {
 				log.Error("Failed to pack data", "err", err)
 				continue
@@ -577,16 +609,20 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 			log.Info("Processing src tx", "src_hash", tx.SrcHash, "src_chain", tx.SrcChainId, "dst_chain", tx.DstChainId)
 			err = s.submit(tx)
 			if err == nil {
-				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
+				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash.String())
 				continue
 			}
-			block += 1
+			//block += 1
+			block = height + 1
 			if err == msg.ERR_TX_PENDING {
-				block += 69
+				block = height + 69
 			}
 			switch s.config.ChainId {
 			case base.BSC, base.HECO:
-				block += 50
+				block = height + 50
+			case base.ETH, base.GOERLI:
+				block = height + 10
+
 			}
 			tx.Attempts++
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block, "attempts", tx.Attempts)
@@ -660,9 +696,9 @@ func (s *Submitter) StartTxVote(
 	if s.vote.Batch == 0 {
 		s.vote.Batch = 1
 	}
-	if s.vote.Buffer == 0 {
-		s.vote.Buffer = 2 * s.sync.Batch
-	}
+	//if s.vote.Buffer == 0 {
+	//	s.vote.Buffer = 2 * s.sync.Batch
+	//}
 	if s.vote.Timeout == 0 {
 		s.vote.Timeout = 1
 	}

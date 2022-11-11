@@ -19,6 +19,7 @@ package relayer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -100,6 +101,8 @@ LOOP:
 			log.Error("Failed to fetch epoch update", "chain", h.name)
 			continue
 		}
+		marshal, _ := json.Marshal(epochs)
+		log.Info("epoch update", "chain", h.name, "epochStartHeight", h.epochStartHeight, "epochs", string(marshal))
 
 		txs := []*msg.Tx{}
 		for _, epoch := range epochs {
@@ -109,7 +112,7 @@ LOOP:
 				DstChainId: h.config.ChainId,
 			})
 		}
-		h.submitter.ProcessEpochs(txs)
+		err = h.submitter.ProcessEpochs(txs)
 		if err != nil {
 			log.Error("Failed to submit epoch change", "chain", h.name, "size", len(txs), "epoch", h.epochStartHeight, "err", err)
 		}
