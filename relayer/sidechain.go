@@ -181,7 +181,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 			return err
 		}
 
-		hash, err := sub.(*eth.Submitter).Send(common.HexToAddress(ccm), big.NewInt(0), 300000, nil, nil, data)
+		hash, err := sub.(*eth.Submitter).Send(common.HexToAddress(ccm), big.NewInt(0), 0, nil, nil, data)
 		if err != nil {
 			log.Error("Send failed", "err", err)
 			return err

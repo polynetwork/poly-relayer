@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 
 	"math/big"
@@ -233,8 +232,6 @@ LOOP:
 			log.Error("Failed to fetch epoch info", "err", err)
 			continue
 		}
-		//marshal, _ := json.Marshal(epoch)
-		//log.Info("epoch sync", "chain", l.name, "startHeight", startHeight, "zion current epoch", string(marshal))
 		if epoch == nil || epoch.StartHeight.Uint64()+1 <= startHeight || epoch.ID.Uint64() < 2 {
 			continue
 		}
@@ -248,9 +245,6 @@ LOOP:
 				log.Error("Failed to fetch epoch by id", "chain", l.config.ChainId, "id", id, "err", err)
 				continue LOOP
 			}
-			marshal, _ := json.Marshal(info)
-			log.Info("EpochById", "id", id, "epoch", string(marshal))
-			log.Info("EpochById", "id", id, "epoch.Header", hex.EncodeToString(info.Header))
 
 			if info.Height+1 <= startHeight {
 				l.lastEpoch = epoch.ID.Uint64()
@@ -282,16 +276,10 @@ func (l *Listener) EpochById(id uint64) (info *msg.PolyEpoch, err error) {
 		return nil, fmt.Errorf("Failed to fetch header at height %v, err %v", info.Height, err)
 	}
 
-	log.Info("originHeader", "id", id, "header.Extra", hex.EncodeToString(header.Extra))
-
-	filteredHeader := types.HotstuffFilteredHeader(header)
-	log.Info("filteredHeader", "id", id, "filteredHeader.Extra", hex.EncodeToString(filteredHeader.Extra))
-
-	info.Header, err = rlp.EncodeToBytes(filteredHeader)
+	info.Header, err = rlp.EncodeToBytes(types.HotstuffFilteredHeader(header))
 	if err != nil {
 		return nil, err
 	}
-	log.Info("rlp encode Header", "id", id, "info.Header", hex.EncodeToString(info.Header))
 
 	extra, err := types.ExtractHotstuffExtra(header)
 	if err != nil {

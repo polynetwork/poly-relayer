@@ -260,9 +260,6 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 				log.Error("Failed to check tx receipt", "hash", tx.Hash, "err", err)
 			} else if height > 0 {
 				needRetry = false
-				//bus.SafeCall(s.Context, tx.Hash, "remove tx item failure", func() error {
-				//	return store.DeleteData(tx)
-				//})
 			} else if !pending {
 				hash, err := s.wallet.SendWithAccount(account, tx.To, big.NewInt(0), 0, nil, nil, tx.Data)
 				// TODO: detect already done tx here
