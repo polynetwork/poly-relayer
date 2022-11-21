@@ -112,7 +112,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		tx.DstHash, err = s.wallet.SendWithAccount(account, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	} else {
 		maxLimit, _ := big.NewFloat(tx.PaidGas).Int(nil)
-		tx.DstHash, err = s.wallet.SendWithMaxLimit(account, s.ccm, big.NewInt(0), maxLimit, gasPrice, gasPriceX, tx.DstData)
+		tx.DstHash, err = s.wallet.SendWithMaxLimit(s.sdk.ChainID, account, s.ccm, big.NewInt(0), maxLimit, gasPrice, gasPriceX, tx.DstData)
 	}
 
 	return err

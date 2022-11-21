@@ -526,12 +526,12 @@ func start(c *cli.Context) error {
 	err = relayer.Start(ctx, wg, config)
 
 	// pprof analyse
-	f, err := os.Create("pprof")
-	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
+	f, e := os.Create("pprof")
+	if e != nil {
+		log.Fatal("could not create CPU profile: ", e)
 	}
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal("could not start CPU profile: ", err)
+	if e := pprof.StartCPUProfile(f); e != nil {
+		log.Fatal("could not start CPU profile: ", e)
 	}
 
 	ticker := time.NewTicker(2 * time.Minute)
