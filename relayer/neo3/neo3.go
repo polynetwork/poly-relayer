@@ -43,8 +43,6 @@ import (
 
 const (
 	VERIFY_AND_EXECUTE_TX = "VerifyAndExecuteTx"
-	GET_CURRENT_HEIGHT    = "currentSyncHeight"
-	CHANGE_BOOK_KEEPER    = "ChangeBookKeeper"
 )
 
 type Submitter struct {
@@ -176,12 +174,16 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 		Type:  sc.ByteArray,
 		Value: sig,
 	}
+	pubKey := sc.ContractParameter{
+		Type:  sc.ByteArray,
+		Value: pair.PublicKey.EncodePoint(true), // 33 bytes
+	}
 	// build script
 	scriptHash, err := helper.UInt160FromString(s.neoCcmc)
 	if err != nil {
 		return fmt.Errorf("neo3 ccmc conversion error: %s", err)
 	}
-	script, err := sc.MakeScript(scriptHash, VERIFY_AND_EXECUTE_TX, []interface{}{crossInfo, sigInfo})
+	script, err := sc.MakeScript(scriptHash, VERIFY_AND_EXECUTE_TX, []interface{}{crossInfo, sigInfo, pubKey})
 	if err != nil {
 		return fmt.Errorf("sc.MakeScript error: %s", err)
 	}

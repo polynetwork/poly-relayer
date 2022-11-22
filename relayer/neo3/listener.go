@@ -39,15 +39,15 @@ import (
 )
 
 const (
-	EMPTY = ""
-	CROSS_CHAIN_LOCK_EVENT
+	EMPTY                  = ""
+	CROSS_CHAIN_LOCK_EVENT = "CrossChainLockEvent"
 )
 
 type Listener struct {
 	poly *zion.SDK
 
 	sdk            *neo3.SDK
-	neoCcmc        string // neo only has one ccmc, big endian, 0x0123456789abcdef0123456789abcdef
+	neoCcmc        string // neo only has one ccmc, big endian, like: 0x0123456789abcdef0123456789abcdef
 	neoConsensus   string // neo next consensus
 	neoStateHeight uint64
 
@@ -79,16 +79,14 @@ func (l *Listener) fetchNextConsensus() (err error) {
 	}
 	res := l.sdk.Node().GetBlockHeader(strconv.FormatUint(lastHeaderSyncHeight, 10))
 	if res.HasError() {
-		return fmt.Errorf("GetBlockHeader %s", res.Error.Message)
+		return fmt.Errorf("GetBlockHeader error: %s", res.GetErrorInfo())
 	}
 	l.neoConsensus = res.Result.NextConsensus
 	return
 }
 
-// Compose is not used, should use relayer
 func (l *Listener) Compose(tx *msg.Tx) error {
 
-	//
 	var height2 uint64
 	if tx.SrcHeight >= l.neoStateHeight {
 		height2 = tx.SrcHeight
@@ -120,8 +118,8 @@ func (l *Listener) Compose(tx *msg.Tx) error {
 			height2++
 		} else {
 			srGot = true
-			l.neoStateHeight = height2
-			tx.SrcProofHeight = height2 // next tx can start from this height to get state root
+			l.neoStateHeight = height2 // next tx can start from this height to get state root
+			tx.SrcProofHeight = height2
 		}
 	}
 	buff := io.NewBufBinaryWriter()
@@ -225,7 +223,6 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 	return
 }
 
-// ScanTx is not used, should use relayer
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	res := l.sdk.Node().GetApplicationLog(hash)
 	if res.HasError() {
@@ -244,16 +241,14 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 		if execution.VMState == "FAULT" {
 			return
 		}
-		//notifications := execution.Notifications
 		for _, notification := range execution.Notifications {
 			u, _ := helper.UInt160FromString(notification.Contract)
 			if "0x"+u.String() == l.neoCcmc && notification.EventName == CROSS_CHAIN_LOCK_EVENT {
 				if notification.State.Type != "Array" {
 					return nil, fmt.Errorf("notification.State.Type error: Type is not Array")
 				}
-				notification.State.Convert() // convert Value to []InvokeStack
-				states := notification.State.Value.([]models.InvokeStack)
-				if len(states) != 5 { // CrossChainLockEvent(caller, para.fromContract, toChainID, resquestKey, para.args);
+				states := models.ConvertInvokeStackArray(notification.State) // only convert "Array" type InvokeStack
+				if len(states) != 5 {                                        // CrossChainLockEvent(caller, para.fromContract, toChainID, resquestKey, para.args);
 					return nil, fmt.Errorf("notification.State.Value error: Wrong length of states")
 				}
 
