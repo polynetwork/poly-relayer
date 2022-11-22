@@ -93,8 +93,6 @@ func (s *Submitter) GetSideChain(chainID uint64) (chain *side_chain_manager_abi.
 	if err != nil {
 		return
 	}
-	if c.ChainID != 0 {
-		chain = &c
-	}
+	chain = &c
 	return
 }

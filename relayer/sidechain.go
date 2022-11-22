@@ -57,13 +57,19 @@ func FetchSideChain(ctx *cli.Context) (err error) {
 
 func AddSideChain(ctx *cli.Context) (err error) {
 	chainID := ctx.Uint64("chain")
+	chainName := ctx.String("name")
 	router := ctx.Uint64("router")
 	ccd := ctx.String("ccd")
 	isVoting := ctx.Bool("vote")
 	update := ctx.Bool("update")
 
-	if chainID == 0 {
+	if chainID == 0 && chainName != "Zion" {
 		err = fmt.Errorf("side chain ID missing")
+		return
+	}
+
+	if chainName == "" {
+		log.Error("side chain name missing")
 		return
 	}
 
@@ -86,15 +92,10 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	} else {
 		chain = new(side_chain_manager_abi.ISideChainManagerSideChain)
 	}
-	chain.Name = ctx.String("name")
-	//chain.BlocksToWait = ctx.Uint64("blocks")
+	chain.Name = chainName
 	chain.ExtraInfo = []byte{}
 	chain.ChainID = chainID
 	chain.Router = ctx.Uint64("router")
-	if chain.Name == "" {
-		log.Error("Missing chainID or chain name")
-		return
-	}
 
 	if ccd != "" {
 		chain.CCMCAddress, err = hex.DecodeString(util.LowerHex(ccd))
