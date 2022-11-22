@@ -73,6 +73,7 @@ const (
 	SEND_POLY_TX         = "sendpolytx"
 	APPROVE_SIDECHAIN    = "approvesidechain"
 	INIT_GENESIS         = "initgenesis"
+	REGISTER_ASSET       = "registerasset"
 	SYNC_HEADER          = "syncheader"
 	GET_SIDE_CHAIN       = "getsidechain"
 	SCAN_POLY_TX         = "scanpolytx"
@@ -102,6 +103,7 @@ func init() {
 	_Handlers[DECRYPT_FILE] = DecryptFile
 	_Handlers[ADD_SIDECHAIN] = AddSideChain
 	_Handlers[APPROVE_SIDECHAIN] = ApproveSideChain
+	_Handlers[REGISTER_ASSET] = RegisterAsset
 	_Handlers[INIT_GENESIS] = SyncContractGenesis
 	_Handlers[GET_SIDE_CHAIN] = FetchSideChain
 	_Handlers[SCAN_POLY_TX] = ScanPolyTxs

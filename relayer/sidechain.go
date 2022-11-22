@@ -20,19 +20,24 @@ package relayer
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
-	"math/big"
-	"strings"
-
 	"github.com/devfans/zion-sdk/contracts/native/go_abi/side_chain_manager_abi"
+	"github.com/devfans/zion-sdk/contracts/native/governance/side_chain_manager"
+	"github.com/devfans/zion-sdk/contracts/native/utils"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
+	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/urfave/cli/v2"
+	"io/ioutil"
+	"math/big"
+	"strings"
 )
 
 func FetchSideChain(ctx *cli.Context) (err error) {
@@ -60,7 +65,6 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	chainName := ctx.String("name")
 	router := ctx.Uint64("router")
 	ccd := ctx.String("ccd")
-	isVoting := ctx.Bool("vote")
 	update := ctx.Bool("update")
 
 	if chainID == 0 && chainName != "Zion" {
@@ -86,21 +90,52 @@ func AddSideChain(ctx *cli.Context) (err error) {
 		if chain == nil {
 			return fmt.Errorf("side chain not found")
 		}
-	} else if !isVoting && router == 0 {
-		err = fmt.Errorf("missing router")
-		return
 	} else {
 		chain = new(side_chain_manager_abi.ISideChainManagerSideChain)
 	}
 	chain.Name = chainName
 	chain.ExtraInfo = []byte{}
 	chain.ChainID = chainID
-	chain.Router = ctx.Uint64("router")
+	chain.Router = router
 
 	if ccd != "" {
 		chain.CCMCAddress, err = hex.DecodeString(util.LowerHex(ccd))
 		if err != nil {
 			return
+		}
+	}
+
+	if router == utils.RIPPLE_ROUTER {
+		data, err := ioutil.ReadFile("ripple.json")
+		if err != nil {
+			return fmt.Errorf("ioutil.ReadFile failed %v", err)
+		}
+		rippleParam := new(config.RippleParam)
+		err = json.Unmarshal(data, rippleParam)
+		if err != nil {
+			return fmt.Errorf("json.Unmarshal failed %v", err)
+		}
+
+		operator := common.HexToAddress(rippleParam.Operator)
+		pks := make([][]byte, 0, len(rippleParam.Pks))
+		for _, v := range rippleParam.Pks {
+			pk, err := hex.DecodeString(v)
+			if err != nil {
+				return fmt.Errorf("hex.DecodeString pk error %v", err)
+			}
+			pks = append(pks, pk)
+		}
+		rippleExtraInfo := &side_chain_manager.RippleExtraInfo{
+			Operator:      operator,
+			Sequence:      rippleParam.Sequence,
+			Quorum:        rippleParam.Quorum,
+			SignerNum:     rippleParam.SignerNum,
+			Pks:           pks,
+			ReserveAmount: new(big.Int).SetUint64(rippleParam.ReserveAmount),
+		}
+		chain.ExtraInfo, err = rlp.EncodeToBytes(rippleExtraInfo)
+		if err != nil {
+			return fmt.Errorf("rlp.EncodeToBytes rippleExtraInfo error %v", err)
 		}
 	}
 
@@ -118,6 +153,44 @@ func ApproveSideChain(ctx *cli.Context) (err error) {
 	}
 
 	_, err = ps.ApproveRegisterSideChain(chainID, update)
+	return
+}
+
+func RegisterAsset(ctx *cli.Context) (err error) {
+	chainID := ctx.Uint64("chain")
+
+	data, err := ioutil.ReadFile("ripple.json")
+	if err != nil {
+		return fmt.Errorf("ioutil.ReadFile failed %v", err)
+	}
+	rippleParam := new(config.RippleParam)
+	err = json.Unmarshal(data, rippleParam)
+	if err != nil {
+		return fmt.Errorf("json.Unmarshal failed %v", err)
+	}
+
+	assetMap := make(map[uint64][]byte)
+	for _, v := range rippleParam.AssetMap {
+		assetAddress, err := hex.DecodeString(v.AssetAddress)
+		if err != nil {
+			return fmt.Errorf("hex.DecodeString asset address failed %v", err)
+		}
+		assetMap[v.ChainId] = assetAddress
+	}
+	lockProxyMap := make(map[uint64][]byte)
+	for _, v := range rippleParam.LockProxyMap {
+		lockProxyAddress, err := hex.DecodeString(v.LockProxyAddress)
+		if err != nil {
+			return fmt.Errorf("hex.DecodeString lock proxy address failed %v", err)
+		}
+		lockProxyMap[v.ChainId] = lockProxyAddress
+	}
+	ps, err := PolySubmitter()
+	if err != nil {
+		return
+	}
+
+	_, err = ps.RegisterAsset(chainID, assetMap, lockProxyMap)
 	return
 }
 

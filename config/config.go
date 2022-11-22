@@ -554,3 +554,25 @@ func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerC
 
 	return o
 }
+
+type RippleParam struct {
+	Operator      string
+	Sequence      uint64
+	Quorum        uint64
+	SignerNum     uint64
+	Pks           []string
+	ReserveAmount uint64
+
+	AssetMap     []*AssetInfo
+	LockProxyMap []*LockProxyInfo
+}
+
+type AssetInfo struct {
+	ChainId      uint64
+	AssetAddress string
+}
+
+type LockProxyInfo struct {
+	ChainId          uint64
+	LockProxyAddress string
+}
