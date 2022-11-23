@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/relayer/ontevm"
 	"sync"
 	"time"
 
@@ -74,8 +75,10 @@ func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
 	case base.OK:
 		listener = new(ok.Listener)
-	case base.POLY:
+	case base.ZION:
 		listener = new(po.Listener)
+	case base.ONTEVM:
+		listener = new(ontevm.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)

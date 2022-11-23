@@ -230,11 +230,13 @@ func (s *Submitter) Stop() error {
 func (s *Submitter) ReadyBlock() (height uint64) {
 	var err error
 	switch s.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.STARCOIN, base.BYTOM, base.HSC:
+	// header sync height
+	case base.ETH, base.GOERLI, base.BSC, base.HECO:
 		var h uint32
 		h, err = s.sdk.Node().GetInfoHeight(nil, s.config.ChainId)
 		height = uint64(h)
 	default:
+		// return latest height of tx vote chain
 		height, err = s.composer.LatestHeight()
 	}
 	if err != nil {
@@ -622,7 +624,8 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 				block = height + 50
 			case base.ETH, base.GOERLI:
 				block = height + 10
-
+			default:
+				block = height + 10
 			}
 			tx.Attempts++
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block, "attempts", tx.Attempts)

@@ -8,7 +8,10 @@ require (
 	github.com/devfans/zion-sdk v0.0.24
 	github.com/ethereum/go-ethereum v1.10.11
 	github.com/go-redis/redis/v8 v8.11.3
+	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.2.1
 	github.com/polynetwork/bridge-common v0.0.24-2
 	github.com/urfave/cli/v2 v2.3.0
 )
+
+replace github.com/polynetwork/bridge-common => github.com/wuyachi/bridge-common v0.0.0-20221122100044-0c09f7f8f228
