@@ -72,7 +72,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	l.ccm = common.HexToAddress(config.CCMContract)
 	l.ccd = common.HexToAddress(config.CCDContract)
 
-	l.sdk, err = ontevm.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	l.sdk, err = ontevm.WithOptions(config.ChainId, config.ExtraNodes, time.Minute, 1)
 	if err != nil {
 		return fmt.Errorf("ontevm.WithOptions err:%v", err)
 	}
@@ -289,7 +289,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 				var event eccm_abi.EthCrossChainManagerImplementationCrossChainEvent
 				err = l.abiParsed.UnpackIntoInterface(&event, "CrossChainEvent", storageLog.Data)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("ontevm unpack err %v", err)
 				}
 				tx := &msg.Tx{
 					TxId:           msg.EncodeTxId(event.TxId),
