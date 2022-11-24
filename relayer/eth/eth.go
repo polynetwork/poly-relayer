@@ -215,16 +215,17 @@ func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
 	CONFIRM:
 		for {
 			hash := msg.Hash(m.DstHash)
-			height, _, pending, err = s.sdk.Node().Confirm(hash, 0, 100)
+			height, _, pending, err = s.sdk.Node().Confirm(hash, 0, 10)
 			if height > 0 {
-				log.Info("Submitted epoch updates", "chain", s.name, "hash", hash, "height", height)
+				log.Info("Submitted epoch updates", "chain", s.name, "hash", hash.String(), "height", height)
 				break CONFIRM
 			}
 			if err == nil && !pending {
-				err = fmt.Errorf("Failed to find the transaction %v", err)
-				return
+				err = fmt.Errorf("failed to find the transaction chain=%s, %v", s.name, err)
+			} else {
+				err = fmt.Errorf("tx wait confirm timeout chain=%s, hash=%s, pending=%v, err=%v", s.name, hash.String(), pending, err)
 			}
-			log.Warn("Tx wait confirm timeout", "chain", s.name, "hash", hash, "pending", pending, "err", err)
+			return
 		}
 
 	}
