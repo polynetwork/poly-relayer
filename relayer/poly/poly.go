@@ -350,7 +350,13 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 			if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
 				tx.SrcProofHex = ""
 			}
-			block += 1
+
+			if strings.Contains(err.Error(), "side chain") && strings.Contains(err.Error(), "not registered") {
+				log.Warn("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
+				continue
+			}
+
+			block += 100
 			tx.Attempts++
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block)
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
@@ -407,6 +413,9 @@ func (s *Submitter) run(mq bus.TxBus) error {
 				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
 				if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
 					tx.SrcProofHex = ""
+				}
+				if strings.Contains(err.Error(), "side chain") && strings.Contains(err.Error(), "not registered") {
+					retry = false
 				}
 				tx.Attempts++
 			} else {
