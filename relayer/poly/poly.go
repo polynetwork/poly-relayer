@@ -348,6 +348,7 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 				continue
 			}
 			if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
+				log.Warn("src tx submit to poly verifyMerkleProof failed, reset SrcProofHex", "chain", s.name, "src hash", tx.SrcHash, "err", err)
 				tx.SrcProofHex = ""
 			}
 
