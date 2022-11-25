@@ -343,7 +343,13 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
 				continue
 			}
-			block += 1
+
+			if strings.Contains(err.Error(), "side chain") && strings.Contains(err.Error(), "not registered") {
+				log.Warn("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
+				continue
+			}
+
+			block += 100
 			tx.Attempts++
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block)
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
@@ -399,6 +405,9 @@ func (s *Submitter) run(mq bus.TxBus) error {
 			if err != nil {
 				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
 				tx.Attempts++
+				if strings.Contains(err.Error(), "side chain") && strings.Contains(err.Error(), "not registered") {
+					retry = false
+				}
 			} else {
 				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash)
 				retry = false
