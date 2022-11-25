@@ -349,7 +349,7 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 				continue
 			}
 
-			block += 100
+			block = height + 10
 			tx.Attempts++
 			log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight, "next_try", block)
 			bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx, block) })
