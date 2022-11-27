@@ -348,8 +348,9 @@ func (s *Submitter) consume(mq bus.SortedTxBus) error {
 				continue
 			}
 			if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
-				log.Warn("src tx submit to poly verifyMerkleProof failed, reset SrcProofHex", "chain", s.name, "src hash", tx.SrcHash, "err", err)
+				log.Warn("src tx submit to poly verifyMerkleProof failed, clear src proof", "chain", s.name, "src hash", tx.SrcHash, "err", err)
 				tx.SrcProofHex = ""
+				tx.SrcProof = []byte{}
 			}
 
 			if strings.Contains(err.Error(), "side chain") && strings.Contains(err.Error(), "not registered") {
