@@ -415,6 +415,7 @@ func (s *Submitter) run(mq bus.TxBus) error {
 				log.Error("Submit src tx to poly error", "chain", s.name, "err", err, "proof_height", tx.SrcProofHeight)
 				if errors.Is(err, msg.ERR_Tx_VERIFYMERKLEPROOF) {
 					tx.SrcProofHex = ""
+					tx.SrcProof = []byte{}
 				}
 				if strings.Contains(err.Error(), "side chain") && strings.Contains(err.Error(), "not registered") {
 					retry = false
