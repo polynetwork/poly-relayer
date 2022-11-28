@@ -559,8 +559,6 @@ github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6J
 github.com/pkg/term v0.0.0-20180730021639-bffc007b7fd5/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/polynetwork/bridge-common v0.0.25-2 h1:UciyuiS680ggNGPRYeG2PwBB+YmBTSg2e8XEvEBIsx0=
-github.com/polynetwork/bridge-common v0.0.25-2/go.mod h1:WTMQaGdMu/LIHzQNhvjnOrN0BoG9+49Og+QLw+hagws=
 github.com/portto/aptos-go-sdk v0.0.0-20221025115549-5c74acafa193 h1:LjvSOMyN31dW5qDA/9SoS4BjF4M7CXUD83MoygZhYgs=
 github.com/portto/aptos-go-sdk v0.0.0-20221025115549-5c74acafa193/go.mod h1:8+XTYv0iwHE5fjS8G6231LUhy2GYwl2BTlzxIqjIxyU=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
@@ -674,6 +672,8 @@ github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPU
 github.com/valyala/fasttemplate v1.2.1/go.mod h1:KHLXt3tVN2HBp8eijSv/kGJopbvo7S+qRAEEKiv+SiQ=
 github.com/willf/bitset v1.1.3/go.mod h1:RjeCKbqT1RxIR/KWY6phxZiaY1IyutSBfGjNPySAYV4=
 github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208/go.mod h1:IotVbo4F+mw0EzQ08zFqg7pK3FebNXpaMsRy2RT+Ees=
+github.com/wuyachi/bridge-common v0.0.0-20221124093911-c47f24024f80 h1:evuMFlhQh6fhnJQFS9/Yp+lOBT9wT7WECkVeZGLyTYQ=
+github.com/wuyachi/bridge-common v0.0.0-20221124093911-c47f24024f80/go.mod h1:MD9WUf7e/CwKp41TRyh7MuDP8hx+ZrnllkvNgpPyuSA=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xlab/treeprint v0.0.0-20180616005107-d6fb6747feb6/go.mod h1:ce1O1j6UtZfjr22oyGxGLbauSBp2YVXpARAosm7dHBg=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

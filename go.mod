@@ -13,3 +13,5 @@ require (
 	github.com/polynetwork/bridge-common v0.0.25-2
 	github.com/urfave/cli/v2 v2.3.0
 )
+
+replace github.com/polynetwork/bridge-common => github.com/wuyachi/bridge-common v0.0.0-20221124093911-c47f24024f80
