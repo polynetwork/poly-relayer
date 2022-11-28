@@ -77,7 +77,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 		return fmt.Errorf("ontevm.WithOptions err:%v", err)
 	}
 
-	l.abiParsed, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationMetaData.ABI))
+	l.abiParsed, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
 	if err != nil {
 		return fmt.Errorf("ontevm init abiParsed err:%v", err)
 	}
