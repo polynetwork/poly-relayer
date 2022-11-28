@@ -20,6 +20,7 @@ package zion
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/devfans/zion-sdk/contracts/native/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -203,6 +204,8 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 			return nil
 		} else if strings.Contains(err.Error(), "already known") {
 			return msg.ERR_TX_PENDING
+		} else if strings.Contains(err.Error(), "VerifyCrossChainProof failed") {
+			return msg.ERR_TX_VERIFY_PROOF_FAILED
 		}
 		return fmt.Errorf("Failed to import tx to poly, %v tx src hash %s", err, tx.SrcHash)
 	}
@@ -614,6 +617,13 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 				log.Info("Submitted src tx to poly", "src_hash", tx.SrcHash, "poly_hash", tx.PolyHash.String())
 				continue
 			}
+
+			if errors.Is(err, msg.ERR_PROOF_UNAVAILABLE) {
+				log.Warn("src tx submit to poly verifyMerkleProof failed, clear src proof", "chain", s.name, "src hash", tx.SrcHash, "err", err)
+				tx.SrcProofHex = ""
+				tx.SrcProof = []byte{}
+			}
+
 			//block += 1
 			block = height + 1
 			if err == msg.ERR_TX_PENDING {
