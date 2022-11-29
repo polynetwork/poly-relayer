@@ -296,7 +296,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 					TxType:         msg.SRC,
 					SrcHeight:      height,
 					SrcChainId:     base.ONTEVM,
-					SrcHash:        event0.TxHash,
+					SrcHash:        msg.HexStringReverse(event0.TxHash),
 					DstChainId:     event.ToChainId,
 					SrcParam:       hex.EncodeToString(event.Rawdata),
 					SrcProofHeight: height,
