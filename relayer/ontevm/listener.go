@@ -77,7 +77,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 		return fmt.Errorf("ontevm.WithOptions err:%v", err)
 	}
 
-	l.abiParsed, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
+	l.abiParsed, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
 	if err != nil {
 		return fmt.Errorf("ontevm init abiParsed err:%v", err)
 	}
@@ -286,7 +286,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 				//if len(storageLog.Topics) == 0 || common.HexToHash(CrossChainEvent) != storageLog.Topics[0] {
 				//	continue
 				//}
-				var event eccm_abi.EthCrossChainManagerImplementationCrossChainEvent
+				var event eccm_abi.EthCrossChainManagerCrossChainEvent
 				err = l.abiParsed.UnpackIntoInterface(&event, "CrossChainEvent", storageLog.Data)
 				if err != nil {
 					return nil, fmt.Errorf("ontevm unpack err %v", err)

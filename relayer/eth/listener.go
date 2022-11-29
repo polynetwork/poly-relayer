@@ -78,7 +78,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 
 	l.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err == nil {
-		l.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
+		l.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
 	}
 	return
 }
@@ -177,7 +177,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 
 	fetchHeader := (height-lastHeaderSyncHeight)%l.config.HeaderSyncInterval == 0
 	if !fetchHeader {
-		ccmContract, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
+		ccmContract, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
 		if err != nil {
 			return nil, nil, fmt.Errorf("NewEthCrossChainManagerImplemetation error %v", err)
 		}
@@ -233,7 +233,7 @@ func (l *Listener) GetHeader(height uint64) (header []byte, hash []byte, err err
 }
 
 func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
+	ccm, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
+	ccm, err := eccm_abi.NewEthCrossChainManager(l.ccm, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +328,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 		return
 	}
 	for _, entry := range res.Logs {
-		ev := new(eccm_abi.EthCrossChainManagerImplementationCrossChainEvent)
+		ev := new(eccm_abi.EthCrossChainManagerCrossChainEvent)
 		if msg.FilterLog(l.abi, l.ccm, "CrossChainEvent", entry, ev) {
 			param, err := msg.DecodeTxParam(ev.Rawdata)
 			if err != nil {
