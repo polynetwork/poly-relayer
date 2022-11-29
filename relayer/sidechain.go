@@ -243,7 +243,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 			return err
 		}
 
-		eccmAbi, err := abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
+		eccmAbi, err := abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerImplementationABI))
 		if err != nil {
 			log.Error("abi.JSON failed", "err", err)
 			return err
