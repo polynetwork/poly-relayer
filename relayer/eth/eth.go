@@ -342,7 +342,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp := time.Now().Unix() + 60*10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
-				tsp := time.Now().Unix() + 1
+				tsp := time.Now().Unix() + 60
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 				if errors.Is(err, msg.ERR_LOW_BALANCE) {
 					log.Info("Low wallet balance detected", "chain", s.name, "account", account.Address)
