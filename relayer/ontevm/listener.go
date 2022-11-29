@@ -282,10 +282,10 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 					return nil, err
 				}
 				// todo
-				//CrossChainEvent := "0x6ad3bf15c1988bc04bc153490cab16db8efb9a3990215bf1c64ea6e28be88483"
-				//if len(storageLog.Topics) == 0 || common.HexToHash(CrossChainEvent) != storageLog.Topics[0] {
-				//	continue
-				//}
+				CrossChainEvent := "0x6ad3bf15c1988bc04bc153490cab16db8efb9a3990215bf1c64ea6e28be88483"
+				if len(storageLog.Topics) == 0 || common.HexToHash(CrossChainEvent) != storageLog.Topics[0] {
+					continue
+				}
 				var event eccm_abi.EthCrossChainManagerCrossChainEvent
 				err = l.abiParsed.UnpackIntoInterface(&event, "CrossChainEvent", storageLog.Data)
 				if err != nil {
