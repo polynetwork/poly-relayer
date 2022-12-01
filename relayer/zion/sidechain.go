@@ -89,7 +89,7 @@ func (s *Submitter) ApproveRegisterSideChain(chainID uint64, update bool) (hash 
 }
 
 func (s *Submitter) RegisterAsset(chainId uint64, assetMap, lockProxyMap map[uint64][]byte) (hash common.Hash, err error) {
-	accounts := s.voter.Accounts()
+	accounts := s.wallet.Accounts()
 	if len(accounts) == 0 {
 		err = fmt.Errorf("missing available account")
 		return
