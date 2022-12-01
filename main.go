@@ -437,6 +437,17 @@ func main() {
 				},
 			},
 			{
+				Name:   relayer.REGISTER_ASSET,
+				Usage:  "Register Ripple Asset",
+				Action: command(relayer.REGISTER_ASSET),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+				},
+			},
+			{
 				Name:   relayer.GET_SIDE_CHAIN,
 				Usage:  "Get side chain instance",
 				Action: command(relayer.GET_SIDE_CHAIN),
