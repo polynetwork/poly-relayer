@@ -7,7 +7,7 @@
   "ReserveAmount": 30,
   "AssetMap": [
     {"ChainId": 223, "AssetAddress": "51fa7b7c1e0c79b54de202e6a24fef61bf54f442"},
-    {"ChainId": 79, "AssetAddress": "cF177F0428DEb80025658Fb99631D0d552a9300B"},
+    {"ChainId": 79, "AssetAddress": "cF177F0428DEb80025658Fb99631D0d552a9300B"}
   ],
   "LockProxyMap": [
     {"ChainId": 223, "LockProxyAddress": "51fa7b7c1e0c79b54de202e6a24fef61bf54f442"},
