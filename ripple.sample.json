@@ -7,12 +7,10 @@
   "ReserveAmount": 30,
   "AssetMap": [
     {"ChainId": 223, "AssetAddress": "51fa7b7c1e0c79b54de202e6a24fef61bf54f442"},
-    {"ChainId": 79, "AssetAddress": ""},
-    {"ChainId": 202, "AssetAddress": ""}
+    {"ChainId": 79, "AssetAddress": "cF177F0428DEb80025658Fb99631D0d552a9300B"},
   ],
   "LockProxyMap": [
     {"ChainId": 223, "LockProxyAddress": "51fa7b7c1e0c79b54de202e6a24fef61bf54f442"},
-    {"ChainId": 79, "LockProxyAddress": ""},
-    {"ChainId": 202, "AssetAddress": ""}
+    {"ChainId": 79, "LockProxyAddress": "8E7B1d74B1799B825b90F370E3582Aa283a2B1e3"}
   ]
 }
