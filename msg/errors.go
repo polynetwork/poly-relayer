@@ -37,5 +37,7 @@ var (
 	ERR_TX_VOILATION     = errors.New("Possible cross chain voilation")
 	ERR_TX_PROOF_MISSING = errors.New("Possible cross chain proof missing")
 
+	ERR_TX_VERIFY_PROOF_FAILED = errors.New("VerifyCrossChainProof failed")
+
 	ERR_SIGNER_ALREADY_EXIST = errors.New("signer already exist")
 )

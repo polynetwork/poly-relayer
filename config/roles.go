@@ -47,7 +47,12 @@ func (c *Config) ReadRoles(path string) (err error) {
 	if err != nil {
 		return fmt.Errorf("Parse roles file error %v", err)
 	}
-	c.ApplyRoles(roles)
+	//c.ApplyRoles(roles)
+
+	err = c.ApplyRoles2(roles)
+	if err != nil {
+		return fmt.Errorf("apply roles failed. error %v", err)
+	}
 	return
 }
 
@@ -94,4 +99,50 @@ func (c *Config) ApplyRoles(roles Roles) {
 			chain.TxVote.Enabled = role.TxVote
 		}
 	}
+}
+
+func (c *Config) ApplyRoles2(roles Roles) (err error) {
+	for id, role := range roles {
+		c.chains[id] = true
+		if role.PolyListen {
+			if id != base.POLY {
+				return fmt.Errorf("roles file invalid, only zion chain can apply PolyListen role %v", err)
+			}
+			if c.Poly.PolyTxSync == nil {
+				c.Poly.PolyTxSync = new(PolyTxSyncConfig)
+			}
+			c.Poly.PolyTxSync.Enabled = role.PolyListen
+		}
+
+		chain, ok := c.Chains[id]
+		if !ok {
+			chain = new(ChainConfig)
+			c.Chains[id] = chain
+		}
+		if chain.SrcTxSync == nil {
+			chain.SrcTxSync = new(SrcTxSyncConfig)
+		}
+		if chain.SrcTxCommit == nil {
+			chain.SrcTxCommit = new(SrcTxCommitConfig)
+		}
+		if chain.PolyTxCommit == nil {
+			chain.PolyTxCommit = new(PolyTxCommitConfig)
+		}
+		if chain.HeaderSync == nil {
+			chain.HeaderSync = new(HeaderSyncConfig)
+		}
+		if chain.EpochSync == nil {
+			chain.EpochSync = new(EpochSyncConfig)
+		}
+		if chain.TxVote == nil {
+			chain.TxVote = new(TxVoteConfig)
+		}
+		chain.SrcTxSync.Enabled = role.TxListen
+		chain.SrcTxCommit.Enabled = role.TxCommit
+		chain.PolyTxCommit.Enabled = role.PolyCommit
+		chain.HeaderSync.Enabled = role.HeaderSync
+		chain.EpochSync.Enabled = role.EpochSync
+		chain.TxVote.Enabled = role.TxVote
+	}
+	return
 }
