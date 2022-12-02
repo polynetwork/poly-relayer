@@ -716,9 +716,9 @@ func (s *Submitter) StartTxVote(
 		s.vote.Timeout = 1
 	}
 
-	if s.vote.ChainId == 0 {
-		log.Fatal("Invalid tx vote side chain id", "chain", s.sync.ChainId)
-	}
+	//if s.vote.ChainId == 0 {
+	//	log.Fatal("Invalid tx vote side chain id", "chain", s.sync.ChainId)
+	//}
 
 	if s.signer == nil || s.wallet == nil {
 		log.Fatal("Missing voter signer or sender")
