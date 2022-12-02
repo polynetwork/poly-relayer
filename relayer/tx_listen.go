@@ -287,7 +287,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		txs, err := h.listener.Scan(h.height)
 		if err == nil {
 			for _, tx := range txs {
-				log.Info("Found poly tx", "hash", tx.PolyHash.Hex())
+				log.Info("Found poly tx", "from", tx.SrcChainId, "to", tx.DstChainId, "hash", tx.PolyHash.Hex())
 				bus.SafeCall(h.Context, tx, "push to target chain tx bus", func() error {
 					return h.bus.PushToChain(context.Background(), tx)
 				})
