@@ -17,22 +17,22 @@
 
 package ont
 
-/*
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/devfans/zion-sdk/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ontio/ontology/common"
 	"strings"
 	"sync"
 	"time"
 
 	sdk "github.com/ontio/ontology-go-sdk"
 	ccm "github.com/ontio/ontology/smartcontract/service/native/cross_chain/cross_chain_manager"
-	"github.com/ontio/ontology/smartcontract/service/native/utils"
-
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/ont"
-	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/wallet"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -43,23 +43,27 @@ import (
 type Submitter struct {
 	context.Context
 	wg      *sync.WaitGroup
+	ccm     common.Address
 	config  *config.SubmitterConfig
 	sdk     *ont.SDK
 	signer  *wallet.OntSigner
 	name    string
 	compose msg.PolyComposer
-	polyId  uint64
 }
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.config = config
+	s.ccm, err = common.AddressFromHexString(s.config.CCMContract)
+	if err != nil {
+		return err
+	}
 	s.signer, err = wallet.NewOntSigner(config.Wallet)
 	s.name = base.GetChainName(config.ChainId)
 	s.sdk, err = ont.WithOptions(base.ONT, config.Nodes, time.Minute, 1)
 	if err != nil {
 		return
 	}
-	s.polyId = zion.ReadChainID()
+	//s.polyId = poly.ReadChainID()
 	return
 }
 
@@ -88,41 +92,67 @@ func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	if err != nil {
 		return
 	}
-	return s.processPolyTx(m)
+	return
+	//return s.processPolyTx(m)
 }
 
 func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
-	if tx.AuditPath == "" {
-		return fmt.Errorf("Invalid poly audit path")
-	}
+	//if tx.AuditPath == "" {
+	//	return fmt.Errorf("Invalid poly audit path")
+	//}
+	//
+	//param := &ccm.ProcessCrossChainTxParam{
+	//	Address:     s.signer.Address,
+	//	FromChainID: base.POLY,
+	//	Height:      tx.PolyHeight + 1,
+	//	Proof:       tx.AuditPath,
+	//}
+	//
+	//v, _ := s.sdk.Node().GetSideChainHeaderIndex(s.polyId, uint64(tx.PolyHeight+1))
+	//if len(v) == 0 {
+	//	param.Header = tx.PolyHeader.ToArray()
+	//}
+	//
+	//tx.Extra = param
 
-	param := &ccm.ProcessCrossChainTxParam{
-		Address:     s.signer.Address,
-		FromChainID: s.polyId,
-		Height:      uint32(tx.PolyHeight + 1),
-		Proof:       tx.AuditPath,
-	}
-
-	v, _ := s.sdk.Node().GetSideChainHeaderIndex(s.polyId, uint64(tx.PolyHeight+1))
-	if len(v) == 0 {
-		param.Header, _ = tx.PolyHeader.MarshalJSON()
-	}
-
-	tx.Extra = param
 	return
 }
 
 func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
-	param := tx.Extra.(*ccm.ProcessCrossChainTxParam)
-	hash, err := s.sdk.Node().Native.InvokeNativeContract(
-		s.signer.Config.GasPrice, s.signer.Config.GasLimit,
-		s.signer.Account, s.signer.Account, byte(0), utils.CrossChainContractAddress, ccm.PROCESS_CROSS_CHAIN_TX, []interface{}{param},
-	)
+	cctx, err := hex.DecodeString(tx.PolyParam)
+	if err != nil || len(cctx) == 0 {
+		return fmt.Errorf("Poly param merke value missing or invalid")
+	}
+
+	hsHeader, err := rlp.EncodeToBytes(types.HotstuffFilteredHeader(tx.AnchorHeader))
+	if err != nil {
+		log.Error("EncodeToBytes Hotstuff failed", "polyHash", tx.PolyHash.Hex(), "err", err)
+		return err
+	}
+
+	extra, err := types.ExtractHotstuffExtra(tx.AnchorHeader)
+	if err != nil {
+		log.Error("ExtractHotstuffExtra failed", "polyHash", tx.PolyHash.Hex(), "err", err)
+		return
+	}
+
+	rawSeals, err := rlp.EncodeToBytes(extra.CommittedSeal)
+	if err != nil {
+		log.Error("rlp.EncodeToBytes failed", "polyHash", tx.PolyHash.Hex(), "err", err)
+		return
+	}
+
+	hash, err := s.sdk.Node().WasmVM.InvokeWasmVMSmartContract(s.signer.Config.GasPrice, s.signer.Config.GasLimit,
+		s.signer.Account, s.signer.Account, s.ccm, ccm.PROCESS_CROSS_CHAIN_TX,
+		[]interface{}{hsHeader, rawSeals, tx.PolyAccountProof, tx.PolyStorageProof, cctx})
 	if err == nil {
 		tx.DstHash = hash.ToHexString()
 	} else {
 		info := err.Error()
-		if strings.Contains(info, "state fault") {
+		if strings.Contains(info, "tx already done") {
+			log.Info("Ont tx already submitted", "poly_hash", tx.PolyHash, "msg", err.Error())
+			return nil
+		} else if strings.Contains(info, "state fault") {
 			err = fmt.Errorf("%w ont tx submit error: %s", msg.ERR_TX_EXEC_FAILURE, info)
 		}
 	}
@@ -157,7 +187,7 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 			time.Sleep(time.Second)
 			continue
 		}
-		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
+		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address.ToHexString())
 		err = s.ProcessTx(tx, compose)
 		if err == nil {
 			err = s.SubmitTx(tx)
@@ -186,7 +216,7 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer) error {
 	s.Context = ctx
 	s.wg = wg
-	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address, "chain", s.name)
+	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", s.signer.Address.ToHexString(), "chain", s.name)
+	go s.run(s.signer.Account, bus, delay, composer)
 	return nil
 }
- */
