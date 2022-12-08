@@ -21,9 +21,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ontio/ontology-go-sdk/utils"
 	"github.com/ontio/ontology/common"
 	vconfig "github.com/ontio/ontology/consensus/vbft/config"
 	"github.com/polynetwork/bridge-common/log"
+	"strconv"
+	"strings"
 	"time"
 
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
@@ -157,21 +160,34 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	txs = []*msg.Tx{}
 	for _, event := range events {
 		for _, notify := range event.Notify {
-			if notify.ContractAddress != l.ccm {
+			if !strings.EqualFold(notify.ContractAddress, l.ccm) {
 				continue
 			}
 			log.Info("ont scan", "height", height, "notify", fmt.Sprintf("%+v", *notify))
 			states, ok := notify.States.([]interface{})
-			if !ok || states[0].(string) != "makeFromOntProof" {
+			if !ok || states[0].(string) != "cross_chain" {
 				continue
 			}
+			srcProxy, err := utils.AddressFromBase58(states[3].(string))
+			if err != nil {
+				return nil, fmt.Errorf("decode src lock proxy of ONT ccm event failed. height %d, srcHash %s, err %v", height, event.TxHash, err)
+			}
+
+			dstChainId, err := strconv.ParseUint(states[4].(string), 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("decode dst chain id of ONT ccm event failed. height %d, srcHash %s, err %v", height, event.TxHash, err)
+			}
+
 			tx := &msg.Tx{
-				TxId:       states[4].(string),
 				TxType:     msg.SRC,
-				SrcHeight:  height,
-				SrcChainId: base.ONT,
+				TxId:       states[2].(string),
 				SrcHash:    event.TxHash,
-				DstChainId: uint64(states[2].(float64)),
+				DstChainId: dstChainId,
+				SrcHeight:  height,
+				SrcChainId: l.ChainId(),
+				SrcProxy:   srcProxy.ToHexString(),
+				DstProxy:   states[5].(string),
+				SrcParam:   states[6].(string),
 			}
 			l.Compose(tx)
 			txs = append(txs, tx)
