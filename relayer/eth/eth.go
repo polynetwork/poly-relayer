@@ -5,12 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/polynetwork/bridge-common/abi/eccd_abi"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/polynetwork/bridge-common/abi/eccd_abi"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"

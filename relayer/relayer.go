@@ -20,9 +20,11 @@ package relayer
 import (
 	"context"
 	"fmt"
-	"github.com/polynetwork/poly-relayer/relayer/ontevm"
 	"sync"
 	"time"
+
+	"github.com/polynetwork/poly-relayer/relayer/ontevm"
+	"github.com/polynetwork/poly-relayer/relayer/zilliqa"
 
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
@@ -79,6 +81,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(po.Listener)
 	case base.ONTEVM:
 		listener = new(ontevm.Listener)
+	case base.ZILLIQA:
+		listener = new(zilliqa.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)

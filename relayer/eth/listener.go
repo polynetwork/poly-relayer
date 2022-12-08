@@ -23,8 +23,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"strings"
+
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 
 	"math/big"
 	"time"

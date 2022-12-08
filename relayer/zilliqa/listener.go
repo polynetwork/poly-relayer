@@ -18,21 +18,24 @@
 package zilliqa
 
 import (
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/Zilliqa/gozilliqa-sdk/bech32"
 	"github.com/Zilliqa/gozilliqa-sdk/provider"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/kardiachain/go-kardia/lib/abi/bind"
-	"github.com/maticnetwork/bor/common/hexutil"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/zion"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
-	"github.com/rs/zerolog/log"
 
 	zcom "github.com/devfans/zion-sdk/common"
 	"github.com/polynetwork/poly-relayer/bus"
@@ -133,7 +136,8 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 		// We dont return here, still fetch the proof with tx height
 		height = txHeight
 	}
-	ethProof, e := l.zilSdk.GetStateProof(l.ccd.String(), proofKey, height)
+	heightStr := strconv.FormatUint(height, 10)
+	ethProof, e := l.zilSdk.GetStateProof(l.ccd.String(), proofKey, &heightStr)
 	if e != nil {
 		return height, nil, e
 	}
@@ -145,47 +149,167 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := l.zilSdk.contract
+	// ccm, err := l.zilSdk.contract
+	transactions, err := l.zilSdk.GetTxnBodiesForTxBlock(strconv.FormatUint(height, 10))
 	if err != nil {
 		return nil, err
 	}
-	opt := &bind.FilterOpts{
-		Start:   height,
-		End:     &height,
-		Context: context.Background(),
-	}
-	events, err := ccm.FilterCrossChainEvent(opt, nil)
 	if err != nil {
-		return nil, err
+		if strings.Contains(err.Error(), "TxBlock has no transactions") {
+			log.Info("ZilliqaSyncManager no transaction in block %d\n", height)
+			return nil, nil
+		} else {
+			log.Info("ZilliqaSyncManager get transactions for tx block %d failed: %s\n", height, err.Error())
+			return nil, err
+		}
 	}
 
-	if events == nil {
-		return
-	}
-
-	txs = []*msg.Tx{}
-	for events.Next() {
-		ev := events.Event
-		param, err := msg.DecodeTxParam(ev.Rawdata)
+	for _, zilTx := range transactions {
+		if !zilTx.Receipt.Success {
+			continue
+		}
+		tx, err := l.ScanTx(zilTx.ID)
 		if err != nil {
 			return nil, err
 		}
-		log.Info("Found src cross chain tx", "method", param.Method, "hash", ev.Raw.TxHash.String())
-		tx := &msg.Tx{
-			TxType:     msg.SRC,
-			TxId:       msg.EncodeTxId(ev.TxId),
-			SrcHash:    ev.Raw.TxHash.String(),
-			DstChainId: ev.ToChainId,
-			SrcHeight:  height,
-			SrcParam:   hex.EncodeToString(ev.Rawdata),
-			SrcChainId: l.config.ChainId,
-			SrcProxy:   ev.ProxyOrAssetContract.String(),
-			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
-			SrcAddress: ev.Sender.String(),
-		}
-		l.Compose(tx)
 		txs = append(txs, tx)
 	}
+	return
+}
 
+func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
+	// receipt, err := l.zilSdk.GetTransaction(hash)
+	// if err != nil {
+	// 	return
+	// }
+	// TODO: get height
+	height = 12
+	// height = uint64(receipt.BlockNumber.Int64())
+	return
+}
+
+func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
+	res, err := l.zilSdk.GetTransaction(hash)
+	if err != nil || res == nil {
+		return
+	}
+	eventLogs := res.Receipt.EventLogs
+
+	for _, event := range eventLogs {
+		toAddr, _ := bech32.ToBech32Address(event.Address)
+		if toAddr == l.config.CCMContract {
+			if event.EventName != "CrossChainEvent" {
+				continue
+			}
+			ev := new(eccm_abi.EthCrossChainManagerImplementationCrossChainEvent)
+			param, err := msg.DecodeTxParam(ev.Rawdata)
+			if err != nil {
+				return nil, err
+			}
+			log.Info("Found src cross chain tx", "method", param.Method, "hash", param.TxHash)
+			tx := &msg.Tx{
+				TxType:     msg.SRC,
+				TxId:       msg.EncodeTxId(ev.TxId),
+				SrcHash:    hash,
+				DstChainId: ev.ToChainId,
+				// TODO: get srcheight
+				SrcHeight:  1,
+				SrcParam:   hex.EncodeToString(ev.Rawdata),
+				SrcChainId: l.config.ChainId,
+				SrcProxy:   ev.ProxyOrAssetContract.String(),
+				DstProxy:   common.BytesToAddress(ev.ToContract).String(),
+				SrcAddress: ev.Sender.String(),
+			}
+			l.Compose(tx)
+			// Only the first?
+			return tx, nil
+		}
+	}
+	return
+}
+
+func (l *Listener) Compose(tx *msg.Tx) (err error) {
+	if len(tx.SrcProofHex) > 0 && tx.Param != nil { // Already fetched the proof
+		log.Info("Proof already fetched for tx", "hash", tx.SrcHash)
+		tx.SrcProof, _ = hex.DecodeString(tx.SrcProofHex)
+		return
+	}
+
+	if tx.SrcHeight == 0 || len(tx.TxId) == 0 {
+		return fmt.Errorf("tx missing attributes src height %v, txid %s", tx.SrcHeight, tx.TxId)
+	}
+	if len(tx.SrcParam) == 0 {
+		return fmt.Errorf("src param is missing")
+	}
+	event, err := hex.DecodeString(tx.SrcParam)
+	if err != nil {
+		return fmt.Errorf("%s submitter decode src param error %v event %s", l.name, err, tx.SrcParam)
+	}
+	txId, err := hex.DecodeString(tx.TxId)
+	if err != nil {
+		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
+	}
+	param, err := msg.DecodeTxParam(event)
+	if err != nil {
+		return
+	}
+	tx.Param = param
+	tx.SrcEvent = event
+	tx.SrcProofHeight, tx.SrcProof, err = l.GetProof(txId, tx.SrcHeight)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (l *Listener) ListenCheck() time.Duration {
+	duration := time.Second
+	if l.config.ListenCheck > 0 {
+		duration = time.Duration(l.config.ListenCheck) * time.Second
+	}
+	return duration
+}
+
+func (l *Listener) Nodes() chains.Nodes {
+	// TODO:
+	return nil
+}
+
+func (l *Listener) ChainId() uint64 {
+	return l.config.ChainId
+}
+
+func (l *Listener) Defer() int {
+	return l.config.Defer
+}
+
+func (l *Listener) LatestHeight() (uint64, error) {
+	abc, err := l.zilSdk.GetBlockchainInfo()
+	if err != nil {
+		return 0, err
+	}
+	latestHeight, err := strconv.ParseUint(abc.NumTxBlocks, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return latestHeight, nil
+}
+
+func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
+	// TODO:
+	return
+}
+
+func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
+	if l.poly == nil {
+		err = fmt.Errorf("No poly sdk provided for listener chain %s", l.name)
+		return
+	}
+
+	if force != 0 {
+		return force, nil
+	}
+	h, err := l.poly.Node().GetInfoHeight(nil, l.config.ChainId)
+	height = uint64(h)
 	return
 }
