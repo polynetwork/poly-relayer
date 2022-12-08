@@ -3,6 +3,7 @@ module github.com/polynetwork/poly-relayer
 go 1.15
 
 require (
+	github.com/Zilliqa/gozilliqa-sdk v1.2.1-0.20210927032600-4c733f2cb879
 	github.com/boltdb/bolt v1.3.1
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/devfans/zion-sdk v0.0.24
