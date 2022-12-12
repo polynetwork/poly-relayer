@@ -22,7 +22,7 @@ func (o *InvalidPolyCommitEvent) Format() (title string, keys []string, values [
 		dstProxy = hex.EncodeToString(o.MerkleValue.MakeTxParam.ToContractAddress)
 	}
 	values = []interface{}{o.TxId, dstProxy, method, o.DstChainId, o.SrcChainId, o.PolyHash, o.PolyKey, o.Error}
-	title = fmt.Sprintf("Suspicious poly commit from chain %d", o.SrcChainId)
+	title = fmt.Sprintf("Suspicious poly commit from chain %d, CCMP for all chains will be paused, please check！", o.SrcChainId)
 	return
 }
 
@@ -34,7 +34,7 @@ type InvalidUnlockEvent struct {
 func (o *InvalidUnlockEvent) Format() (title string, keys []string, values []interface{}, buttons []map[string]string) {
 	keys = []string{"DstProxy", "SrcChain", "DstChain", "PolyHash", "DstHash", "Error"}
 	values = []interface{}{o.DstProxy, o.SrcChainId, o.DstAddress, o.DstChainId, o.PolyHash, o.DstHash, o.Error}
-	title = fmt.Sprintf("Suspicious execute on chain %d", o.DstChainId)
+	title = fmt.Sprintf("Suspicious execute on chain %d, CCMP for all chains will be paused, please check！", o.DstChainId)
 	return
 }
 
@@ -117,7 +117,6 @@ func (o *BindAssetEvent) Format() (title string, keys []string, values []interfa
 	values = []interface{}{o.TxHash, o.Contract, o.ChainId, o.FromAsset, o.ToChainId, o.Asset, o.InitialAmount}
 	return
 }
-
 
 func ParseInt(value, ty string) (v *big.Int) {
 	switch ty {
