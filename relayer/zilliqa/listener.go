@@ -178,7 +178,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 			}
 			rawdata, err := hex.DecodeString(strip0x(rawdataStr))
 			if err != nil {
-				fmt.Printf("rawdataStr %s\n", err.Error())
+				return nil, err
 			}
 			param, err := msg.DecodeTxParam(rawdata)
 			if err != nil {
@@ -335,32 +335,6 @@ func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval t
 		}
 	}
 }
-
-// type asdasg struct{
-// 	aaa map[string][]string
-// }
-
-// func DecodeTxParam(event core.EventLog) (param *ccom.MakeTxParam, err error) {
-// 	eventParams := event.Params
-// 	for _, contractValue := range eventParams {
-// 		if contractValue.VName == "rawdata" {
-// 			fmt.Println(contractValue.Value)
-// 			aaa := asdasg{}
-
-// 		}
-// 	}
-
-// 	param = &ccom.MakeTxParam{
-// 		// TxHash:              shim.TxHash,
-// 		// CrossChainID:        shim.CrossChainID,
-// 		// ToChainID: toChainId,
-// 		// FromContractAddress: shim.FromContractAddress,
-// 		// ToContractAddress:   shim.ToContractAddress,
-// 		// Method:              string(shim.Method),
-// 		// Args:                shim.Args,
-// 	}
-// 	return
-// }
 
 func findContractValue(eventParams []core.ContractValue, vname string) (string, error) {
 	for _, contractValue := range eventParams {
