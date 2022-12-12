@@ -401,3 +401,8 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 func (l *Listener) SDK() *zion.SDK {
 	return l.sdk
 }
+
+func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
+	// not used
+	return 0, false
+}

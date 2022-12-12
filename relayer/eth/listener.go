@@ -496,3 +496,8 @@ func (l *Listener) ScanEvents(height uint64, ch chan tools.CardEvent) (err error
 	}
 	return
 }
+
+func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
+	// not used
+	return 0, false
+}

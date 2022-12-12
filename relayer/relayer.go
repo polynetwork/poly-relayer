@@ -51,6 +51,7 @@ type IChainListener interface {
 	GetTxBlock(string) (uint64, error)
 	Compose(*msg.Tx) error
 	LatestHeight() (uint64, error)
+	WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool)
 }
 
 type Handler interface {

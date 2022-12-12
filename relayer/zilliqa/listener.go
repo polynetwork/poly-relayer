@@ -18,6 +18,7 @@
 package zilliqa
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -25,12 +26,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Zilliqa/gozilliqa-sdk/bech32"
+	"github.com/Zilliqa/gozilliqa-sdk/core"
 	"github.com/Zilliqa/gozilliqa-sdk/provider"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/zion"
@@ -41,16 +41,6 @@ import (
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/msg"
 )
-
-// type Listener struct {
-// 	*eth.Listener
-// 	sdk       *ontevm.SDK
-// 	poly      *zion.SDK
-// 	name      string
-// 	ccm       common.Address
-// 	ccd       common.Address
-// 	abiParsed abi.ABI
-// }
 
 type Listener struct {
 	zilSdk         *provider.Provider
@@ -64,22 +54,6 @@ type Listener struct {
 	abi            abi.ABI
 	state          bus.ChainStore // Header sync state
 }
-
-// type ZilliqaSyncManager struct {
-// 	polySigner               *poly.Account
-// 	polySdk                  *poly.PolySdk
-// 	relaySyncHeight          uint32
-// 	zilAccount               *account.Account
-// 	currentHeight            uint64
-// 	currentDsBlockNum        uint64
-// 	forceHeight              uint64
-// 	zilSdk                   *provider.Provider
-// 	crossChainManagerAddress string
-// 	cfg                      *config.Config
-// 	db                       *db.BoltDB
-// 	exitChan                 chan int
-// 	header4sync              [][]byte
-// }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	if config.ChainId != base.ZILLIQA {
@@ -149,14 +123,10 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	// ccm, err := l.zilSdk.contract
 	transactions, err := l.zilSdk.GetTxnBodiesForTxBlock(strconv.FormatUint(height, 10))
 	if err != nil {
-		return nil, err
-	}
-	if err != nil {
 		if strings.Contains(err.Error(), "TxBlock has no transactions") {
-			log.Info("ZilliqaSyncManager no transaction in block %d\n", height)
+			log.Info("No transaction in Zilliqa block ", "height", height)
 			return nil, nil
 		} else {
 			log.Info("ZilliqaSyncManager get transactions for tx block %d failed: %s\n", height, err.Error())
@@ -172,20 +142,21 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		if err != nil {
 			return nil, err
 		}
-		txs = append(txs, tx)
+		if tx != nil {
+			txs = append(txs, tx)
+		}
 	}
 	return
 }
 
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
-	// receipt, err := l.zilSdk.GetTransaction(hash)
-	// if err != nil {
-	// 	return
-	// }
-	// TODO: get height
-	height = 12
-	// height = uint64(receipt.BlockNumber.Int64())
-	return
+	tx, err := l.zilSdk.GetTransaction(hash)
+	if err != nil {
+		return 0, err
+	}
+	heightStr := tx.Receipt.EpochNum
+	height, err = strconv.ParseUint(heightStr, 10, 64)
+	return height, err
 }
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
@@ -196,29 +167,62 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	eventLogs := res.Receipt.EventLogs
 
 	for _, event := range eventLogs {
-		toAddr, _ := bech32.ToBech32Address(event.Address)
+		toAddr := event.Address
 		if toAddr == l.config.CCMContract {
 			if event.EventName != "CrossChainEvent" {
 				continue
 			}
-			ev := new(eccm_abi.EthCrossChainManagerImplementationCrossChainEvent)
-			param, err := msg.DecodeTxParam(ev.Rawdata)
+			rawdataStr, err := findContractValue(event.Params, "rawdata")
 			if err != nil {
 				return nil, err
 			}
+			rawdata, err := hex.DecodeString(strip0x(rawdataStr))
+			if err != nil {
+				fmt.Printf("rawdataStr %s\n", err.Error())
+			}
+			param, err := msg.DecodeTxParam(rawdata)
+			if err != nil {
+				return nil, err
+			}
+
+			txIdStr, err := findContractValue(event.Params, "txId")
+			if err != nil {
+				return nil, err
+			}
+			txId, err := hex.DecodeString(strip0x(txIdStr))
+			if err != nil {
+				return nil, err
+			}
+
+			proxyOrAssetContractStr, err := findContractValue(event.Params, "proxyOrAssetContract")
+			if err != nil {
+				return nil, err
+			}
+			toContractStr, err := findContractValue(event.Params, "toContract")
+			if err != nil {
+				return nil, err
+			}
+			senderStr, err := findContractValue(event.Params, "sender")
+			if err != nil {
+				return nil, err
+			}
+			height, err := strconv.ParseUint(res.Receipt.EpochNum, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+
 			log.Info("Found src cross chain tx", "method", param.Method, "hash", param.TxHash)
 			tx := &msg.Tx{
 				TxType:     msg.SRC,
-				TxId:       msg.EncodeTxId(ev.TxId),
+				TxId:       msg.EncodeTxId(txId),
 				SrcHash:    hash,
-				DstChainId: ev.ToChainId,
-				// TODO: get srcheight
-				SrcHeight:  1,
-				SrcParam:   hex.EncodeToString(ev.Rawdata),
+				DstChainId: param.ToChainID,
+				SrcHeight:  height,
+				SrcParam:   strip0x(rawdataStr),
 				SrcChainId: l.config.ChainId,
-				SrcProxy:   ev.ProxyOrAssetContract.String(),
-				DstProxy:   common.BytesToAddress(ev.ToContract).String(),
-				SrcAddress: ev.Sender.String(),
+				SrcProxy:   strip0x(proxyOrAssetContractStr),
+				DstProxy:   strip0x(toContractStr),
+				SrcAddress: senderStr,
 			}
 			l.Compose(tx)
 			// Only the first?
@@ -270,8 +274,8 @@ func (l *Listener) ListenCheck() time.Duration {
 	return duration
 }
 
+// not used
 func (l *Listener) Nodes() chains.Nodes {
-	// TODO:
 	return nil
 }
 
@@ -296,7 +300,6 @@ func (l *Listener) LatestHeight() (uint64, error) {
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
-	// TODO:
 	return
 }
 
@@ -312,4 +315,68 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 	h, err := l.poly.Node().GetInfoHeight(nil, l.config.ChainId)
 	height = uint64(h)
 	return
+}
+
+func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
+	if interval == 0 {
+		return 0, false
+	}
+	for {
+		h, err := l.LatestHeight()
+		if err != nil {
+			log.Error("Failed to get chain latest height err ", "chain", l.config.ChainId, "err", err)
+		} else if h >= height {
+			return h, true
+		}
+		select {
+		case <-ctx.Done():
+			return h, false
+		case <-time.After(interval):
+		}
+	}
+}
+
+// type asdasg struct{
+// 	aaa map[string][]string
+// }
+
+// func DecodeTxParam(event core.EventLog) (param *ccom.MakeTxParam, err error) {
+// 	eventParams := event.Params
+// 	for _, contractValue := range eventParams {
+// 		if contractValue.VName == "rawdata" {
+// 			fmt.Println(contractValue.Value)
+// 			aaa := asdasg{}
+
+// 		}
+// 	}
+
+// 	param = &ccom.MakeTxParam{
+// 		// TxHash:              shim.TxHash,
+// 		// CrossChainID:        shim.CrossChainID,
+// 		// ToChainID: toChainId,
+// 		// FromContractAddress: shim.FromContractAddress,
+// 		// ToContractAddress:   shim.ToContractAddress,
+// 		// Method:              string(shim.Method),
+// 		// Args:                shim.Args,
+// 	}
+// 	return
+// }
+
+func findContractValue(eventParams []core.ContractValue, vname string) (string, error) {
+	for _, contractValue := range eventParams {
+		if contractValue.VName == vname {
+			return fmt.Sprint(contractValue.Value), nil
+		}
+	}
+	return "", fmt.Errorf("%s cannot be found in eventParams %+v", vname, eventParams)
+}
+
+func strip0x(str string) string {
+	if len(str) < 2 {
+		return str
+	}
+	if str[:2] == "0x" {
+		return str[2:]
+	}
+	return str
 }
