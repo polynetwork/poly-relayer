@@ -23,8 +23,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"strings"
+
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 
 	"math/big"
 	"time"
@@ -494,4 +495,9 @@ func (l *Listener) ScanEvents(height uint64, ch chan tools.CardEvent) (err error
 		ch <- ev
 	}
 	return
+}
+
+func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
+	// not used
+	return 0, false
 }

@@ -20,6 +20,9 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
@@ -27,8 +30,6 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/zion"
 	"github.com/polynetwork/poly-relayer/store"
-	"sync"
-	"time"
 )
 
 type TxVoteHandler struct {
@@ -96,7 +97,11 @@ func (h *TxVoteHandler) start() (err error) {
 
 		h.height++
 		if latest < h.height+confirms {
-			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			if h.listener.Nodes() != nil {
+				latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			} else {
+				latest, ok = h.listener.WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			}
 			if !ok {
 				continue
 			}

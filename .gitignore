@@ -9,6 +9,8 @@
 *.test
 
 config.json
+roles.json
+boltdb.bin
 server
 
 # Output of the go coverage tool, specifically when used with LiteIDE
@@ -17,3 +19,5 @@ server
 # Dependency directories (remove the comment below to include it)
 # vendor/
 .idea
+
+keystore/*

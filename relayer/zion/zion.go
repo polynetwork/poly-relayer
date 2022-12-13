@@ -22,12 +22,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/devfans/zion-sdk/contracts/native/utils"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/devfans/zion-sdk/contracts/native/utils"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
