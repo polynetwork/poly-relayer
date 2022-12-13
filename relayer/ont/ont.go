@@ -30,7 +30,6 @@ import (
 	"time"
 
 	sdk "github.com/ontio/ontology-go-sdk"
-	ccm "github.com/ontio/ontology/smartcontract/service/native/cross_chain/cross_chain_manager"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/ont"
 	"github.com/polynetwork/bridge-common/log"
@@ -49,6 +48,14 @@ type Submitter struct {
 	signer  *wallet.OntSigner
 	name    string
 	compose msg.PolyComposer
+}
+
+func (s *Submitter) ProcessEpochs(txes []*msg.Tx) error {
+	return nil
+}
+
+func (s *Submitter) GetPolyEpochStartHeight(u uint64) (height uint64, err error) {
+	return 0, nil
 }
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
@@ -143,7 +150,7 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	}
 
 	hash, err := s.sdk.Node().WasmVM.InvokeWasmVMSmartContract(s.signer.Config.GasPrice, s.signer.Config.GasLimit,
-		s.signer.Account, s.signer.Account, s.ccm, ccm.PROCESS_CROSS_CHAIN_TX,
+		s.signer.Account, s.signer.Account, s.ccm, "verifyHeaderAndExecuteTx",
 		[]interface{}{hsHeader, rawSeals, tx.PolyAccountProof, tx.PolyStorageProof, cctx})
 	if err == nil {
 		tx.DstHash = hash.ToHexString()
@@ -203,9 +210,9 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 			if errors.Is(err, msg.ERR_TX_EXEC_FAILURE) {
 				tsp := time.Now().Unix() + 60*3
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
-				continue
 			} else {
-				bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
+				tsp := time.Now().Unix() + 60
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
 		} else {
 			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
