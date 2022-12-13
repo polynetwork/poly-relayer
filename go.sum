@@ -565,8 +565,8 @@ github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6J
 github.com/pkg/term v0.0.0-20180730021639-bffc007b7fd5/go.mod h1:eCbImbZ95eXtAUIbLAuAVnBnwf83mjf6QIVH8SHYwqQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/polynetwork/bridge-common v0.0.27-2 h1:bjBpU/uSB82isjijSjuvTTp4lXm9r+3ObglFhsF/qSM=
-github.com/polynetwork/bridge-common v0.0.27-2/go.mod h1:WTMQaGdMu/LIHzQNhvjnOrN0BoG9+49Og+QLw+hagws=
+github.com/polynetwork/bridge-common v0.0.28-2 h1:JzZ4CVq1W9UupYxkXjGe7WwopoUA53kSJC72LkGSeDA=
+github.com/polynetwork/bridge-common v0.0.28-2/go.mod h1:WTMQaGdMu/LIHzQNhvjnOrN0BoG9+49Og+QLw+hagws=
 github.com/portto/aptos-go-sdk v0.0.0-20221025115549-5c74acafa193 h1:LjvSOMyN31dW5qDA/9SoS4BjF4M7CXUD83MoygZhYgs=
 github.com/portto/aptos-go-sdk v0.0.0-20221025115549-5c74acafa193/go.mod h1:8+XTYv0iwHE5fjS8G6231LUhy2GYwl2BTlzxIqjIxyU=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
