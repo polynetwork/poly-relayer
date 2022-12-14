@@ -38,7 +38,6 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 
 	zcom "github.com/devfans/zion-sdk/common"
-	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/msg"
 )
 
@@ -52,7 +51,7 @@ type Listener struct {
 	GetProof       func([]byte, uint64) (uint64, []byte, error)
 	name           string
 	abi            abi.ABI
-	state          bus.ChainStore // Header sync state
+	//state          bus.ChainStore // Header sync state
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
@@ -69,10 +68,10 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	l.GetProofHeight = l.getProofHeight
 	l.GetProof = l.getProof
 
-	l.state = bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
-		config.Bus.HeightUpdateInterval,
-	)
+	//l.state = bus.NewRedisChainStore(
+	//	bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
+	//	config.Bus.HeightUpdateInterval,
+	//)
 
 	// TODO: make it able to take in multiple nodes
 	l.zilSdk = provider.NewProvider(config.Nodes[0])
