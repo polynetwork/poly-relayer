@@ -18,6 +18,7 @@
 package ont
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -46,6 +47,11 @@ type Listener struct {
 	ccd    string
 	config *config.ListenerConfig
 	name   string
+}
+
+func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
+	// not used
+	return 0, false
 }
 
 //
