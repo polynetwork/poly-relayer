@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/polynetwork/poly-relayer/relayer/ontevm"
+	"github.com/polynetwork/poly-relayer/relayer/switcheo"
 	"github.com/polynetwork/poly-relayer/relayer/zilliqa"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -84,6 +85,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(ontevm.Listener)
 	case base.ZILLIQA:
 		listener = new(zilliqa.Listener)
+	case base.SWITCHEO:
+		listener = new(switcheo.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)
