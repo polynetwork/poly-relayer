@@ -31,7 +31,6 @@ import (
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 
-	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/msg"
 	tmtypes "github.com/tendermint/tendermint/abci/types"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -43,7 +42,7 @@ type Listener struct {
 	poly      *zion.SDK
 	config    *config.ListenerConfig
 	name      string
-	state     bus.ChainStore // Header sync state
+	//state     bus.ChainStore // Header sync state
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
@@ -55,10 +54,10 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	l.name = base.GetChainName(config.ChainId)
 	l.poly = poly
 
-	l.state = bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
-		config.Bus.HeightUpdateInterval,
-	)
+	//l.state = bus.NewRedisChainStore(
+	//	bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
+	//	config.Bus.HeightUpdateInterval,
+	//)
 
 	// TODO: make it able to take in multiple nodes
 	l.rpcClient, err = rpchttp.New(config.Nodes[0])
