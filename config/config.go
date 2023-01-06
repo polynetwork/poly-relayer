@@ -121,6 +121,7 @@ type PolyChainConfig struct {
 }
 
 type ChainConfig struct {
+	NativeId          uint64
 	ChainId           uint64
 	Nodes             []string
 	ExtraNodes        []string
@@ -141,6 +142,7 @@ type ChainConfig struct {
 }
 
 type ListenerConfig struct {
+	NativeId          uint64
 	ChainId           uint64
 	Nodes             []string
 	ExtraNodes        []string
@@ -433,6 +435,7 @@ func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerC
 		util.Fatal("Conflict chain id in config for listeners %d <> %d", o.ChainId, c.ChainId)
 	}
 	o.ChainId = c.ChainId
+	o.NativeId = c.NativeId
 	if len(o.Nodes) == 0 {
 		o.Nodes = c.Nodes
 	}

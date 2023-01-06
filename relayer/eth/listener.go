@@ -74,6 +74,15 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	)
 
 	l.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
+	if err == nil {
+		for _, node := range l.sdk.AllNodes() {
+			chainID, err := node.ChainID(context.Background())
+			if err != nil { return err }
+			if chainID.Uint64() != config.NativeId {
+				return fmt.Errorf("chain native id does not match, specified as %v, node gives %v", config.NativeId, chainID.Uint64())
+			}
+		}
+	}
 	return
 }
 
