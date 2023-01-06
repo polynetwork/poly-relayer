@@ -315,7 +315,30 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 	return l.poly.Node().GetSideChainHeight(l.config.ChainId)
 }
 
+
+func (l *Listener) ValidateNodes() (err error) {
+	if l.sdk.Delta() <= 0 {
+		err = fmt.Errorf("No height increment since last update for chain %d", l.ChainId())
+	}
+	return
+}
+
 func (l *Listener) Validate(tx *msg.Tx) (err error) {
+	err = l.validate(l.sdk.Node(), tx)
+	if err == nil {
+		return
+	}
+	
+	for _, node := range l.sdk.AllNodes() {
+		e := l.validate(node, tx)
+		if e == nil {
+			return
+		}
+	}
+	return
+}
+
+func (l *Listener) validate(node *eth.Client, tx *msg.Tx) (err error) {
 	txId, err := hex.DecodeString(tx.TxId)
 	if err != nil {
 		return fmt.Errorf("%s failed to decode src txid %s, err %v", l.name, tx.TxId, err)
@@ -326,9 +349,9 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		err = fmt.Errorf("%s scan event mapping key error %v", l.name, err)
 		return
 	}
-	proof, err := l.sdk.Node().StorageAt(context.Background(), l.ccd, common.BytesToHash(key), nil)
+	proof, err := node.StorageAt(context.Background(), l.ccd, common.BytesToHash(key), nil)
 	if err != nil {
-		return fmt.Errorf("get proof value failure %v", err)
+		return fmt.Errorf("call storage failure %v", err)
 	}
 
 	sink := pcom.NewZeroCopySink(nil)

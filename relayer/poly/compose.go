@@ -24,7 +24,11 @@ import (
 )
 
 func (s *Submitter) GetProof(height uint32, key string) (param *ccom.ToMerkleValue, auditPath string, evt *scom.SmartContactEvent, err error) {
-	proof, err := s.sdk.Node().GetCrossStatesProof(height, key)
+	return s.getProof(s.sdk.Node(), height, key)
+}
+
+func (s *Submitter) getProof(node *poly.Client, height uint32, key string) (param *ccom.ToMerkleValue, auditPath string, evt *scom.SmartContactEvent, err error) {
+	proof, err := node.GetCrossStatesProof(height, key)
 	if err != nil {
 		err = fmt.Errorf("GetProof: GetCrossStatesProof key %s, error %v", key, err)
 		return
