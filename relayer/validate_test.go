@@ -2,14 +2,17 @@ package relayer
 
 import (
 	"fmt"
-	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/poly-relayer/config"
-	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"testing"
+
+	"github.com/polynetwork/bridge-common/base"
+	"github.com/polynetwork/bridge-common/tools"
+	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 )
 
 func TestValidate(t *testing.T) {
-	conf, err := config.New("/Users/stefanliu/git/relayer/config.json")
+	conf, err := config.New("../config.json")
 	if err != nil { t.Fatal(err) }
 	err = conf.Init()
 	if err != nil { t.Fatal(err) }
@@ -32,4 +35,13 @@ func TestValidate(t *testing.T) {
 		if err != nil { t.Fatal(err) }
 		fmt.Println("done")
 	}
+}
+
+func TestValidateEvent(t *testing.T) {
+	var ev tools.CardEvent
+	ev = &msg.InvalidPolyCommitEvent{
+		Error: fmt.Errorf("no"),
+	}
+	pause := ShouldPauseForEvent(ev)
+	t.Logf("Pause %v %+v", pause, ev)
 }

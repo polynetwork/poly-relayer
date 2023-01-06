@@ -9,6 +9,7 @@ import (
 
 type InvalidPolyCommitEvent struct {
 	*Tx
+	Title string
 	Error error
 }
 
@@ -22,19 +23,20 @@ func (o *InvalidPolyCommitEvent) Format() (title string, keys []string, values [
 		dstProxy = hex.EncodeToString(o.MerkleValue.MakeTxParam.ToContractAddress)
 	}
 	values = []interface{}{o.TxId, dstProxy, method, o.DstChainId, o.SrcChainId, o.PolyHash, o.PolyKey, o.Error}
-	title = fmt.Sprintf("Suspicious poly commit from chain %d, CCMP for all chains will be paused, please check！", o.SrcChainId)
+	title = fmt.Sprintf("Suspicious poly commit from chain %d %s", o.SrcChainId, o.Title)
 	return
 }
 
 type InvalidUnlockEvent struct {
 	*Tx
+	Title string
 	Error error
 }
 
 func (o *InvalidUnlockEvent) Format() (title string, keys []string, values []interface{}, buttons []map[string]string) {
 	keys = []string{"DstProxy", "SrcChain", "DstChain", "PolyHash", "DstHash", "Error"}
 	values = []interface{}{o.DstProxy, o.SrcChainId, o.DstAddress, o.DstChainId, o.PolyHash, o.DstHash, o.Error}
-	title = fmt.Sprintf("Suspicious execute on chain %d, CCMP for all chains will be paused, please check！", o.DstChainId)
+	title = fmt.Sprintf("Suspicious execute on chain %d %s", o.DstChainId, o.Title)
 	return
 }
 
