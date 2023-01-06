@@ -652,6 +652,7 @@ func watchAlarms(outputs chan tools.CardEvent) {
 	c := 0
 	for o := range outputs {
 		c++
+		handleAlarm(o)
 		fmt.Printf("!!!!!!! Alarm(%v): %s \n", c, util.Json(o))
 		if len(tools.DingUrl) == 0 {
 			continue
@@ -660,36 +661,45 @@ func watchAlarms(outputs chan tools.CardEvent) {
 		if err != nil {
 			log.Error("Post dingtalk failure", "err", err)
 		}
-		handleAlarm(o)
 		time.Sleep(time.Second)
 	}
 }
 
-func handleAlarm(o tools.CardEvent) {
-	info := "Invalid Unlock "
-    pause := true
+func ShouldPauseForEvent(o tools.CardEvent) bool {
+	pause := true
+	invalidNodeKeys := []string {"</html>", "timed out", "refused", "limit", "404", "400", "500", "503", "nauthorized", "No height increment", "call storage failure"}
 	switch ev := o.(type) {
 	case *msg.InvalidUnlockEvent:
-		info += ev.DstHash
+		if ev.Error == nil { return false }
 		err := ev.Error.Error()
-		for _, token := range []string{"</html>", "timed out", "refused", "limit"} {
+		for _, token := range invalidNodeKeys {
 			if strings.Contains(err, token) {
 				pause = false
 			}
 		}
+		if pause {
+			ev.Title = "Contracts will be paused!"
+		}
 	case *msg.InvalidPolyCommitEvent:
-		info += ev.PolyHash
+		if ev.Error == nil { return false }
 		err := ev.Error.Error()
-		for _, token := range []string{"</html>", "timed out", "refused", "limit"} {
+		for _, token := range invalidNodeKeys {
 			if strings.Contains(err, token) {
 				pause = false
 			}
+		}
+		if pause {
+			ev.Title = "Contracts will be paused!"
 		}
 	default:
 		pause = false
-		return
 	}
+	return pause
+}
 
+func handleAlarm(o tools.CardEvent) {
+	info := "Invalid Unlock "
+    pause := ShouldPauseForEvent(o)
 	if !pause || len(config.CONFIG.Validators.PauseCommand) == 0 {
 		return
 	}

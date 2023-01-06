@@ -109,8 +109,12 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 }
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
+	return l.scanTx(l.sdk.Node(), hash)
+}
+
+func (l *Listener) scanTx(node *poly.Client, hash string) (tx *msg.Tx, err error) {
 	//hash hasn't '0x'
-	event, err := l.sdk.Node().GetSmartContractEvent(hash)
+	event, err := node.GetSmartContractEvent(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -185,8 +189,31 @@ func (l *Listener) LatestHeight() (uint64, error) {
 	return l.sdk.Node().GetLatestHeight()
 }
 
+
+func (l *Listener) ValidateNodes() (err error) {
+	if l.sdk.Delta() <= 0 {
+		err = fmt.Errorf("No height increment since last update for chain %d", l.ChainId())
+	}
+	return
+}
+
 func (l *Listener) Validate(tx *msg.Tx) (err error) {
-	t, err := l.ScanTx(tx.PolyHash)
+	err = l.validate(l.sdk.Node(), tx)
+	if err == nil {
+		return
+	}
+	
+	for _, node := range l.sdk.AllNodes() {
+		e := l.validate(node, tx)
+		if e == nil {
+			return
+		}
+	}
+	return
+}
+
+func (l *Listener) validate(node *poly.Client, tx *msg.Tx) (err error) {
+	t, err := l.scanTx(node, tx.PolyHash)
 	if err != nil { return }
 	if t == nil {
 		return msg.ERR_TX_PROOF_MISSING
@@ -198,7 +225,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 		return fmt.Errorf("%w DstChainID does not match: %v, was %v", msg.ERR_TX_VOILATION, tx.DstChainId, t.DstChainId)
 	}
 	sub := &Submitter{sdk:l.sdk}
-	value, _, _, err := sub.GetProof(t.PolyHeight, t.PolyKey)
+	value, _, _, err := sub.getProof(node, t.PolyHeight, t.PolyKey)
 	if err != nil { return }
 	if value == nil {
 		return msg.ERR_TX_PROOF_MISSING

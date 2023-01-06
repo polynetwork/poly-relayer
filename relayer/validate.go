@@ -34,6 +34,7 @@ import (
 
 type IValidator interface {
 	Validate(*msg.Tx) error
+	ValidateNodes() error
 }
 
 type Validator struct {
@@ -103,6 +104,10 @@ func (v *Validator) start() (err error) {
 					time.Sleep(time.Second * 5)
 				}
 				if err != nil {
+					nodeErr := validator.ValidateNodes()
+					if nodeErr != nil {
+						err = fmt.Errorf("%w, %v", err, nodeErr)
+					}
 					if chainID > 0 {
 						v.outputs <- &msg.InvalidUnlockEvent{Tx: tx, Error: fmt.Errorf("invalid VerifyHeaderAndExecuteTxEvent event on chain %d, %v", tx.DstChainId, err)}
 					} else {
