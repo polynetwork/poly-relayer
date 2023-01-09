@@ -207,6 +207,7 @@ type PolyTxSyncHandler struct {
 	queue    bus.DelayedTxBus // delayed poly tx queue
 	state    bus.ChainStore
 	skip     bus.SkipCheck
+	sequence bus.Sequence
 	height   uint64
 	config   *config.PolyTxSyncConfig
 }
@@ -238,6 +239,7 @@ func (h *PolyTxSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err e
 	h.patch = bus.NewRedisPatchTxBus(bus.New(h.config.Bus.Redis), base.POLY)
 	h.queue = bus.NewRedisDelayedTxBus(bus.New(h.config.Bus.Redis))
 	h.skip = bus.NewRedisSkipCheck(bus.New(h.config.Bus.Redis))
+	h.sequence = bus.NewRedisChainSequence(bus.New(h.config.Bus.Redis))
 	ok, err := bus.NewStatusLock(bus.New(h.config.Bus.Redis), bus.POLY_SYNC).Start(ctx, h.wg)
 	if err != nil {
 		return err
@@ -288,9 +290,16 @@ func (h *PolyTxSyncHandler) start() (err error) {
 		if err == nil {
 			for _, tx := range txs {
 				log.Info("Found poly tx", "from", tx.SrcChainId, "to", tx.DstChainId, "hash", tx.PolyHash.Hex())
-				bus.SafeCall(h.Context, tx, "push to target chain tx bus", func() error {
-					return h.bus.PushToChain(context.Background(), tx)
-				})
+				switch tx.DstChainId {
+				case base.RIPPLE:
+					bus.SafeCall(h.Context, tx, "push to target chain tx bus", func() error {
+						return h.sequence.AddTx(h.Context, base.RIPPLE, tx.PolyKey, tx)
+					})
+				default:
+					bus.SafeCall(h.Context, tx, "push to target chain tx bus", func() error {
+						return h.bus.PushToChain(context.Background(), tx)
+					})
+				}
 			}
 			h.state.HeightMark(h.height)
 			continue

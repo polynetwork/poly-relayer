@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 
 	"math/big"
 	"strings"
@@ -78,31 +79,23 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
-func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	ccm, err := ccm.NewICrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
+func scanMakeProofTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []*msg.Tx, err error) {
+	makeProofEvents, err := ccm.FilterMakeProof(opt)
 	if err != nil {
-		return nil, err
-	}
-	opt := &bind.FilterOpts{
-		Start:   height,
-		End:     &height,
-		Context: context.Background(),
-	}
-	events, err := ccm.FilterMakeProof(opt)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("FilterMakeProof error %v", err)
 	}
 
-	if events == nil {
+	if makeProofEvents == nil {
 		return
 	}
 
 	txs = []*msg.Tx{}
-	for events.Next() {
-		ev := events.Event
+	for makeProofEvents.Next() {
+		ev := makeProofEvents.Event
 		param := new(zcom.ToMerkleValue)
 		value, err := hex.DecodeString(ev.MerkleValueHex)
 		if err != nil {
+			err = fmt.Errorf("hex.DecodeString error %v", err)
 			return nil, err
 		}
 		err = rlp.DecodeBytes(value, param)
@@ -121,7 +114,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		tx.SrcProxy = hex.EncodeToString(param.MakeTxParam.FromContractAddress)
 		tx.DstProxy = hex.EncodeToString(param.MakeTxParam.ToContractAddress)
 		tx.PolyKey = ev.Key
-		tx.PolyHeight = height
+		tx.PolyHeight = opt.Start
 		tx.PolyHash = ev.Raw.TxHash
 		tx.TxType = msg.POLY
 		tx.TxId = hex.EncodeToString(param.MakeTxParam.CrossChainID)
@@ -132,6 +125,58 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		}
 		txs = append(txs, tx)
 	}
+	return
+}
+
+func scanMultiSignTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []*msg.Tx, err error) {
+	multiSignEvents, err := ccm.FilterMultiSign(opt)
+	if err != nil {
+		return nil, fmt.Errorf("FilterMultiSign error %v", err)
+	}
+
+	if multiSignEvents == nil {
+		return
+	}
+
+	txs = []*msg.Tx{}
+	for multiSignEvents.Next() {
+		ev := multiSignEvents.Event
+		tx := new(msg.Tx)
+		tx.TxType = msg.POLY
+		tx.PolyHeight = opt.Start
+		tx.PolyHash = ev.Raw.TxHash
+		tx.SrcChainId = ev.FromChainId
+		tx.DstChainId = ev.ToChainId
+		tx.PolyKey = strconv.FormatUint(uint64(ev.Sequence), 10)
+		tx.ChainTxJson = ev.Payment
+
+		txs = append(txs, tx)
+	}
+	return
+}
+
+func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
+	ccm, err := ccm.NewICrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
+	if err != nil {
+		return nil, err
+	}
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+
+	makeProofTxs, err := scanMakeProofTxs(ccm, opt)
+	if err != nil {
+		return nil, err
+	}
+	txs = append(txs, makeProofTxs...)
+
+	multiSignTxs, err := scanMultiSignTxs(ccm, opt)
+	if err != nil {
+		return nil, err
+	}
+	txs = append(txs, multiSignTxs...)
 
 	return
 }

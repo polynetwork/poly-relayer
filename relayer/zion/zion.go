@@ -200,6 +200,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		)
 	*/
 	if err != nil {
+		log.Error("import tx to poly failed", "src hash", tx.SrcHash, "err", err)
 		if strings.Contains(err.Error(), "tx already done") {
 			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
 			return nil

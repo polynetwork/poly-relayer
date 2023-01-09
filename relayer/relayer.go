@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
+	"github.com/polynetwork/poly-relayer/relayer/ripple"
 	"sync"
 	"time"
 
@@ -102,6 +103,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
 	case base.ONT:
 		submitter = new(ont.Submitter)
+	case base.RIPPLE:
+		submitter = new(ripple.Submitter)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Submitter)
