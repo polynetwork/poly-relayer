@@ -88,13 +88,44 @@ func (s *Submitter) ApproveRegisterSideChain(chainID uint64, update bool) (hash 
 	return
 }
 
+func (s *Submitter) RegisterAsset(chainId uint64, assetMap, lockProxyMap map[uint64][]byte) (hash common.Hash, err error) {
+	accounts := s.wallet.Accounts()
+	if len(accounts) == 0 {
+		err = fmt.Errorf("missing available account")
+		return
+	}
+	method := "registerAsset"
+	log.Info("Using account", "address", accounts[0].Address.String())
+
+	assetMapKey := make([]uint64, len(assetMap))
+	lockProxyMapKey := make([]uint64, len(lockProxyMap))
+	assetMapValue := make([][]byte, len(assetMap))
+	lockProxyMapValue := make([][]byte, len(lockProxyMap))
+	for k, v := range assetMap {
+		assetMapKey = append(assetMapKey, k)
+		assetMapValue = append(assetMapValue, v)
+	}
+	for k, v := range lockProxyMap {
+		lockProxyMapKey = append(lockProxyMapKey, k)
+		lockProxyMapValue = append(lockProxyMapValue, v)
+	}
+	data, err := zion.SM_ABI.Pack(method, chainId, assetMapKey, assetMapValue, lockProxyMapKey, lockProxyMapValue)
+	if err != nil {
+		return
+	}
+	hashStr, err := s.wallet.SendWithAccount(accounts[0], utils.SideChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
+	if err != nil {
+		return
+	}
+	hash = common.HexToHash(hashStr)
+	return
+}
+
 func (s *Submitter) GetSideChain(chainID uint64) (chain *side_chain_manager_abi.ISideChainManagerSideChain, err error) {
 	c, err := s.sdk.Node().GetSideChain(nil, chainID)
 	if err != nil {
 		return
 	}
-	if c.ChainID != 0 {
-		chain = &c
-	}
+	chain = &c
 	return
 }

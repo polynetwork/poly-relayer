@@ -5,12 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/polynetwork/bridge-common/abi/eccd_abi"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/polynetwork/bridge-common/abi/eccd_abi"
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -112,7 +113,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		tx.DstHash, err = s.wallet.SendWithAccount(account, s.ccm, big.NewInt(0), tx.DstGasLimit, gasPrice, gasPriceX, tx.DstData)
 	} else {
 		maxLimit, _ := big.NewFloat(tx.PaidGas).Int(nil)
-		tx.DstHash, err = s.wallet.SendWithMaxLimit(account, s.ccm, big.NewInt(0), maxLimit, gasPrice, gasPriceX, tx.DstData)
+		tx.DstHash, err = s.wallet.SendWithMaxLimit(s.sdk.ChainID, account, s.ccm, big.NewInt(0), maxLimit, gasPrice, gasPriceX, tx.DstData)
 	}
 
 	return err
@@ -215,16 +216,17 @@ func (s *Submitter) ProcessEpochs(epochs []*msg.Tx) (err error) {
 	CONFIRM:
 		for {
 			hash := msg.Hash(m.DstHash)
-			height, _, pending, err = s.sdk.Node().Confirm(hash, 0, 100)
+			height, _, pending, err = s.sdk.Node().Confirm(hash, 0, 10)
 			if height > 0 {
-				log.Info("Submitted epoch updates", "chain", s.name, "hash", hash, "height", height)
+				log.Info("Submitted epoch updates", "chain", s.name, "hash", hash.String(), "height", height)
 				break CONFIRM
 			}
 			if err == nil && !pending {
-				err = fmt.Errorf("Failed to find the transaction %v", err)
-				return
+				err = fmt.Errorf("failed to find the transaction chain=%s, %v", s.name, err)
+			} else {
+				err = fmt.Errorf("tx wait confirm timeout chain=%s, hash=%s, pending=%v, err=%v", s.name, hash.String(), pending, err)
 			}
-			log.Warn("Tx wait confirm timeout", "chain", s.name, "hash", hash, "pending", pending, "err", err)
+			return
 		}
 
 	}
@@ -341,7 +343,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 				tsp := time.Now().Unix() + 60*10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
-				tsp := time.Now().Unix() + 1
+				tsp := time.Now().Unix() + 60
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 				if errors.Is(err, msg.ERR_LOW_BALANCE) {
 					log.Info("Low wallet balance detected", "chain", s.name, "account", account.Address)

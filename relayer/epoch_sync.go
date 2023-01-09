@@ -80,7 +80,7 @@ func (h *EpochSyncHandler) Start() (err error) {
 }
 
 func (h *EpochSyncHandler) start() (err error) {
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Minute)
 	h.wg.Add(1)
 	defer h.wg.Done()
 LOOP:

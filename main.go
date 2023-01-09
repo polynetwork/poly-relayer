@@ -2,15 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"github.com/urfave/cli/v2"
 	"os"
 	"os/signal"
-	"runtime/pprof"
 	"sync"
 	"syscall"
-	"time"
-
-	"github.com/urfave/cli/v2"
 
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/util"
@@ -441,6 +437,17 @@ func main() {
 				},
 			},
 			{
+				Name:   relayer.REGISTER_ASSET,
+				Usage:  "Register Ripple Asset",
+				Action: command(relayer.REGISTER_ASSET),
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "chain",
+						Usage: "chain id",
+					},
+				},
+			},
+			{
 				Name:   relayer.GET_SIDE_CHAIN,
 				Usage:  "Get side chain instance",
 				Action: command(relayer.GET_SIDE_CHAIN),
@@ -525,26 +532,26 @@ func start(c *cli.Context) error {
 	status := 0
 	err = relayer.Start(ctx, wg, config)
 
-	// pprof analyse
-	f, err := os.Create("pprof")
-	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
-	}
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal("could not start CPU profile: ", err)
-	}
-
-	ticker := time.NewTicker(2 * time.Minute)
-PPROF:
-	for {
-		select {
-		case <-ticker.C:
-			fmt.Println("stop pprof")
-			pprof.StopCPUProfile()
-			break PPROF
-		default:
-		}
-	}
+	//	// pprof analyse
+	//	f, e := os.Create("pprof")
+	//	if e != nil {
+	//		log.Fatal("could not create CPU profile: ", e)
+	//	}
+	//	if e := pprof.StartCPUProfile(f); e != nil {
+	//		log.Fatal("could not start CPU profile: ", e)
+	//	}
+	//
+	//	ticker := time.NewTicker(2 * time.Minute)
+	//PPROF:
+	//	for {
+	//		select {
+	//		case <-ticker.C:
+	//			fmt.Println("stop pprof")
+	//			pprof.StopCPUProfile()
+	//			break PPROF
+	//		default:
+	//		}
+	//	}
 
 	if err == nil {
 		sc := make(chan os.Signal, 10)

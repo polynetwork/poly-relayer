@@ -20,14 +20,16 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
+	"github.com/polynetwork/poly-relayer/relayer/eth"
 	"github.com/polynetwork/poly-relayer/relayer/zion"
 	"github.com/polynetwork/poly-relayer/store"
-	"sync"
-	"time"
 )
 
 type TxVoteHandler struct {
@@ -42,8 +44,15 @@ type TxVoteHandler struct {
 }
 
 func NewTxVoteHandler(config *config.TxVoteConfig) *TxVoteHandler {
+	var chainListener IChainListener
+	if config.ChainId == base.ZION {
+		chainListener = new(eth.Listener)
+	} else {
+		chainListener = GetListener(config.ChainId)
+	}
+
 	return &TxVoteHandler{
-		listener:  GetListener(config.ChainId),
+		listener:  chainListener,
 		submitter: new(zion.Submitter),
 		config:    config,
 	}
@@ -88,7 +97,11 @@ func (h *TxVoteHandler) start() (err error) {
 
 		h.height++
 		if latest < h.height+confirms {
-			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			if h.listener.Nodes() != nil {
+				latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			} else {
+				latest, ok = h.listener.WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+			}
 			if !ok {
 				continue
 			}

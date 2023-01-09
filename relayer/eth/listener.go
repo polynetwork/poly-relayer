@@ -23,8 +23,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"strings"
+
+	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 
 	"math/big"
 	"time"
@@ -85,7 +86,8 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 
 func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	switch l.config.ChainId {
-	case base.ETH, base.BSC, base.HECO, base.O3, base.MATIC, base.BYTOM, base.HSC, base.GOERLI:
+	//header sync chian
+	case base.ETH, base.BSC, base.HECO, base.O3, base.BYTOM, base.HSC, base.GOERLI:
 		h, err := l.poly.Node().GetInfoHeight(nil, l.config.ChainId)
 		height = uint64(h)
 		return height, err
@@ -493,4 +495,9 @@ func (l *Listener) ScanEvents(height uint64, ch chan tools.CardEvent) (err error
 		ch <- ev
 	}
 	return
+}
+
+func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
+	// not used
+	return 0, false
 }

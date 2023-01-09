@@ -23,6 +23,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/polynetwork/poly-relayer/relayer/ontevm"
+	"github.com/polynetwork/poly-relayer/relayer/switcheo"
+	"github.com/polynetwork/poly-relayer/relayer/zilliqa"
+
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/bridge"
@@ -48,6 +52,7 @@ type IChainListener interface {
 	GetTxBlock(string) (uint64, error)
 	Compose(*msg.Tx) error
 	LatestHeight() (uint64, error)
+	WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool)
 }
 
 type Handler interface {
@@ -74,8 +79,14 @@ func GetListener(chain uint64) (listener IChainListener) {
 	switch chain {
 	case base.OK:
 		listener = new(ok.Listener)
-	case base.POLY:
+	case base.ZION:
 		listener = new(po.Listener)
+	case base.ONTEVM:
+		listener = new(ontevm.Listener)
+	case base.ZILLIQA:
+		listener = new(zilliqa.Listener)
+	case base.SWITCHEO:
+		listener = new(switcheo.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)
