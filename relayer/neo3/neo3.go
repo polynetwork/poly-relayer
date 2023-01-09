@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	VERIFY_AND_EXECUTE_TX = "VerifyAndExecuteTx"
+	VERIFY_SIG_AND_EXECUTE_TX = "VerifySigAndExecuteTx"
 )
 
 type Submitter struct {
@@ -183,7 +183,7 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	if err != nil {
 		return fmt.Errorf("neo3 ccmc conversion error: %s", err)
 	}
-	script, err := sc.MakeScript(scriptHash, VERIFY_AND_EXECUTE_TX, []interface{}{crossInfo, sigInfo, pubKey})
+	script, err := sc.MakeScript(scriptHash, VERIFY_SIG_AND_EXECUTE_TX, []interface{}{crossInfo, sigInfo, pubKey})
 	if err != nil {
 		return fmt.Errorf("sc.MakeScript error: %s", err)
 	}
