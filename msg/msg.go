@@ -159,6 +159,8 @@ type Tx struct {
 	DstAsset                string                `json:"-"`
 	DstAmount               *big.Int              `json:"-"`
 
+	ChainTxJson string `json:",omitempty"`
+
 	Extra interface{} `json:"-"`
 }
 

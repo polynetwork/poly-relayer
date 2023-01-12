@@ -20,6 +20,9 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/relayer/neo3"
+	"github.com/polynetwork/poly-relayer/relayer/ont"
+	"github.com/polynetwork/poly-relayer/relayer/ripple"
 	"sync"
 	"time"
 
@@ -81,12 +84,16 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(ok.Listener)
 	case base.ZION:
 		listener = new(po.Listener)
+	case base.ONT:
+		listener = new(ont.Listener)
 	case base.ONTEVM:
 		listener = new(ontevm.Listener)
 	case base.ZILLIQA:
 		listener = new(zilliqa.Listener)
 	case base.SWITCHEO:
 		listener = new(switcheo.Listener)
+	case base.NEO3:
+		listener = new(neo3.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)
@@ -97,6 +104,12 @@ func GetListener(chain uint64) (listener IChainListener) {
 
 func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 	switch chain {
+	case base.ONT:
+		submitter = new(ont.Submitter)
+	case base.RIPPLE:
+		submitter = new(ripple.Submitter)
+	case base.NEO3:
+		submitter = new(neo3.Submitter)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Submitter)

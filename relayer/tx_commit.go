@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/relayer/ripple"
 	"sync"
 	"time"
 
@@ -38,6 +39,7 @@ type PolyTxCommitHandler struct {
 
 	bus       bus.TxBus
 	queue     bus.DelayedTxBus // Delayed tx bus
+	sequence  bus.Sequence     // Chain now sequence and sequenceTx
 	submitter IChainSubmitter
 	composer  *zion.Submitter
 	config    *config.PolyTxCommitConfig
@@ -80,6 +82,10 @@ func (h *PolyTxCommitHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err
 
 	h.bus = bus.NewRedisTxBus(bus.New(h.config.Bus.Redis), h.config.ChainId, msg.POLY)
 	h.queue = bus.NewRedisDelayedTxBus(bus.New(h.config.Bus.Redis))
+	if h.config.ChainId == base.RIPPLE {
+		h.sequence = bus.NewRedisChainSequence(bus.New(h.config.Bus.Redis))
+	}
+
 	return
 }
 
@@ -116,7 +122,16 @@ func (h *PolyTxCommitHandler) Start() (err error) {
 		go bus.Pipe(h.Context, h.wg)
 		mq = bus
 	}
-	err = h.submitter.Start(h.Context, h.wg, mq, h.queue, h.Compose)
+	if h.config.ChainId == base.RIPPLE {
+		if rippleSubmitter, ok := h.submitter.(*ripple.Submitter); ok {
+			err = rippleSubmitter.StartRipple(h.Context, h.wg, mq, h.queue, h.Compose, h.sequence)
+		} else {
+			err = fmt.Errorf("start ripple submitter error, type assertion failed")
+		}
+	} else {
+		err = h.submitter.Start(h.Context, h.wg, mq, h.queue, h.Compose)
+	}
+
 	return
 }
 

@@ -44,7 +44,6 @@ import (
 	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/tools"
-	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 )
@@ -59,7 +58,7 @@ type Listener struct {
 	GetProof       func([]byte, uint64) (uint64, []byte, error)
 	name           string
 	abi            abi.ABI
-	state          bus.ChainStore // Header sync state
+	//state          bus.ChainStore // Header sync state
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
@@ -72,10 +71,10 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	l.GetProofHeight = l.getProofHeight
 	l.GetProof = l.getProof
 
-	l.state = bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
-		config.Bus.HeightUpdateInterval,
-	)
+	//l.state = bus.NewRedisChainStore(
+	//	bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
+	//	config.Bus.HeightUpdateInterval,
+	//)
 
 	l.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err == nil {

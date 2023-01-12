@@ -17,25 +17,27 @@
 
 package ont
 
-/*
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ontio/ontology-go-sdk/utils"
+	"github.com/ontio/ontology/common"
+	vconfig "github.com/ontio/ontology/consensus/vbft/config"
+	"github.com/polynetwork/bridge-common/log"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/ontio/ontology/common"
+	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccom "github.com/ontio/ontology/smartcontract/service/native/cross_chain/common"
-	outils "github.com/ontio/ontology/smartcontract/service/native/utils"
-
-	pcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/ont"
 	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
-	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
 )
 
 type Listener struct {
@@ -47,46 +49,57 @@ type Listener struct {
 	name   string
 }
 
+func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
+	// not used
+	return 0, false
+}
+
+//
+//func (l *Listener) Compose(tx *msg.Tx) error {
+//	panic("implement me")
+//}
+
 func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	if config.ChainId != base.ONT {
 		return fmt.Errorf("ONT chain id is incorrect in config %v", config.ChainId)
 	}
 	l.config = config
 	l.name = base.GetChainName(config.ChainId)
-	l.ccm = outils.CrossChainContractAddress.ToHexString()
+	l.ccm = config.CCMContract
+	//l.ccm = outils.CrossChainContractAddress.ToHexString()
 	l.poly = poly
 	l.sdk, err = ont.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	return
 }
 
-func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
-	h, err := l.poly.Node().GetSideChainHeight(l.config.ChainId)
-	if err != nil {
-		return 0, fmt.Errorf("getProofHeight unsupported chain %s err %v", l.name, err)
-	}
-	if txHeight >= h {
-		height = txHeight
-	} else {
-		height = h
-	}
-	return
-}
+//func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
+//	h, err := l.poly.Node().GetSideChainHeight(l.config.ChainId)
+//	if err != nil {
+//		return 0, fmt.Errorf("getProofHeight unsupported chain %s err %v", l.name, err)
+//	}
+//	if txHeight >= h {
+//		height = txHeight
+//	} else {
+//		height = h
+//	}
+//	return
+//}
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	if tx.SrcHeight == 0 {
 		return fmt.Errorf("Invalid tx src height(0)")
 	}
-	v, _ := l.poly.Node().GetSideChainMsg(base.ONT, tx.SrcHeight)
-	if len(v) == 0 {
-		msg, err := l.sdk.Node().GetCrossChainMsg(uint32(tx.SrcHeight))
-		if err != nil {
-			return err
-		}
-		tx.SrcStateRoot, err = hex.DecodeString(msg)
-		if err != nil {
-			return err
-		}
-	}
+	//v, _ := l.poly.Node().GetSideChainMsg(base.ONT, tx.SrcHeight)
+	//if len(v) == 0 {
+	//	msg, err := l.sdk.Node().GetCrossChainMsg(uint32(tx.SrcHeight))
+	//	if err != nil {
+	//		return err
+	//	}
+	//	tx.SrcStateRoot, err = hex.DecodeString(msg)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 	key, err := hex.DecodeString(tx.TxId)
 	if err != nil {
 		return
@@ -100,7 +113,9 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 		return
 	}
 	{
-		value, _, _, _ := msg.ParseAuditPath(tx.SrcProof)
+		source := common.NewZeroCopySource(tx.SrcProof)
+		value, _, _, _ := source.NextVarBytes()
+
 		if len(value) == 0 {
 			return fmt.Errorf("ParseAuditPath got null param")
 		}
@@ -109,7 +124,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 		if err != nil {
 			return
 		}
-		tx.Param = &pcom.MakeTxParam{
+		tx.Param = &zcom.MakeTxParam{
 			TxHash:              param.TxHash,
 			CrossChainID:        param.CrossChainID,
 			FromContractAddress: param.FromContractAddress,
@@ -118,6 +133,12 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 			Method:              param.Method,
 			Args:                param.Args,
 		}
+
+		rawData, err := msg.EncodeTxParam(tx.Param)
+		if err != nil {
+			return fmt.Errorf("EncodeTxParam failed. err=%v", err)
+		}
+		tx.SrcParam = hex.EncodeToString(rawData)
 	}
 	return
 }
@@ -145,21 +166,36 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	txs = []*msg.Tx{}
 	for _, event := range events {
 		for _, notify := range event.Notify {
-			if notify.ContractAddress != l.ccm {
+			if !strings.EqualFold(notify.ContractAddress, l.ccm) {
 				continue
 			}
+			log.Info("ont scan", "height", height, "notify", fmt.Sprintf("%+v", *notify))
 			states, ok := notify.States.([]interface{})
-			if !ok || states[0].(string) != "makeFromOntProof" {
+			if !ok || states[0].(string) != "cross_chain" {
 				continue
 			}
-			tx := &msg.Tx{
-				TxId:       states[4].(string),
-				TxType:     msg.SRC,
-				SrcHeight:  height,
-				SrcChainId: base.ONT,
-				SrcHash:    event.TxHash,
-				DstChainId: uint64(states[2].(float64)),
+			srcProxy, err := utils.AddressFromBase58(states[3].(string))
+			if err != nil {
+				return nil, fmt.Errorf("decode src lock proxy of ONT ccm event failed. height %d, srcHash %s, err %v", height, event.TxHash, err)
 			}
+
+			dstChainId, err := strconv.ParseUint(states[4].(string), 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("decode dst chain id of ONT ccm event failed. height %d, srcHash %s, err %v", height, event.TxHash, err)
+			}
+
+			tx := &msg.Tx{
+				TxType:     msg.SRC,
+				TxId:       states[2].(string),
+				SrcHash:    event.TxHash,
+				DstChainId: dstChainId,
+				SrcHeight:  height,
+				SrcChainId: l.ChainId(),
+				SrcProxy:   srcProxy.ToHexString(),
+				DstProxy:   states[5].(string),
+				SrcParam:   states[6].(string),
+			}
+			l.Compose(tx)
 			txs = append(txs, tx)
 		}
 	}
@@ -201,27 +237,9 @@ func (l *Listener) Defer() int {
 }
 
 func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
-	if l.poly == nil {
-		err = fmt.Errorf("No poly sdk provided for NEO FetchLastConsensus")
-		return
-	}
-	if force != 0 {
-		return force, nil
-	}
-	height, err = l.poly.Node().GetSideChainMsgHeight(base.ONT)
-	if err != nil {
-		return
-	}
-	if height == 0 {
-		height, err = l.poly.Node().GetSideChainHeight(base.ONT)
-	}
-	if last > height {
-		height = last
-	}
-	return
+	return 0, nil
 }
 
 func (l *Listener) LatestHeight() (uint64, error) {
 	return l.sdk.Node().GetLatestHeight()
 }
- */

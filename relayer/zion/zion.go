@@ -200,6 +200,7 @@ func (s *Submitter) submit(tx *msg.Tx) error {
 		)
 	*/
 	if err != nil {
+		log.Error("import tx to poly failed", "src hash", tx.SrcHash, "err", err)
 		if strings.Contains(err.Error(), "tx already done") {
 			log.Info("Tx already imported", "src_hash", tx.SrcHash, "chain", tx.SrcChainId)
 			return nil
@@ -520,14 +521,14 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 		for _, tx := range txs {
 			txParam, err := msg.DecodeTxParam(tx.Value)
 			if err != nil {
-				log.Error("Tx vote DecodeTxParam failed", "src hash", tx.Hash, "err", err)
+				log.Error("Tx vote DecodeTxParam failed", "src hash", tx.Hash.Hex(), "err", err)
 				continue
 			}
 
 			// Check done tx existence
 			done, err := s.sdk.Node().CheckDone(nil, tx.ChainID, txParam.CrossChainID)
 			if err != nil {
-				log.Error("Tx vote check done failed", "src hash", tx.Hash, "err", err)
+				log.Error("Tx vote check done failed", "src hash", tx.Hash.Hex(), "err", err)
 				continue
 			}
 			if done {
@@ -545,26 +546,26 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			}
 			digest, err := param.Digest()
 			if err != nil {
-				log.Error("Failed to get param digest", "err", err)
+				log.Error("tx vote failed to get param digest", "src hash", tx.Hash.Hex(), "chain", s.name, "err", err)
 				continue
 			}
 			param.Signature, err = s.voter.SignHash(digest)
 			if err != nil {
-				log.Error("Failed to sign param", "err", err)
+				log.Error("tx vote failed to sign param", "src hash", tx.Hash.Hex(), "chain", s.name, "err", err)
 				continue
 			}
 			data, err := s.txabi.Pack("importOuterTransfer", tx.ChainID, uint32(tx.Height), []byte{}, tx.Value, param.Signature)
 			if err != nil {
-				log.Error("Failed to pack data", "err", err)
+				log.Error("tx vote failed to pack data", "src hash", tx.Hash.Hex(), "chain", s.name, "err", err)
 				continue
 			}
 
 			hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 			if err != nil || hash == "" {
-				log.Error("Failed to send tx", "err", err, "hash", hash)
+				log.Error("Failed to send tx", "err", err, "hash", hash, "src hash", tx.Hash.Hex(), "chain", s.name)
 				continue
 			}
-			log.Info("Send tx vote", "hash", hash, "chain", s.name)
+			log.Info("Send tx vote", "hash", hash, "src hash", tx.Hash.Hex(), "chain", s.name)
 			bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
 				return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
 			})

@@ -40,4 +40,6 @@ var (
 	ERR_TX_VERIFY_PROOF_FAILED = errors.New("VerifyCrossChainProof failed")
 
 	ERR_SIGNER_ALREADY_EXIST = errors.New("signer already exist")
+
+	ERR_FEE_INSUFFICIENT = errors.New("Fee insufficient")
 )
