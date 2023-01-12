@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/relayer/neo3"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
 	"github.com/polynetwork/poly-relayer/relayer/ripple"
 	"sync"
@@ -91,6 +92,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(zilliqa.Listener)
 	case base.SWITCHEO:
 		listener = new(switcheo.Listener)
+	case base.NEO3:
+		listener = new(neo3.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)

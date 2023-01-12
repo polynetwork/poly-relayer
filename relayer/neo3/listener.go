@@ -18,6 +18,7 @@
 package neo3
 
 import (
+	"context"
 	"fmt"
 	"github.com/joeqian10/neo3-gogogo/crypto"
 	"github.com/joeqian10/neo3-gogogo/helper"
@@ -340,4 +341,9 @@ func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error)
 
 func (l *Listener) LatestHeight() (uint64, error) {
 	return l.sdk.Node().GetLatestHeight()
+}
+
+func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
+	// not used
+	return 0, false
 }
