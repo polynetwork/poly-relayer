@@ -108,6 +108,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(ont.Submitter)
 	case base.RIPPLE:
 		submitter = new(ripple.Submitter)
+	case base.NEO3:
+		submitter = new(neo3.Submitter)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Submitter)
