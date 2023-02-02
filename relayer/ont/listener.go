@@ -166,7 +166,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	txs = []*msg.Tx{}
 	for _, event := range events {
 		for _, notify := range event.Notify {
-			if !strings.EqualFold(notify.ContractAddress, l.ccm) {
+			if !strings.EqualFold(notify.ContractAddress, strings.TrimPrefix(l.ccm, "0x")) {
 				continue
 			}
 			log.Info("ont scan", "height", height, "notify", fmt.Sprintf("%+v", *notify))
@@ -195,7 +195,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 				DstProxy:   states[5].(string),
 				SrcParam:   states[6].(string),
 			}
-			l.Compose(tx)
+			//l.Compose(tx)
 			txs = append(txs, tx)
 		}
 	}
