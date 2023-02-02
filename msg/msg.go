@@ -159,6 +159,10 @@ type Tx struct {
 	DstAsset                string                `json:"-"`
 	DstAmount               *big.Int              `json:"-"`
 
+	// Aptos
+	ToAssetAddress string `json:",omitempty"`
+
+	// Ripple
 	ChainTxJson string `json:",omitempty"`
 
 	Extra interface{} `json:"-"`
@@ -199,8 +203,31 @@ type MakeTxParamShim struct {
 }
 
 func EncodeTxParam(param *ccom.MakeTxParam) (data []byte, err error) {
-	return TxParam.Pack(param.TxHash, param.CrossChainID, param.FromContractAddress,
-		param.ToChainID, param.ToContractAddress, param.Method, param.Args)
+	BytesTy, _ := abi.NewType("bytes", "", nil)
+	IntTy, _ := abi.NewType("int", "", nil)
+
+	TxParam := abi.Arguments{
+		{Type: BytesTy, Name: "txHash"},
+		{Type: BytesTy, Name: "crossChainID"},
+		{Type: BytesTy, Name: "fromContractAddress"},
+		{Type: IntTy, Name: "toChainID"},
+		{Type: BytesTy, Name: "toContractAddress"},
+		{Type: BytesTy, Name: "method"},
+		{Type: BytesTy, Name: "args"},
+	}
+
+	shim := &MakeTxParamShim{
+		TxHash:              param.TxHash,
+		CrossChainID:        param.CrossChainID,
+		FromContractAddress: param.FromContractAddress,
+		ToChainID:           new(big.Int).SetUint64(param.ToChainID),
+		ToContractAddress:   param.ToContractAddress,
+		Method:              []byte(param.Method),
+		Args:                param.Args,
+	}
+
+	data, err = TxParam.Pack(shim.TxHash, shim.CrossChainID, shim.FromContractAddress, shim.ToChainID, shim.ToContractAddress, shim.Method, shim.Args)
+	return
 }
 
 func DecodeTxParam(data []byte) (param *ccom.MakeTxParam, err error) {
