@@ -260,8 +260,12 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 			if tx.Time > uint64(now-600) {
 				continue
 			}
+			alreadyDone := false
 			needRetry := true
 			hash := tx.Hash
+			if len(hash) == 0 {
+
+			}
 			height, pending, err := s.sdk.Node().GetTxHeight(context.Background(), tx.Hash)
 			if err != nil {
 				log.Error("Failed to check tx receipt", "hash", tx.Hash, "err", err)
@@ -271,11 +275,20 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 				hash, err := s.wallet.SendWithAccount(account, tx.To, big.NewInt(0), 0, nil, nil, tx.Data)
 				// TODO: detect already done tx here
 				if err != nil || hash == "" {
-					log.Error("Failed to send tx during check", "err", err, "hash", hash)
-					continue
+					if strings.Contains(err.Error(), "CheckConsensusSigns, signer already exist") {
+						alreadyDone = true
+						needRetry = false
+					}
+					// else if other case (header sync) todo
+					if alreadyDone {
+						log.Warn("tx already sent to zion", "src hash", tx.Hash.Hex(), "To", tx.To.Hex(), "err", err)
+					} else {
+						log.Error("Failed to send tx during check", "err", err, "hash", hash)
+					}
+				} else {
+					tx.Hash = msg.HexToHash(hash)
+					log.Info("Send tx during check", "hash", hash, "chain", s.name)
 				}
-				tx.Hash = msg.HexToHash(hash)
-				log.Info("Send tx vote during check", "hash", hash, "chain", s.name)
 			}
 
 			// Delete old data
@@ -562,13 +575,22 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 
 			hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 			if err != nil || hash == "" {
-				log.Error("Failed to send tx", "err", err, "hash", hash, "src hash", tx.Hash.Hex(), "chain", s.name)
-				continue
+				if strings.Contains(err.Error(), "CheckConsensusSigns, signer already exist") {
+					log.Warn("tx already sent to zion", "src hash", tx.Hash.Hex(), "err", err)
+				} else {
+					log.Error("Failed to send tx", "err", err, "hash", hash, "src hash", tx.Hash.Hex(), "chain", s.name)
+					time.Sleep(time.Second * 5)
+				}
+			} else {
+				log.Info("Send tx vote", "hash", hash, "src hash", tx.Hash.Hex(), "chain", s.name)
 			}
-			log.Info("Send tx vote", "hash", hash, "src hash", tx.Hash.Hex(), "chain", s.name)
-			bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
-				return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
-			})
+
+			if hash != "" {
+				bus.SafeCall(s.Context, hash, "insert data item failure", func() error {
+					return store.InsertData(msg.HexToHash(hash), data, zion.CCM_ADDRESS)
+				})
+			}
+
 			bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
 				return store.DeleteTxs(tx)
 			})

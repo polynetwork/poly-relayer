@@ -118,6 +118,7 @@ func (h *TxVoteHandler) start() (err error) {
 
 		log.Error("Fetch block txs failure", "chain", h.config.ChainId, "height", h.height, "err", err)
 		h.height--
+		time.Sleep(time.Second * 5)
 	}
 }
 
