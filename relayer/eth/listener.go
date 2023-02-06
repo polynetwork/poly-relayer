@@ -86,7 +86,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	switch l.config.ChainId {
 	//header sync chian
-	case base.ETH, base.BSC, base.HECO, base.O3, base.BYTOM, base.HSC, base.GOERLI:
+	case base.ETH, base.BSC, base.HECO, base.O3, base.BYTOM, base.HSC, base.GOERLI, base.MATIC:
 		h, err := l.poly.Node().GetInfoHeight(nil, l.config.ChainId)
 		height = uint64(h)
 		return height, err
@@ -163,6 +163,7 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	tx.SrcEvent = event
 	tx.SrcProofHeight, tx.SrcProof, err = l.GetProof(txId, tx.SrcHeight)
 	if err != nil {
+		log.Error("GetProof failed", "chain", l.name, "src hash", tx.SrcHash, "err", err)
 		return
 	}
 	return
@@ -306,7 +307,11 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			DstProxy:   common.BytesToAddress(ev.ToContract).String(),
 			SrcAddress: ev.Sender.String(),
 		}
-		l.Compose(tx)
+		err = l.Compose(tx)
+		if err != nil {
+			log.Error("Compose failed", "chain", l.name, "src hash", tx.SrcHash, "err", err)
+			//return nil, err
+		}
 		txs = append(txs, tx)
 	}
 

@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	VERIFY_SIG_AND_EXECUTE_TX = "VerifySigAndExecuteTx"
+	VERIFY_SIG_AND_EXECUTE_TX = "verifySigAndExecuteTx"
 )
 
 type Submitter struct {
@@ -237,7 +237,7 @@ func (s *Submitter) run(account nw.NEP6Account, mq bus.TxBus, delay bus.DelayedT
 			time.Sleep(time.Second)
 			continue
 		}
-		log.Info("Processing poly tx", "poly_hash", tx.PolyHash, "account", account.Address)
+		log.Info("Processing poly tx", "poly_hash", tx.PolyHash.Hex(), "account", account.Address)
 		tx.DstSender = &account
 		err = s.ProcessTx(tx, compose)
 		if err == nil {
@@ -258,10 +258,11 @@ func (s *Submitter) run(account nw.NEP6Account, mq bus.TxBus, delay bus.DelayedT
 				tsp := time.Now().Unix() + 10
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
-				bus.SafeCall(s.Context, tx, "push back to tx bus", func() error { return mq.Push(context.Background(), tx) })
+				tsp := time.Now().Unix() + 10
+				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
 		} else {
-			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
+			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash.Hex(), "chain", s.name, "dst_hash", tx.DstHash)
 		}
 	}
 }

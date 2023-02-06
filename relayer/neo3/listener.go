@@ -19,6 +19,7 @@ package neo3
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"github.com/joeqian10/neo3-gogogo/crypto"
 	"github.com/joeqian10/neo3-gogogo/helper"
@@ -86,7 +87,7 @@ func (l *Listener) fetchNextConsensus() (err error) {
 	return
 }
 
-func (l *Listener) Compose(tx *msg.Tx) error {
+func (l *Listener) Compose(tx *msg.Tx) (err error) {
 
 	var height2 uint64
 	if tx.SrcHeight >= l.neoStateHeight {
@@ -128,7 +129,9 @@ func (l *Listener) Compose(tx *msg.Tx) error {
 	tx.SrcStateRoot = buff.Bytes()
 
 	// get proof
-	pf := l.sdk.Node().GetProof(stateRoot.RootHash, l.neoCcmc, tx.TxId)
+	storeKey := crypto.Base64Encode(helper.HexToBytes(tx.TxId))
+	pf := l.sdk.Node().GetProof(stateRoot.RootHash, l.neoCcmc, storeKey)
+
 	if pf.HasError() {
 		return fmt.Errorf("neo3.GetProof error: %s", pf.GetErrorInfo())
 	}
@@ -138,7 +141,7 @@ func (l *Listener) Compose(tx *msg.Tx) error {
 	}
 	tx.SrcProof = proof
 	err = l.ParseParam(tx)
-	return nil
+	return
 }
 
 func (l *Listener) ParseParam(tx *msg.Tx) error {
@@ -163,6 +166,12 @@ func (l *Listener) ParseParam(tx *msg.Tx) error {
 		return fmt.Errorf("neo3.DeserializeCrossChainTxParameter error: %v", err)
 	}
 	tx.Param = convertNeoParamToEthParam(neoParam)
+	paramData, err := msg.EncodeTxParam(tx.Param)
+	if err != nil {
+		return fmt.Errorf("neo3 EncodeTxParam error: %v", err)
+	}
+	tx.SrcParam = hex.EncodeToString(paramData)
+
 	return nil
 }
 
@@ -289,6 +298,11 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 					SrcHeight:  usedHeight,
 					SrcChainId: l.config.ChainId,
 					DstChainId: toChainId.Uint64(),
+				}
+				err = l.Compose(tx)
+				if err != nil {
+					log.Error("neo3 Compose tx failed", "height", usedHeight, "src hash", hash, "err", err)
+					return nil, err
 				}
 				return tx, nil
 			}
