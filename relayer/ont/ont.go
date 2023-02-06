@@ -215,7 +215,7 @@ func (s *Submitter) run(account *sdk.Account, mq bus.TxBus, delay bus.DelayedTxB
 				bus.SafeCall(s.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			}
 		} else {
-			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash, "chain", s.name, "dst_hash", tx.DstHash)
+			log.Info("Submitted poly tx", "poly_hash", tx.PolyHash.Hex(), "chain", s.name, "dst_hash", tx.DstHash)
 		}
 	}
 }
