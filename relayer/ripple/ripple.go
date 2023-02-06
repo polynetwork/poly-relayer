@@ -135,6 +135,13 @@ func (s *Submitter) run(sequenceCache bus.Sequence) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
+		select {
+		case <-s.Done():
+			log.Info("Submitter is exiting now", "chain", s.name)
+			return nil
+		default:
+		}
+
 		nowSequence, err := sequenceCache.NowSequence(s.Context, s.config.ChainId)
 		if err != nil || nowSequence == "" {
 			log.Error("run NowSequence error", "chain", s.name, "err", err)

@@ -292,6 +292,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 				log.Info("Found poly tx", "from", tx.SrcChainId, "to", tx.DstChainId, "hash", tx.PolyHash.Hex())
 				switch tx.DstChainId {
 				case base.RIPPLE:
+					log.Info("Found ripple poly tx", "poly hash", tx.PolyHash.Hex(), "key", tx.PolyKey, "tx", fmt.Sprintf("%+v", *tx))
 					bus.SafeCall(h.Context, tx, "push to target chain tx bus", func() error {
 						return h.sequence.AddTx(h.Context, base.RIPPLE, tx.PolyKey, tx)
 					})
@@ -400,11 +401,16 @@ func (h *PolyTxSyncHandler) patchTxs() {
 		for _, t := range txs {
 			if msg.Empty(tx.PolyHash) || util.LowerHex(tx.PolyHash.Hex()) == util.LowerHex(t.PolyHash.Hex()) {
 				count++
-				log.Info("Found patch target poly tx", "hash", t.PolyHash.Hex(), "chain", h.config.ChainId, "height", height)
-				t.CapturePatchParams(tx)
-				bus.SafeCall(h.Context, t, "push to target chain tx bus", func() error {
-					return h.bus.PushToChain(context.Background(), t)
-				})
+				if tx.DstChainId == base.RIPPLE {
+					log.Info("Found patch target poly tx", "hash", t.PolyHash, "ripple sequence", t.PolyKey, "chain", h.config.ChainId, "height", height)
+					h.sequence.AddTx(h.Context, base.RIPPLE, t.PolyKey, t)
+				} else {
+					log.Info("Found patch target poly tx", "hash", t.PolyHash.Hex(), "chain", h.config.ChainId, "height", height)
+					t.CapturePatchParams(tx)
+					bus.SafeCall(h.Context, t, "push to target chain tx bus", func() error {
+						return h.bus.PushToChain(context.Background(), t)
+					})
+				}
 			} else {
 				log.Info("Found poly tx in block not targeted", "hash", t.PolyHash.Hex(), "chain", h.config.ChainId, "height", height)
 			}
