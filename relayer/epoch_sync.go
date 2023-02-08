@@ -71,6 +71,7 @@ func (h *EpochSyncHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err er
 	if err != nil {
 		return
 	}
+	h.submitter.Hook(h.Context, h.wg, nil)
 	return
 }
 
@@ -91,9 +92,9 @@ LOOP:
 			break LOOP
 		}
 
-		h.epochStartHeight, err = h.submitter.GetPolyEpochStartHeight(h.config.Listener.ChainId)
+		h.epochStartHeight, err = h.submitter.GetPolyEpochStartHeight()
 		if err != nil {
-			log.Error("Failed to fetch cur epoch start height", "chain", h.name)
+			log.Error("Failed to fetch cur epoch start height", "chain", h.name, "err", err)
 			continue
 		}
 		epochs, err := h.listener.EpochUpdate(h.Context, h.epochStartHeight)

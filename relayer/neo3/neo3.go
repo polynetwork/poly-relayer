@@ -196,7 +196,7 @@ func (s *Submitter) ProcessEpochs(txs []*msg.Tx) (err error) {
 	return // neo3 doesn't need to sync zion headers
 }
 
-func (s *Submitter) GetPolyEpochStartHeight(uint64) (uint64, error) {
+func (s *Submitter) GetPolyEpochStartHeight() (uint64, error) {
 	return 1, nil // neo3 doesn't need to sync zion headers
 }
 

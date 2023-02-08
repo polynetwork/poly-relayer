@@ -32,7 +32,7 @@ func (s *Submitter) ProcessEpochs(txes []*msg.Tx) error {
 	return nil
 }
 
-func (s *Submitter) GetPolyEpochStartHeight(u uint64) (height uint64, err error) {
+func (s *Submitter) GetPolyEpochStartHeight() (height uint64, err error) {
 	return 0, nil
 }
 
