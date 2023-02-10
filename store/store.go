@@ -135,6 +135,9 @@ func (s *Store) GetTxHeight() (height uint64, err error) {
 	if err != nil {
 		return
 	}
+	if len(h) < 8 {
+		return 0, fmt.Errorf("GetTxHeight from store failed, value invalid, value;%v", h)
+	}
 	height = binary.LittleEndian.Uint64(h)
 	return
 }

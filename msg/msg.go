@@ -160,7 +160,8 @@ type Tx struct {
 	DstAmount               *big.Int              `json:"-"`
 
 	// Aptos
-	ToAssetAddress string `json:",omitempty"`
+	ToAssetAddress   string `json:",omitempty"`
+	CCMEventSequence uint64 `json:",omitempty"`
 
 	// Ripple
 	ChainTxJson string `json:",omitempty"`
