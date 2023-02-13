@@ -42,4 +42,9 @@ var (
 	ERR_SIGNER_ALREADY_EXIST = errors.New("signer already exist")
 
 	ERR_FEE_INSUFFICIENT = errors.New("Fee insufficient")
+
+	// For Aptos
+	ERR_APTOS_COIN_STORE_NOT_PUBLISHED = errors.New("Account hasn't registered CoinStore for CoinType")
+	ERR_APTOS_TREASURY_NOT_EXIST       = errors.New("Asset not exist in lock proxy")
+	ERR_APTOS_SEQUENCE_NUMBER_INVALID  = errors.New("Sequence number is invalid")
 )

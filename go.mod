@@ -13,10 +13,12 @@ require (
 	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.2.1
 	github.com/ontio/ontology-go-sdk v1.11.4
-	github.com/polynetwork/bridge-common v0.0.0-20230116064202-b338f58ae626
+	github.com/polynetwork/bridge-common v0.0.33-2
 	github.com/polynetwork/ripple-sdk v0.0.0-20220616022641-d64d4aa053fe
+	github.com/portto/aptos-go-sdk v0.0.0-20230118094238-99813673238c
 	github.com/tendermint/tendermint v0.35.9
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
 
-replace github.com/rubblelabs/ripple v0.0.0-20220222071018-38c1a8b14c18 => github.com/siovanus/ripple v0.0.0-20220406100637-81f6afe283d9
+replace github.com/rubblelabs/ripple => github.com/siovanus/ripple v0.0.0-20230113075118-4a31480c1af2

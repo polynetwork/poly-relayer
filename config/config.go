@@ -123,18 +123,19 @@ type PolyChainConfig struct {
 }
 
 type ChainConfig struct {
-	ChainId           uint64
-	Nodes             []string
-	ExtraNodes        []string
-	LockProxyContract []string
-	CCMContract       string
-	CCDContract       string
-	ListenCheck       int
-	CheckFee          bool
-	Defer             int
-	Wallet            *wallet.Config
-	SrcFilter         *FilterConfig
-	DstFilter         *FilterConfig
+	ChainId                    uint64
+	Nodes                      []string
+	ExtraNodes                 []string
+	LockProxyContract          []string
+	CCMContract                string
+	CCDContract                string
+	CrossChainEventCreationNum string // Aptos
+	ListenCheck                int
+	CheckFee                   bool
+	Defer                      int
+	Wallet                     *wallet.Config
+	SrcFilter                  *FilterConfig
+	DstFilter                  *FilterConfig
 
 	HeaderSync   *HeaderSyncConfig // chain -> ch -> poly
 	TxVote       *TxVoteConfig
@@ -145,16 +146,17 @@ type ChainConfig struct {
 }
 
 type ListenerConfig struct {
-	ChainId            uint64
-	Nodes              []string
-	ExtraNodes         []string
-	LockProxyContract  []string
-	CCMContract        string
-	CCDContract        string
-	ListenCheck        int
-	Bus                *BusConfig
-	Defer              int
-	HeaderSyncInterval uint64
+	ChainId                    uint64
+	Nodes                      []string
+	ExtraNodes                 []string
+	LockProxyContract          []string
+	CCMContract                string
+	CCDContract                string
+	CrossChainEventCreationNum string // Aptos
+	ListenCheck                int
+	Bus                        *BusConfig
+	Defer                      int
+	HeaderSyncInterval         uint64
 }
 
 func (c *SubmitterConfig) Fill(o *SubmitterConfig) *SubmitterConfig {
@@ -229,12 +231,14 @@ func (c *BusConfig) Init() {
 }
 
 type TxVoteConfig struct {
-	Batch       int
-	Timeout     int
-	Buffer      int
-	Enabled     bool
-	StartHeight uint64
-	Poly        *SubmitterConfig
+	Batch            int
+	Timeout          int
+	Buffer           int
+	Enabled          bool
+	StartHeight      uint64
+	CCMEventSequence uint64
+
+	Poly *SubmitterConfig
 	*ListenerConfig
 	Bus *BusConfig
 }
@@ -535,6 +539,9 @@ func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerC
 	}
 	if o.CCDContract == "" {
 		o.CCDContract = c.CCDContract
+	}
+	if o.CrossChainEventCreationNum == "" {
+		o.CrossChainEventCreationNum = c.CrossChainEventCreationNum
 	}
 	if len(o.LockProxyContract) == 0 {
 		o.LockProxyContract = c.LockProxyContract

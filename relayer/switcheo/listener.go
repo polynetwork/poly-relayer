@@ -107,7 +107,7 @@ func (l *Listener) createZionTx(cosmosTx *coretypes.ResultTx) (*msg.Tx, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info("Found src cross chain tx", "hash", hashStr)
+	log.Info("Found switcheo src cross chain tx", "hash", hashStr)
 	tx := &msg.Tx{
 		SrcHash:    hashStr,
 		DstChainId: toChainId,

@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/relayer/aptos"
 	"github.com/polynetwork/poly-relayer/relayer/neo3"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
 	"github.com/polynetwork/poly-relayer/relayer/ripple"
@@ -73,7 +74,7 @@ type IChainSubmitter interface {
 	Process(msg.Message, msg.PolyComposer) error
 	ProcessTx(*msg.Tx, msg.PolyComposer) error // Process poly tx
 	ProcessEpochs([]*msg.Tx) error             // Process poly epoch sync
-	GetPolyEpochStartHeight(uint64) (height uint64, err error)
+	GetPolyEpochStartHeight() (height uint64, err error)
 	SubmitTx(*msg.Tx) error
 	Stop() error
 }
@@ -94,6 +95,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(switcheo.Listener)
 	case base.NEO3:
 		listener = new(neo3.Listener)
+	case base.APTOS:
+		listener = new(aptos.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)
@@ -110,6 +113,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(ripple.Submitter)
 	case base.NEO3:
 		submitter = new(neo3.Submitter)
+	case base.APTOS:
+		submitter = new(aptos.Submitter)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Submitter)

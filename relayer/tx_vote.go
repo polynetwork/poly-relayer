@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/msg"
 	"sync"
 	"time"
 
@@ -37,6 +38,7 @@ type TxVoteHandler struct {
 	listener            IChainListener
 	submitter           *zion.Submitter
 	height              uint64
+	CCMEventSequence    uint64
 	zionReplenishHeight uint64
 	config              *config.TxVoteConfig
 	store               *store.Store
@@ -87,27 +89,49 @@ func (h *TxVoteHandler) start() (err error) {
 		default:
 		}
 
-		h.height++
-		if latest < h.height+confirms {
-			if h.listener.Nodes() != nil {
-				latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
-			} else {
-				latest, ok = h.listener.WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
-			}
-			if !ok {
-				continue
+		var txs []*msg.Tx
+		aptosNextSequence := h.CCMEventSequence
+
+		var scanStart uint64
+
+		if h.config.ChainId == base.APTOS {
+			time.Sleep(time.Second * 10)
+			scanStart = aptosNextSequence
+			log.Info("Scanning Aptos txs", "CCM sequence", scanStart, "chain", h.config.ChainId)
+		} else {
+			h.height++
+			if latest < h.height+confirms {
+				if h.listener.Nodes() != nil {
+					latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+				} else {
+					latest, ok = h.listener.WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
+				}
+				if !ok {
+					continue
+				}
+				log.Info("Scanning txs in block", "height", h.height, "chain", h.config.ChainId)
+				scanStart = h.height
 			}
 		}
-		log.Info("Scanning txs in block", "height", h.height, "chain", h.config.ChainId)
-		txs, err := h.listener.Scan(h.height)
+
+		txs, err = h.listener.Scan(scanStart)
 		if err == nil {
 			var list []*store.Tx
 			for _, tx := range txs {
 				log.Info("Found src tx", "hash", tx.SrcHash, "chain", h.config.ChainId, "height", h.height)
 				list = append(list, store.NewTx(tx))
+				if h.config.ChainId == base.APTOS {
+					aptosNextSequence = tx.CCMEventSequence + 1
+				}
 			}
 			err = h.store.InsertTxs(list)
 			if err == nil {
+				if h.config.ChainId == base.APTOS {
+					if len(txs) != 0 {
+						h.CCMEventSequence = aptosNextSequence
+					}
+					err = h.store.SetTxHeight(h.CCMEventSequence)
+				}
 				err = h.store.SetTxHeight(h.height)
 				if err != nil {
 					log.Error("Update tx vote height failure", "chain", h.config.ChainId, "height", h.height, "err", err)
@@ -212,12 +236,26 @@ func (h *TxVoteHandler) replenish() {
 }
 
 func (h *TxVoteHandler) Start() (err error) {
-	if h.config.StartHeight != 0 {
-		h.height = h.config.StartHeight
+	if h.config.ChainId == base.APTOS {
+		if h.config.CCMEventSequence == 0 {
+			h.CCMEventSequence, err = h.store.GetTxHeight()
+			if err != nil {
+				log.Warn("get aptos voter start sequence from store failed", "err", err)
+				h.CCMEventSequence = 0
+				err = nil
+			}
+		} else {
+			h.CCMEventSequence = h.config.CCMEventSequence
+		}
 	} else {
-		h.height, err = h.store.GetTxHeight()
-		if err != nil {
-			return
+		if h.config.StartHeight != 0 {
+			h.height = h.config.StartHeight
+		} else {
+			h.height, err = h.store.GetTxHeight()
+			if err != nil {
+				log.Error("get voter start height from store failed", "err", err)
+				return
+			}
 		}
 	}
 

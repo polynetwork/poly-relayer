@@ -32,7 +32,7 @@ func (s *Submitter) ProcessEpochs(txes []*msg.Tx) error {
 	return nil
 }
 
-func (s *Submitter) GetPolyEpochStartHeight(u uint64) (height uint64, err error) {
+func (s *Submitter) GetPolyEpochStartHeight() (height uint64, err error) {
 	return 0, nil
 }
 
@@ -135,6 +135,13 @@ func (s *Submitter) run(sequenceCache bus.Sequence) error {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	for {
+		select {
+		case <-s.Done():
+			log.Info("Submitter is exiting now", "chain", s.name)
+			return nil
+		default:
+		}
+
 		nowSequence, err := sequenceCache.NowSequence(s.Context, s.config.ChainId)
 		if err != nil || nowSequence == "" {
 			log.Error("run NowSequence error", "chain", s.name, "err", err)

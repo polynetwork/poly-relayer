@@ -230,7 +230,7 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 		return
 	}
 
-	height, err := sub.GetPolyEpochStartHeight(0)
+	height, err := sub.GetPolyEpochStartHeight()
 	if err != nil {
 		return
 	}

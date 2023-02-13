@@ -210,7 +210,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 				return nil, err
 			}
 
-			log.Info("Found src cross chain tx", "method", param.Method, "hash", hash)
+			log.Info("Found zilliqa src cross chain tx", "method", param.Method, "hash", hash)
 			tx := &msg.Tx{
 				TxType:     msg.SRC,
 				TxId:       msg.EncodeTxId(txId),
