@@ -27,6 +27,7 @@ import (
 func init() {
 	wallet.SetGasLimit(base.ARBITRUM, 4000000)
 	wallet.SetGasLimit(base.OPTIMISM, 4000000)
+	wallet.SetGasLimit(base.ZKSYNC, 1300000)
 
 	//balanceLimit
 	wallet.SetBalanceLimit(base.BSC, util.SetDecimals(big.NewInt(1), 16))
