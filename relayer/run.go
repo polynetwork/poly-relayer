@@ -49,7 +49,7 @@ func (s *Server) Start() (err error) {
 	// Create handlers
 	for id, chain := range s.config.Chains {
 		if s.config.Active(id) {
-			s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit, chain.EpochSync, chain.TxVote)
+			s.parseHandlers(id, chain.HeaderSync, chain.SrcTxSync, chain.SrcTxCommit, chain.PolyTxCommit, chain.EpochSync, chain.TxVote, chain.Neo3PolyTxVote)
 		}
 	}
 
@@ -91,6 +91,8 @@ func (s *Server) parseHandler(chain uint64, conf interface{}) (handler Handler) 
 		handler = NewHeaderSyncHandler(c)
 	case *config.TxVoteConfig:
 		handler = NewTxVoteHandler(c)
+	case *config.Neo3PolyTxVoteConfig:
+		handler = NewNeo3PolyTxVoteHandler(c)
 	case *config.EpochSyncConfig:
 		handler = NewEpochSyncHandler(c)
 	case *config.SrcTxSyncConfig:

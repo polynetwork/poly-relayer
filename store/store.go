@@ -19,7 +19,6 @@ package store
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -77,7 +76,8 @@ type Tx struct {
 	Height  uint64
 	ChainID uint64
 	Value   []byte
-	TxID    []byte
+	//TxID    []byte
+	Key []byte
 }
 
 type Header struct {
@@ -87,17 +87,15 @@ type Header struct {
 }
 
 func NewTx(tx *msg.Tx) *Tx {
-	raw, err := hex.DecodeString(tx.SrcParam)
-	if err != nil || len(raw) == 0 {
-		log.Fatal("Unexpected empty raw data", "err", err, "hash", tx.SrcHash)
+	var key []byte
+	if tx.TxType == msg.SRC {
+		key = []byte(tx.SrcHash)
+	} else if tx.TxType == msg.POLY {
+		key = tx.PolyHash.Bytes()
 	}
-	t := &Tx{Hash: msg.HexToHash(tx.SrcHash), Value: raw, Height: tx.SrcHeight, ChainID: tx.SrcChainId}
-	k, err := tx.GetTxId()
-	if err != nil {
-		log.Fatal("Unexpected parse tx id failure", "err", err, "hash", tx.SrcHash)
-	}
-	t.TxID = k[:]
-	return t
+
+	return &Tx{Hash: msg.HexToHash(tx.SrcHash), Value: []byte(tx.Encode()), Height: tx.SrcHeight, ChainID: tx.SrcChainId, Key: key}
+
 }
 
 func EncodeTx(tx *Tx) (key, value []byte) {
@@ -105,7 +103,7 @@ func EncodeTx(tx *Tx) (key, value []byte) {
 	if err != nil {
 		log.Fatal("Unexpected rlp tx failure", "err", err)
 	}
-	return tx.TxID, value
+	return tx.Key, value
 }
 
 func DecodeTx(key, value []byte) (tx *Tx, err error) {

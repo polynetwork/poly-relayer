@@ -131,8 +131,10 @@ func (h *TxVoteHandler) start() (err error) {
 						h.CCMEventSequence = aptosNextSequence
 					}
 					err = h.store.SetTxHeight(h.CCMEventSequence)
+				} else {
+					err = h.store.SetTxHeight(h.height)
 				}
-				err = h.store.SetTxHeight(h.height)
+
 				if err != nil {
 					log.Error("Update tx vote height failure", "chain", h.config.ChainId, "height", h.height, "err", err)
 				}

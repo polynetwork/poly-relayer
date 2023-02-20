@@ -26,13 +26,15 @@ import (
 )
 
 type Role struct {
-	TxVote     bool // Tx vote
-	HeaderSync bool // header sync
-	EpochSync  bool // epoch sync
-	TxListen   bool // chain(src) -> mq
-	TxCommit   bool // mq -> poly
-	PolyListen bool // poly -> mq
-	PolyCommit bool // mq -> chain(dst)
+	TxVote         bool // Tx vote
+	Neo3PolyTxVote bool // vote poly tx to Neo3
+	HeaderSync     bool // header sync
+	EpochSync      bool // epoch sync
+	TxListen       bool // chain(src) -> mq
+	TxCommit       bool // mq -> poly
+	PolyListen     bool // poly -> mq
+	PolyCommit     bool // mq -> chain(dst)
+
 }
 
 type Roles map[uint64]Role
@@ -137,12 +139,16 @@ func (c *Config) ApplyRoles2(roles Roles) (err error) {
 		if chain.TxVote == nil {
 			chain.TxVote = new(TxVoteConfig)
 		}
+		if chain.Neo3PolyTxVote == nil {
+			chain.Neo3PolyTxVote = new(Neo3PolyTxVoteConfig)
+		}
 		chain.SrcTxSync.Enabled = role.TxListen
 		chain.SrcTxCommit.Enabled = role.TxCommit
 		chain.PolyTxCommit.Enabled = role.PolyCommit
 		chain.HeaderSync.Enabled = role.HeaderSync
 		chain.EpochSync.Enabled = role.EpochSync
 		chain.TxVote.Enabled = role.TxVote
+		chain.Neo3PolyTxVote.Enabled = role.Neo3PolyTxVote
 	}
 	return
 }

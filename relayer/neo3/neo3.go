@@ -22,8 +22,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/polynetwork/poly-relayer/store"
+
 	"sync"
 	"time"
+
+	ethcomm "github.com/ethereum/go-ethereum/common"
 
 	"github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -31,7 +34,6 @@ import (
 	"github.com/joeqian10/neo3-gogogo/sc"
 	nw "github.com/joeqian10/neo3-gogogo/wallet"
 	"github.com/polynetwork/bridge-common/base"
-	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/bridge-common/chains/neo3"
 	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
@@ -50,6 +52,7 @@ type Submitter struct {
 	context.Context
 	wg      *sync.WaitGroup
 	config  *config.SubmitterConfig
+	vote    *config.Neo3PolyTxVoteConfig
 	name    string
 	sdk     *neo3.SDK
 	neoCcmc string
@@ -70,7 +73,7 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	s.neoCcmc = config.CCMContract // big endian hex string prefixed with "0x"
 
 	if config.Wallet == nil {
-		return fmt.Errorf("no neo3 wallet config file")
+		return fmt.Errorf("no neo3 sender wallet config file")
 	}
 	sdk, err := neo3.WithOptions(config.ChainId, config.Wallet.Nodes, time.Minute, 1)
 	if err != nil {
@@ -82,7 +85,7 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	}
 
 	if config.Signer == nil {
-		return fmt.Errorf("no neo3 wallet config file")
+		return fmt.Errorf("no neo3 signer wallet config file")
 	}
 	s.signer, err = wallet.NewNeo3Wallet(config.Signer, sdk)
 	if err != nil {
@@ -107,64 +110,36 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 	return nil
 }
 
-func (s *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.TxBus, delay bus.DelayedTxBus, composer msg.PolyComposer) error {
+func (s *Submitter) StartPolyTxVote(
+	ctx context.Context, wg *sync.WaitGroup, config *config.Neo3PolyTxVoteConfig, store *store.Store,
+) {
 	s.Context = ctx
 	s.wg = wg
+	s.vote = config
+
+	if s.vote.Batch == 0 {
+		s.vote.Batch = 1
+	}
+	if s.vote.Timeout == 0 {
+		s.vote.Timeout = 1
+	}
+
+	if s.signer == nil || s.wallet == nil {
+		log.Fatal("Neo3 poly tx voter missing signer or sender")
+	}
+
 	accounts := s.wallet.Accounts
 	if len(accounts) == 0 {
-		log.Warn("No account available for submitter workers", "chain", s.name)
+		log.Warn("No account available for Neo3 poly tx vote workers", "chain", s.name)
 	}
 	for i, a := range accounts {
-		log.Info("Starting submitter worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
-		go s.run(a, delay, composer, s.store) //
+		log.Info("Starting Neo3 poly tx vote worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
+		go s.votePolyTx(a, store)
 	}
-	// scan zion
-	go s.start(bus)
-	return nil
+	return
 }
 
-func (s *Submitter) start(mq bus.TxBus) {
-	s.wg.Add(1)
-	defer s.wg.Done()
-	for {
-		select {
-		case <-s.Done():
-			log.Info("Submitter is exiting now", "chain", s.name)
-			return
-		default:
-		}
-
-		tx, err := mq.Pop(s.Context)
-		if err != nil {
-			log.Error("Bus pop error", "err", err)
-			continue
-		}
-		if tx == nil {
-			time.Sleep(time.Second * 5)
-			continue
-		}
-		// add tx to db
-		t, err := s.convertTx(tx)
-		if err != nil {
-			log.Error("submitter convertTx error", "err", err)
-			continue
-		}
-		if t == nil {
-			time.Sleep(time.Second * 5)
-			continue
-		}
-		var list []*store.Tx
-		list = append(list, t)
-		err = s.store.InsertTxs(list)
-		if err != nil {
-			log.Error("Fetch poly tx failure", "poly hash", tx.PolyHash.String(), "err", err)
-			continue
-		}
-		time.Sleep(time.Second * 5)
-	}
-}
-
-func (s *Submitter) convertTx(tx *msg.Tx) (*store.Tx, error) {
+func (s *Submitter) convertRawNeoTmv(tx *msg.Tx) (rawNeoTmv []byte, err error) {
 	var ethTmv *common.ToMerkleValue
 	if tx.MerkleValue != nil {
 		ethTmv = tx.MerkleValue
@@ -181,61 +156,29 @@ func (s *Submitter) convertTx(tx *msg.Tx) (*store.Tx, error) {
 	}
 	neoTmv := convertEthTmvToNeoTmv(ethTmv)
 	if neoTmv.TxParam.ToChainID != s.config.ChainId {
-		return nil, nil
+		log.Warn("to chain is not Neo3", "to chain", neoTmv.TxParam.ToChainID, "poly hash", tx.PolyHash.Hex())
+		return
 	}
-	rawNeoTmv, err := SerializeMerkleValue(neoTmv)
+	rawNeoTmv, err = SerializeMerkleValue(neoTmv)
 	if err != nil {
 		return nil, fmt.Errorf("neo3 SerializeMerkleValue error: %v", err)
 	}
-	t := &store.Tx{Hash: tx.PolyHash, Value: rawNeoTmv, Height: tx.PolyHeight, ChainID: s.polyId}
-	k, err := tx.GetTxId()
-	if err != nil {
-		return nil, fmt.Errorf("tx.GetTxId error: %v, PolyHash: %s", err, tx.PolyHash.String())
-	}
-	t.TxID = k[:]
-	return t, nil
+	return
 }
 
-func (s *Submitter) Process(m msg.Message, composer msg.PolyComposer) (err error) {
-	tx, ok := m.(*msg.Tx)
-	if !ok {
-		return fmt.Errorf("%s Proccess: Invalid poly tx cast %v", s.name, m)
-	}
-	return s.ProcessTx(tx, composer)
-}
-
-func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
-	if m.Type() != msg.POLY {
-		return fmt.Errorf("desired message is not poly tx %v", m.Type())
-	}
-
-	m.DstPolyEpochStartHeight = 1 // neo3 does not need to sync zion header
-	err = compose(m)
-	if err != nil {
-		return
-	}
-	return s.processPolyTx(m)
-}
-
-func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
-	rawNeoTmv, err := hex.DecodeString(tx.PolyParam)
-	if err != nil {
-		return fmt.Errorf("decode PolyParam error: %v", err)
-	}
+func (s *Submitter) constructDstData(rawNeoTmv []byte, a *nw.NEP6Account) (dstData []byte, err error) {
 	// sign the ToMerkleValue, multi sig verification in neo3 ccmc
-	var a *nw.NEP6Account
-	if tx.DstSender == nil {
+	if a == nil {
 		a = s.wallet.Account()
-	} else {
-		a = tx.DstSender.(*nw.NEP6Account)
 	}
+
 	pair, err := a.GetKeyFromPassword(s.config.Wallet.Neo3Pwd)
 	if err != nil {
-		return fmt.Errorf("neo3.NEP6Account.GetKeyFromPassword error: %v", err)
+		return nil, fmt.Errorf("neo3.NEP6Account.GetKeyFromPassword error: %v", err)
 	}
 	sig, err := pair.Sign(rawNeoTmv)
 	if err != nil {
-		return fmt.Errorf("neo3.KeyPair.Sign error: %v", err)
+		return nil, fmt.Errorf("neo3.KeyPair.Sign error: %v", err)
 	}
 	// make ContractParameter
 	crossInfo := sc.ContractParameter{
@@ -253,113 +196,158 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 	// build script
 	scriptHash, err := helper.UInt160FromString(s.neoCcmc)
 	if err != nil {
-		return fmt.Errorf("neo3 ccmc conversion error: %s", err)
+		return nil, fmt.Errorf("neo3 ccmc conversion error: %s", err)
 	}
-	script, err := sc.MakeScript(scriptHash, VERIFY_SIG_AND_EXECUTE_TX, []interface{}{crossInfo, sigInfo, pubKey})
+	dstData, err = sc.MakeScript(scriptHash, VERIFY_SIG_AND_EXECUTE_TX, []interface{}{crossInfo, sigInfo, pubKey})
 	if err != nil {
-		return fmt.Errorf("sc.MakeScript error: %s", err)
+		return nil, fmt.Errorf("sc.MakeScript error: %s", err)
 	}
-
-	tx.DstData = script
 	return
 }
 
-func (s *Submitter) ProcessEpochs(txs []*msg.Tx) (err error) {
-	return // neo3 doesn't need to sync zion headers
-}
+func (s *Submitter) RetryWithData(store *store.Store, batch int) {
+	list, err := store.LoadData(batch)
+	if err != nil {
+		log.Error("Failed to load data list", "err", err)
+	} else {
+		now := time.Now().Unix()
+		for _, tx := range list {
+			if tx.Time > uint64(now-600) {
+				continue
+			}
+			needRetry := true
+			hash := tx.Hash
 
-func (s *Submitter) GetPolyEpochStartHeight() (uint64, error) {
-	return 1, nil // neo3 doesn't need to sync zion headers
-}
+			success, err := s.checkSuccess(tx.Hash.Hex())
+			if err != nil {
+				log.Error("Failed to check tx status", "hash", tx.Hash.Hex(), "err", err)
+			} else if success {
+				log.Info("Confirm vote success", "hash", tx.Hash.Hex(), "err", err)
+				needRetry = false
+			} else {
+				txHash, err := s.signer.SendTransaction(tx.Data)
+				if err != nil {
+					log.Error("Failed to vote neo3 poly tx during check", "err", err, "hash", hash)
+				} else {
+					tx.Hash = msg.HexToHash(txHash)
+					log.Info("Vote neo3 poly tx during check", "hash", txHash, "chain", s.name)
+				}
+			}
 
-func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
-	if tx.CheckFeeStatus == bridge.PAID_LIMIT && !tx.CheckFeeOff {
-		return fmt.Errorf("%s does not support fee paid with max limit", s.name)
+			// Delete old data
+			bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
+				return store.DeleteData(tx)
+			})
+			if needRetry {
+				// Insert new data for the next retry
+				bus.SafeCall(s.Context, tx.Hash, "insert data item failure", func() error {
+					return store.InsertData(tx.Hash, tx.Data, tx.To)
+				})
+			}
+		}
 	}
-	tx.DstHash, err = s.signer.SendTransaction(tx.DstData) // signer is used to send tx
-	return
 }
 
-func (s *Submitter) Stop() error {
-	s.wg.Wait()
-	return nil
-}
-
-func (s *Submitter) run(account nw.NEP6Account, delay bus.DelayedTxBus, compose msg.PolyComposer, store *store.Store) {
+func (s *Submitter) votePolyTx(account nw.NEP6Account, store *store.Store) {
 	s.wg.Add(1)
 	defer s.wg.Done()
+	ticker := time.NewTicker(3 * time.Minute)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-s.Done():
-			log.Info("Submitter is exiting now", "chain", s.name)
+			log.Info("Neo3 poly tx voter is exiting now", "chain", s.name)
 			return
 		default:
 		}
 
-		txs, err := store.LoadTxs(1)
+		select {
+		case <-ticker.C:
+			s.RetryWithData(store, s.vote.Batch)
+		default:
+		}
+
+		txs, err := store.LoadTxs(s.vote.Batch)
 		if err != nil {
 			log.Error("Failed to load txs from store", "err", err)
 			continue
 		}
+
 		if len(txs) == 0 {
 			time.Sleep(time.Second * 5)
 			continue
 		}
 
-		storeTx := txs[0]
-		tx := new(msg.Tx)
-		tx.TxType = msg.POLY
-		tx.PolyHash = storeTx.Hash
-		tx.PolyParam = hex.EncodeToString(storeTx.Value)
-		tx.DstSender = &account
-
-		log.Info("Processing poly tx", "poly_hash", tx.PolyHash.Hex(), "tmv signer", account.Address)
-
-		err = s.ProcessTx(tx, compose)
-		if err == nil {
-			err = s.SubmitTx(tx)
-		}
-
-		if err != nil {
-			log.Error("Process poly tx error", "poly_hash", tx.PolyHash.String(), "err", err)
-			log.Json(log.ERROR, tx)
-		} else {
-			done, err := s.checkDone(tx.DstHash)
+		for _, t := range txs {
+			tx := new(msg.Tx)
+			err := tx.Decode(string(t.Value))
 			if err != nil {
-				log.Error("checkDone error", "dst_hash", tx.DstHash, "err", err)
+				log.Error("Tx vote decode tx failed", "src hash", t.Hash.Hex(), "err", err)
+				continue
 			}
-			if !done {
-				log.Info("Collecting sigs for poly tx", "poly_hash", tx.PolyHash.String(), "dst_hash", tx.DstHash)
-			} else {
-				log.Info("Submitted poly tx", "poly_hash", tx.PolyHash.String(), "dst_hash", tx.DstHash)
+
+			if tx.TxType != msg.POLY || tx.DstChainId != base.NEO3 {
+				log.Error("Neo3 poly tx vote invalid msg type", "msgType", tx.TxType, "from chain", tx.SrcChainId, "to chain", tx.DstChainId, "src hash", tx.SrcHash, "poly hash", tx.PolyHash.Hex())
+				continue
 			}
+
+			log.Info("Processing neo3 poly tx", "poly_hash", tx.PolyHash.Hex())
+
+			// check fee paid enough todo
+
+			//
+			rawNeoTmv, err := s.convertRawNeoTmv(tx)
+			if err != nil {
+				log.Error("convertRawNeoTmv error", "poly hash", tx.PolyHash.Hex(), "err", err)
+				continue
+			}
+
+			tx.DstData, err = s.constructDstData(rawNeoTmv, &account)
+			if err != nil {
+				log.Error("constructDstData error", "poly hash", tx.PolyHash.Hex(), "err", err)
+				continue
+			}
+			tx.DstHash, err = s.signer.SendTransaction(tx.DstData) // signer is used to send tx
+			if err != nil {
+				log.Error("Process neo3 poly tx error", "poly_hash", tx.PolyHash.String(), "err", err)
+				time.Sleep(time.Second * 5)
+				continue
+			}
+
+			log.Info("Vote neo3 poly tx", "hash", tx.DstHash, "poly hash", tx.PolyHash.Hex())
+			bus.SafeCall(s.Context, tx.DstHash, "insert neo3 data item failure", func() error {
+				return store.InsertData(msg.HexToHash(tx.DstHash), tx.DstData, ethcomm.Address{})
+			})
+
 			// delete from db
-			err = store.DeleteTxs(storeTx)
-			if err != nil {
-				log.Error("store.DeleteTxs error", "poly_hash", tx.PolyHash.String(), "err", err)
-			}
+			bus.SafeCall(s.Context, tx.PolyHash, "remove neo3 poly tx item failure", func() error {
+				return store.DeleteTxs(t)
+			})
 		}
-
-		time.Sleep(time.Second * 5)
 	}
 }
 
-func (s *Submitter) checkDone(hash string) (bool, error) {
+func (s *Submitter) checkSuccess(hash string) (success bool, err error) {
 	res := s.sdk.Node().GetApplicationLog(hash)
 	if res.HasError() {
 		return false, fmt.Errorf(res.GetErrorInfo())
+	}
+
+	if len(res.Result.Executions) == 0 {
+		return false, fmt.Errorf("GetApplicationLog failed. res: %+v", res)
 	}
 	for _, execution := range res.Result.Executions {
 		if execution.VMState == "FAULT" {
 			return false, fmt.Errorf("engine falted: %s", execution.Exception)
 		}
+
 		for _, notification := range execution.Notifications {
 			u, _ := helper.UInt160FromString(notification.Contract)
 			if "0x"+u.String() == s.neoCcmc && notification.EventName == VERIFY_AND_EXECUTE_TX_SUCCESS {
+				log.Info("Submitted poly tx to neo3", "neo3 hash", hash)
 				return true, nil
 			}
 		}
 	}
-
-	return false, nil // signature not enough
+	return true, nil
 }

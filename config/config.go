@@ -134,15 +134,18 @@ type ChainConfig struct {
 	CheckFee                   bool
 	Defer                      int
 	Wallet                     *wallet.Config
+	Signer                     *wallet.Config
 	SrcFilter                  *FilterConfig
 	DstFilter                  *FilterConfig
+	ZionStartHeight            uint64
 
-	HeaderSync   *HeaderSyncConfig // chain -> ch -> poly
-	TxVote       *TxVoteConfig
-	EpochSync    *EpochSyncConfig    // poly -> chain
-	SrcTxSync    *SrcTxSyncConfig    // chain -> mq
-	SrcTxCommit  *SrcTxCommitConfig  // mq -> poly
-	PolyTxCommit *PolyTxCommitConfig // mq -> chain
+	HeaderSync     *HeaderSyncConfig // chain -> ch -> poly
+	TxVote         *TxVoteConfig
+	Neo3PolyTxVote *Neo3PolyTxVoteConfig
+	EpochSync      *EpochSyncConfig    // poly -> chain
+	SrcTxSync      *SrcTxSyncConfig    // chain -> mq
+	SrcTxCommit    *SrcTxCommitConfig  // mq -> poly
+	PolyTxCommit   *PolyTxCommitConfig // mq -> chain
 }
 
 type ListenerConfig struct {
@@ -241,6 +244,19 @@ type TxVoteConfig struct {
 	Poly *SubmitterConfig
 	*ListenerConfig
 	Bus *BusConfig
+}
+
+type Neo3PolyTxVoteConfig struct {
+	Batch           int
+	Timeout         int
+	Enabled         bool
+	PolyStartHeight uint64
+
+	Poly *ListenerConfig
+	*SubmitterConfig
+
+	CheckFee bool
+	Filter   *FilterConfig
 }
 
 type HeaderSyncConfig struct {
@@ -425,6 +441,24 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		c.TxVote.Poly.ChainId = chain
 	}
 
+	if c.Neo3PolyTxVote != nil {
+		c.Neo3PolyTxVote.CheckFee = c.CheckFee
+		if c.Neo3PolyTxVote.Poly == nil {
+			c.Neo3PolyTxVote.Poly = new(ListenerConfig)
+		}
+		c.Neo3PolyTxVote.Poly.ChainId = base.POLY
+		if len(c.Neo3PolyTxVote.Poly.Nodes) == 0 {
+			c.Neo3PolyTxVote.Poly.Nodes = poly.Nodes
+		}
+
+		c.Neo3PolyTxVote.SubmitterConfig = c.FillSubmitter(c.Neo3PolyTxVote.SubmitterConfig)
+		c.Neo3PolyTxVote.ChainId = chain
+
+		if c.Neo3PolyTxVote.Filter == nil {
+			c.Neo3PolyTxVote.Filter = c.DstFilter
+		}
+	}
+
 	if c.SrcTxSync == nil {
 		c.SrcTxSync = new(SrcTxSyncConfig)
 	}
@@ -474,7 +508,7 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 			c.EpochSync.Bus = bus
 		}
 		if len(c.EpochSync.Listener.Nodes) == 0 {
-			c.EpochSync.Listener.Nodes = poly.PolyTxSync.Nodes
+			c.EpochSync.Listener.Nodes = poly.Nodes
 		}
 	}
 
@@ -495,6 +529,7 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 	if len(o.ExtraNodes) == 0 {
 		o.ExtraNodes = c.ExtraNodes
 	}
+
 	if o.Wallet == nil {
 		o.Wallet = c.Wallet
 	} else {
@@ -505,6 +540,10 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 		for _, p := range o.Wallet.KeyStoreProviders {
 			p.Path = GetConfigPath(WALLET_PATH, p.Path)
 		}
+	}
+
+	if o.Signer == nil {
+		o.Signer = c.Signer
 	}
 
 	if o.CCMContract == "" {
