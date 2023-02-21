@@ -20,7 +20,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/polynetwork/bridge-common/log"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -349,7 +348,6 @@ func (c *Config) Init() (err error) {
 			return
 		}
 	}
-	log.Json(log.INFO, c)
 
 	tools.DingUrl = c.Validators.DingUrl
 

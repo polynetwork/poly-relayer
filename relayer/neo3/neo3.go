@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/poly-relayer/store"
+	"strings"
 
 	"sync"
 	"time"
@@ -330,14 +331,14 @@ func (s *Submitter) votePolyTx(db *store.Store, bridgeSdk *bridge.SDK) {
 					})
 					continue
 				} else {
-					log.Info("CheckFee tx not paid or missing in bridge, delay for 3 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+					log.Warn("CheckFee tx not paid or missing in bridge, delay for 3 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
 					// delete tx from db then insert delayed tx
 					bus.SafeCall(s.Context, tx.PolyHash, "remove neo3 poly tx item failure", func() error {
 						return db.DeleteTxs(store.NewTx(tx))
 					})
 					bus.SafeCall(s.Context, tx.PolyHash, "put not paid tx back", func() error {
-						time.Sleep(time.Second * 60) // avoid key existing error when inserting
-						tx.Delay = uint64(time.Now().Unix() + 120)
+						time.Sleep(time.Second * 30) // avoid key existing error when inserting
+						tx.Delay = uint64(time.Now().Unix() + 150)
 						return db.InsertTxs([]*store.Tx{store.NewTx(tx)})
 					})
 					continue
@@ -373,8 +374,25 @@ func (s *Submitter) votePolyTx(db *store.Store, bridgeSdk *bridge.SDK) {
 			}
 			tx.DstHash, err = s.wallet.SendTransaction(tx.DstData)
 			if err != nil {
-				log.Error("Process neo3 poly tx error", "poly_hash", tx.PolyHash.String(), "err", err)
-				time.Sleep(time.Second * 5)
+				if strings.Contains(err.Error(), "already executed") {
+					log.Info("This neo3 poly tx is already executed", "poly_hash", tx.PolyHash.String())
+					// delete from db
+					bus.SafeCall(s.Context, tx.PolyHash, "remove neo3 poly tx item failure", func() error {
+						return db.DeleteTxs(store.NewTx(tx))
+					})
+				} else {
+					log.Error("Process neo3 poly tx error, delay for 3 minutes to retry", "poly_hash", tx.PolyHash.String(), "err", err)
+					// delete tx from db then insert delayed tx
+					bus.SafeCall(s.Context, tx.PolyHash, "remove neo3 poly tx item failure", func() error {
+						return db.DeleteTxs(store.NewTx(tx))
+					})
+					bus.SafeCall(s.Context, tx.PolyHash, "put process failed tx back", func() error {
+						time.Sleep(time.Second * 30) // avoid key existing error when inserting
+						tx.Delay = uint64(time.Now().Unix() + 150)
+						return db.InsertTxs([]*store.Tx{store.NewTx(tx)})
+					})
+					log.Error("Process neo3 poly tx error", "poly_hash", tx.PolyHash.String(), "err", err)
+				}
 				continue
 			}
 
