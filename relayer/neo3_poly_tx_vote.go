@@ -19,6 +19,7 @@ package relayer
 
 import (
 	"context"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/neo3"
 	"sync"
@@ -39,6 +40,7 @@ type Neo3PolyTxVoteHandler struct {
 	submitter *neo3.Submitter
 	config    *config.Neo3PolyTxVoteConfig
 	store     *store.Store
+	bridge    *bridge.SDK
 }
 
 func NewNeo3PolyTxVoteHandler(config *config.Neo3PolyTxVoteConfig) *Neo3PolyTxVoteHandler {
@@ -52,6 +54,13 @@ func NewNeo3PolyTxVoteHandler(config *config.Neo3PolyTxVoteConfig) *Neo3PolyTxVo
 func (h *Neo3PolyTxVoteHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error) {
 	h.Context = ctx
 	h.wg = wg
+
+	if h.config.CheckFee {
+		h.bridge, err = bridge.WithOptions(0, config.CONFIG.Bridge, time.Minute, 10)
+		if err != nil {
+			return
+		}
+	}
 
 	err = h.submitter.Init(h.config.SubmitterConfig)
 	if err != nil {
@@ -133,7 +142,7 @@ func (h *Neo3PolyTxVoteHandler) Start() (err error) {
 	}
 
 	log.Info("Neo3 poly tx vote will start...", "height", h.height+1, "chain", h.config.ChainId)
-	h.submitter.StartPolyTxVote(h.Context, h.wg, h.config, h.store)
+	h.submitter.StartPolyTxVote(h.Context, h.wg, h.config, h.store, h.bridge)
 	go h.start()
 	return
 }

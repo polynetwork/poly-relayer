@@ -20,6 +20,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/polynetwork/bridge-common/log"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -137,7 +138,6 @@ type ChainConfig struct {
 	Signer                     *wallet.Config
 	SrcFilter                  *FilterConfig
 	DstFilter                  *FilterConfig
-	ZionStartHeight            uint64
 
 	HeaderSync     *HeaderSyncConfig // chain -> ch -> poly
 	TxVote         *TxVoteConfig
@@ -349,6 +349,7 @@ func (c *Config) Init() (err error) {
 			return
 		}
 	}
+	log.Json(log.INFO, c)
 
 	tools.DingUrl = c.Validators.DingUrl
 

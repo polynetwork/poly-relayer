@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/polynetwork/bridge-common/chains/bridge"
 	"github.com/polynetwork/poly-relayer/store"
 
 	"sync"
@@ -32,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/joeqian10/neo3-gogogo/helper"
 	"github.com/joeqian10/neo3-gogogo/sc"
-	nw "github.com/joeqian10/neo3-gogogo/wallet"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/neo3"
 	"github.com/polynetwork/bridge-common/chains/zion"
@@ -111,7 +111,7 @@ func (s *Submitter) Hook(ctx context.Context, wg *sync.WaitGroup, ch <-chan msg.
 }
 
 func (s *Submitter) StartPolyTxVote(
-	ctx context.Context, wg *sync.WaitGroup, config *config.Neo3PolyTxVoteConfig, store *store.Store,
+	ctx context.Context, wg *sync.WaitGroup, config *config.Neo3PolyTxVoteConfig, store *store.Store, bridge *bridge.SDK,
 ) {
 	s.Context = ctx
 	s.wg = wg
@@ -128,14 +128,9 @@ func (s *Submitter) StartPolyTxVote(
 		log.Fatal("Neo3 poly tx voter missing signer or sender")
 	}
 
-	accounts := s.wallet.Accounts
-	if len(accounts) == 0 {
-		log.Warn("No account available for Neo3 poly tx vote workers", "chain", s.name)
-	}
-	for i, a := range accounts {
-		log.Info("Starting Neo3 poly tx vote worker", "index", i, "total", len(accounts), "account", a.Address, "chain", s.name)
-		go s.votePolyTx(a, store)
-	}
+	log.Info("Starting Neo3 poly tx vote worker", "account", s.wallet.Account(), "chain", s.name)
+	go s.votePolyTx(store, bridge)
+
 	return
 }
 
@@ -166,13 +161,9 @@ func (s *Submitter) convertRawNeoTmv(tx *msg.Tx) (rawNeoTmv []byte, err error) {
 	return
 }
 
-func (s *Submitter) constructDstData(rawNeoTmv []byte, a *nw.NEP6Account) (dstData []byte, err error) {
+func (s *Submitter) constructDstData(rawNeoTmv []byte) (dstData []byte, err error) {
 	// sign the ToMerkleValue, multi sig verification in neo3 ccmc
-	if a == nil {
-		a = s.wallet.Account()
-	}
-
-	pair, err := a.GetKeyFromPassword(s.config.Wallet.Neo3Pwd)
+	pair, err := s.signer.Account().GetKeyFromPassword(s.config.Signer.Neo3Pwd)
 	if err != nil {
 		return nil, fmt.Errorf("neo3.NEP6Account.GetKeyFromPassword error: %v", err)
 	}
@@ -225,7 +216,7 @@ func (s *Submitter) RetryWithData(store *store.Store, batch int) {
 				log.Info("Confirm vote success", "hash", tx.Hash.Hex(), "err", err)
 				needRetry = false
 			} else {
-				txHash, err := s.signer.SendTransaction(tx.Data)
+				txHash, err := s.wallet.SendTransaction(tx.Data)
 				if err != nil {
 					log.Error("Failed to vote neo3 poly tx during check", "err", err, "hash", hash)
 				} else {
@@ -248,7 +239,7 @@ func (s *Submitter) RetryWithData(store *store.Store, batch int) {
 	}
 }
 
-func (s *Submitter) votePolyTx(account nw.NEP6Account, store *store.Store) {
+func (s *Submitter) votePolyTx(db *store.Store, bridgeSdk *bridge.SDK) {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	ticker := time.NewTicker(3 * time.Minute)
@@ -263,11 +254,13 @@ func (s *Submitter) votePolyTx(account nw.NEP6Account, store *store.Store) {
 
 		select {
 		case <-ticker.C:
-			s.RetryWithData(store, s.vote.Batch)
+			s.RetryWithData(db, s.vote.Batch)
 		default:
 		}
 
-		txs, err := store.LoadTxs(s.vote.Batch)
+		var polyTx []*msg.Tx
+		var paidPolyTx []*msg.Tx
+		txs, err := db.LoadTxs(s.vote.Batch)
 		if err != nil {
 			log.Error("Failed to load txs from store", "err", err)
 			continue
@@ -278,36 +271,107 @@ func (s *Submitter) votePolyTx(account nw.NEP6Account, store *store.Store) {
 			continue
 		}
 
-		for _, t := range txs {
-			tx := new(msg.Tx)
-			err := tx.Decode(string(t.Value))
-			if err != nil {
-				log.Error("Tx vote decode tx failed", "src hash", t.Hash.Hex(), "err", err)
+		checkFeeState := map[string]*bridge.CheckFeeRequest{}
+		for _, tx := range txs {
+			if uint64(time.Now().Unix()) < tx.Delay {
 				continue
 			}
 
+			t := new(msg.Tx)
+			err := t.Decode(string(tx.Value))
+			if err != nil {
+				log.Error("Tx vote decode tx failed", "src hash", tx.Hash.Hex(), "err", err)
+				// delete from db
+				bus.SafeCall(s.Context, t.PolyHash, "remove neo3 poly tx item failure", func() error {
+					return db.DeleteTxs(tx)
+				})
+				continue
+			}
+			polyTx = append(polyTx, t)
+
+			checkFeeState[t.PolyHash.Hex()] = &bridge.CheckFeeRequest{
+				ChainId:  t.SrcChainId,
+				TxId:     t.TxId,
+				PolyHash: t.PolyHash.Hex(),
+			}
+		}
+
+		// check fee
+		if s.vote.CheckFee {
+			log.Info("Sending check fee request", "size", len(checkFeeState), "chain", s.name)
+			err = bridgeSdk.Node().CheckFee(checkFeeState)
+			if err != nil {
+				log.Error("check fee failed", "err", err)
+				time.Sleep(time.Minute)
+				continue
+			}
+			log.Info("check fee success")
+			log.Json(log.INFO, checkFeeState)
+
+			for _, tx := range polyTx {
+
+				feeMin := float32(0)
+				feePaid := float32(0)
+				check := checkFeeState[tx.PolyHash.Hex()]
+				if check != nil {
+					tx.CheckFeeStatus = checkFeeState[tx.PolyHash.Hex()].Status
+					feeMin = float32(check.Min)
+					feePaid = float32(check.Paid)
+					tx.PaidGas = float64(check.PaidGas)
+				}
+
+				if check.Pass() {
+					log.Info("CheckFee pass", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+				} else if check.Skip() {
+					log.Warn("Skipping poly for marked as not target in fee check", "poly_hash", tx.PolyHash)
+					// delete from db
+					bus.SafeCall(s.Context, tx.PolyHash, "remove skipped neo3 poly tx item failure", func() error {
+						return db.DeleteTxs(store.NewTx(tx))
+					})
+					continue
+				} else {
+					log.Info("CheckFee tx not paid or missing in bridge, delay for 3 minutes", "poly_hash", tx.PolyHash, "min", feeMin, "paid", feePaid)
+					// delete tx from db then insert delayed tx
+					bus.SafeCall(s.Context, tx.PolyHash, "remove neo3 poly tx item failure", func() error {
+						return db.DeleteTxs(store.NewTx(tx))
+					})
+					bus.SafeCall(s.Context, tx.PolyHash, "put not paid tx back", func() error {
+						time.Sleep(time.Second * 60) // avoid key existing error when inserting
+						tx.Delay = uint64(time.Now().Unix() + 120)
+						return db.InsertTxs([]*store.Tx{store.NewTx(tx)})
+					})
+					continue
+				}
+				paidPolyTx = append(paidPolyTx, tx)
+			}
+		} else {
+			paidPolyTx = polyTx
+		}
+
+		if len(paidPolyTx) == 0 {
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		for _, tx := range paidPolyTx {
 			if tx.TxType != msg.POLY || tx.DstChainId != base.NEO3 {
 				log.Error("Neo3 poly tx vote invalid msg type", "msgType", tx.TxType, "from chain", tx.SrcChainId, "to chain", tx.DstChainId, "src hash", tx.SrcHash, "poly hash", tx.PolyHash.Hex())
 				continue
 			}
-
 			log.Info("Processing neo3 poly tx", "poly_hash", tx.PolyHash.Hex())
 
-			// check fee paid enough todo
-
-			//
 			rawNeoTmv, err := s.convertRawNeoTmv(tx)
 			if err != nil {
 				log.Error("convertRawNeoTmv error", "poly hash", tx.PolyHash.Hex(), "err", err)
 				continue
 			}
 
-			tx.DstData, err = s.constructDstData(rawNeoTmv, &account)
+			tx.DstData, err = s.constructDstData(rawNeoTmv)
 			if err != nil {
 				log.Error("constructDstData error", "poly hash", tx.PolyHash.Hex(), "err", err)
 				continue
 			}
-			tx.DstHash, err = s.signer.SendTransaction(tx.DstData) // signer is used to send tx
+			tx.DstHash, err = s.wallet.SendTransaction(tx.DstData)
 			if err != nil {
 				log.Error("Process neo3 poly tx error", "poly_hash", tx.PolyHash.String(), "err", err)
 				time.Sleep(time.Second * 5)
@@ -316,12 +380,12 @@ func (s *Submitter) votePolyTx(account nw.NEP6Account, store *store.Store) {
 
 			log.Info("Vote neo3 poly tx", "hash", tx.DstHash, "poly hash", tx.PolyHash.Hex())
 			bus.SafeCall(s.Context, tx.DstHash, "insert neo3 data item failure", func() error {
-				return store.InsertData(msg.HexToHash(tx.DstHash), tx.DstData, ethcomm.Address{})
+				return db.InsertData(msg.HexToHash(tx.DstHash), tx.DstData, ethcomm.Address{})
 			})
 
 			// delete from db
 			bus.SafeCall(s.Context, tx.PolyHash, "remove neo3 poly tx item failure", func() error {
-				return store.DeleteTxs(t)
+				return db.DeleteTxs(store.NewTx(tx))
 			})
 		}
 	}

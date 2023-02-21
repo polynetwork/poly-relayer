@@ -167,6 +167,8 @@ type Tx struct {
 	ChainTxJson string `json:",omitempty"`
 
 	Extra interface{} `json:"-"`
+
+	Delay uint64
 }
 
 func (tx *Tx) Type() TxType {

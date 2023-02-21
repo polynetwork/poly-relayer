@@ -76,8 +76,8 @@ type Tx struct {
 	Height  uint64
 	ChainID uint64
 	Value   []byte
-	//TxID    []byte
-	Key []byte
+	Key     []byte
+	Delay   uint64
 }
 
 type Header struct {
@@ -94,7 +94,7 @@ func NewTx(tx *msg.Tx) *Tx {
 		key = tx.PolyHash.Bytes()
 	}
 
-	return &Tx{Hash: msg.HexToHash(tx.SrcHash), Value: []byte(tx.Encode()), Height: tx.SrcHeight, ChainID: tx.SrcChainId, Key: key}
+	return &Tx{Hash: msg.HexToHash(tx.SrcHash), Value: []byte(tx.Encode()), Height: tx.SrcHeight, ChainID: tx.SrcChainId, Key: key, Delay: tx.Delay}
 
 }
 
