@@ -20,6 +20,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/polynetwork/poly-relayer/store"
 	"sync"
 	"time"
 
@@ -208,6 +209,7 @@ type PolyTxSyncHandler struct {
 	state    bus.ChainStore
 	skip     bus.SkipCheck
 	sequence bus.Sequence
+	store    *store.Store
 	height   uint64
 	config   *config.PolyTxSyncConfig
 }

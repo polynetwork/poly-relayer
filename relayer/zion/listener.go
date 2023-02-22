@@ -181,6 +181,31 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
+func (l *Listener) ScanNeo3Tx(height uint64) (txs []*msg.Tx, err error) {
+	ccm, err := ccm.NewICrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
+	if err != nil {
+		return nil, err
+	}
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+
+	makeProofTxs, err := scanMakeProofTxs(ccm, opt)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, tx := range makeProofTxs {
+		if tx.DstChainId == base.NEO3 {
+			txs = append(txs, tx)
+		}
+	}
+
+	return
+}
+
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 	return l.sdk.Node().GetBlockHeightByTxHash(msg.Hash(hash))
 }

@@ -111,8 +111,6 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(ont.Submitter)
 	case base.RIPPLE:
 		submitter = new(ripple.Submitter)
-	case base.NEO3:
-		submitter = new(neo3.Submitter)
 	case base.APTOS:
 		submitter = new(aptos.Submitter)
 	default:

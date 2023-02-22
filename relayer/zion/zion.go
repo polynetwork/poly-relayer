@@ -263,12 +263,9 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 			alreadyDone := false
 			needRetry := true
 			hash := tx.Hash
-			if len(hash) == 0 {
-
-			}
 			height, pending, err := s.sdk.Node().GetTxHeight(context.Background(), tx.Hash)
 			if err != nil {
-				log.Error("Failed to check tx receipt", "hash", tx.Hash, "err", err)
+				log.Error("Failed to check tx receipt", "hash", tx.Hash.Hex(), "err", err)
 			} else if height > 0 {
 				needRetry = false
 			} else if !pending {
@@ -289,6 +286,8 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 					tx.Hash = msg.HexToHash(hash)
 					log.Info("Send tx during check", "hash", hash, "chain", s.name)
 				}
+			} else {
+				log.Warn("zion tx pending", "hash", tx.Hash)
 			}
 
 			// Delete old data
@@ -531,58 +530,76 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			continue
 		}
 
-		for _, tx := range txs {
-			txParam, err := msg.DecodeTxParam(tx.Value)
+		for _, t := range txs {
+			tx := new(msg.Tx)
+			err := tx.Decode(string(t.Value))
 			if err != nil {
-				log.Error("Tx vote DecodeTxParam failed", "src hash", tx.Hash.Hex(), "err", err)
+				log.Error("Tx vote decode tx failed", "src hash", t.Hash.Hex(), "err", err)
+				continue
+			}
+
+			if tx.TxType != msg.SRC {
+				log.Error("Tx vote invalid msg type", "msgType", tx.TxType, "src hash", tx.SrcHash, "poly hash", tx.PolyHash.Hex())
+				continue
+			}
+
+			raw, err := hex.DecodeString(tx.SrcParam)
+			if err != nil || len(raw) == 0 {
+				log.Fatal("Unexpected empty SrcParam", "err", err, "hash", tx.SrcHash)
+			}
+
+			txParam, err := msg.DecodeTxParam(raw)
+			if err != nil {
+				log.Error("Tx vote DecodeTxParam failed", "src hash", tx.SrcHash, "err", err)
 				continue
 			}
 
 			// Check done tx existence
-			done, err := s.sdk.Node().CheckDone(nil, tx.ChainID, txParam.CrossChainID)
+			done, err := s.sdk.Node().CheckDone(nil, tx.SrcChainId, txParam.CrossChainID)
 			if err != nil {
-				log.Error("Tx vote check done failed", "src hash", tx.Hash.Hex(), "err", err)
+				log.Error("Tx vote check done failed", "src hash", tx.SrcHash, "err", err)
 				continue
 			}
 			if done {
-				log.Info("Tx already imported", "src_hash", tx.Hash.Hex())
-				bus.SafeCall(s.Context, tx.Hash.Hex(), "remove tx item failure", func() error {
-					return store.DeleteTxs(tx)
+				log.Info("Tx already imported", "src_hash", tx.SrcHash)
+				bus.SafeCall(s.Context, tx.SrcHash, "remove tx item failure", func() error {
+					return store.DeleteTxs(t)
 				})
 				continue
 			}
 
 			param := ccom.EntranceParam{
-				SourceChainID: tx.ChainID,
-				Height:        uint32(tx.Height),
-				Extra:         tx.Value,
+				SourceChainID: tx.SrcChainId,
+				Height:        uint32(tx.SrcHeight),
+				Extra:         raw,
 			}
 			digest, err := param.Digest()
 			if err != nil {
-				log.Error("tx vote failed to get param digest", "src hash", tx.Hash.Hex(), "chain", s.name, "err", err)
+				log.Error("tx vote failed to get param digest", "src hash", tx.SrcHash, "chain", s.name, "err", err)
 				continue
 			}
 			param.Signature, err = s.voter.SignHash(digest)
 			if err != nil {
-				log.Error("tx vote failed to sign param", "src hash", tx.Hash.Hex(), "chain", s.name, "err", err)
+				log.Error("tx vote failed to sign param", "src hash", tx.SrcHash, "chain", s.name, "err", err)
 				continue
 			}
-			data, err := s.txabi.Pack("importOuterTransfer", tx.ChainID, uint32(tx.Height), []byte{}, tx.Value, param.Signature)
+			data, err := s.txabi.Pack("importOuterTransfer", tx.SrcChainId, uint32(tx.SrcHeight), []byte{}, raw, param.Signature)
 			if err != nil {
-				log.Error("tx vote failed to pack data", "src hash", tx.Hash.Hex(), "chain", s.name, "err", err)
+				log.Error("tx vote failed to pack data", "src hash", tx.SrcHash, "chain", s.name, "err", err)
 				continue
 			}
 
 			hash, err := s.wallet.SendWithAccount(account, zion.CCM_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 			if err != nil || hash == "" {
 				if strings.Contains(err.Error(), "CheckConsensusSigns, signer already exist") {
-					log.Warn("tx already sent to zion", "src hash", tx.Hash.Hex(), "err", err)
+					log.Warn("tx already sent to zion", "src hash", tx.SrcHash, "err", err)
 				} else {
-					log.Error("Failed to send tx", "err", err, "hash", hash, "src hash", tx.Hash.Hex(), "chain", s.name)
+					log.Error("Failed to send tx", "err", err, "hash", hash, "src hash", tx.SrcHash, "chain", s.name)
 					time.Sleep(time.Second * 5)
+					continue
 				}
 			} else {
-				log.Info("Send tx vote", "hash", hash, "src hash", tx.Hash.Hex(), "chain", s.name)
+				log.Info("Send tx vote", "hash", hash, "src hash", tx.SrcHash, "chain", s.name)
 			}
 
 			if hash != "" {
@@ -592,7 +609,7 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			}
 
 			bus.SafeCall(s.Context, hash, "remove tx item failure", func() error {
-				return store.DeleteTxs(tx)
+				return store.DeleteTxs(t)
 			})
 		}
 	}
