@@ -230,6 +230,10 @@ func SyncContractGenesis(ctx *cli.Context) (err error) {
 		return
 	}
 
+	// print zion raw header
+	//info, err := lis.EpochById(epoch.ID.Uint64())
+	//fmt.Printf("zion height: %d, header: %s\n", info.Height, hex.EncodeToString(info.Header))
+
 	height, err := sub.GetPolyEpochStartHeight()
 	if err != nil {
 		return
