@@ -205,11 +205,12 @@ func (h *TxVoteHandler) startReplenish() {
 					}
 
 					tx, e := h.listener.ScanTx(hash)
-					if e != nil {
+					if e != nil || tx == nil {
 						log.Error("Tx vote replenish scan tx failure", "chain", h.config.ChainId, "hash", hash, "err", e)
 						continue
 					}
 
+					log.Info("Tx vote replenish found src tx", "chain", h.Chain(), "hash", hash)
 					e = h.submitter.VoteTxOfHash(tx, h.store)
 					if e != nil {
 						log.Error("Replenish tx vote failure", "chain", h.config.ChainId, "height", height, "hash", hash, "err", e)

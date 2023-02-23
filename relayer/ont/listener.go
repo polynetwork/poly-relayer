@@ -209,6 +209,7 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 }
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
+	// todo
 	return
 }
 

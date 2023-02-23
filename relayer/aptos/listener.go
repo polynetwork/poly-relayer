@@ -3,6 +3,7 @@ package aptos
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/aptos"
@@ -11,6 +12,7 @@ import (
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -27,13 +29,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	l.name = base.GetChainName(config.ChainId)
 	l.ccm = config.CCMContract
 	l.CrossChainEventCreationNum = config.CrossChainEventCreationNum
-	//l.poly = poly
-
-	//l.state = bus.NewRedisChainStore(
-	//	bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
-	//	config.Bus.HeightUpdateInterval,
-	//)
-
 	l.sdk, err = aptos.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	return
 }
@@ -120,12 +115,56 @@ func (l *Listener) LastHeaderSync(u uint64, u2 uint64) (uint64, error) {
 	return 0, nil
 }
 
-func (l *Listener) ScanTx(s string) (*msg.Tx, error) {
-	return nil, nil // todo
+func (l *Listener) ScanTx(hash string) (*msg.Tx, error) {
+	tx, err := l.sdk.Node().GetTxByHash(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.Contains(strings.ToLower(tx.Payload.Function), strings.ToLower(l.ccm)) {
+		return nil, fmt.Errorf("not Aptos cross chain transaction")
+	}
+
+	ccEventType := l.ccm + "::cross_chain_manager::CrossChainEvent"
+	for _, event := range tx.Events {
+		if event.GUID.AccountAddress != l.ccm {
+			continue
+		}
+		if strconv.FormatUint(uint64(event.GUID.CreationNumber), 10) != l.CrossChainEventCreationNum {
+			continue
+		}
+		if event.Type != ccEventType {
+			continue
+		}
+
+		toChainId, _ := strconv.ParseUint(event.Data["to_chain_id"].(string), 0, 32)
+
+		rawData, ok := event.Data["raw_data"]
+		if !ok {
+			log.Error("no raw_data in aptos cross chain event", "hash", hash)
+			continue
+		}
+
+		t := &msg.Tx{
+			TxType:           msg.SRC,
+			TxId:             event.Data["tx_id"].(string)[2:],
+			SrcHash:          tx.Hash,
+			DstChainId:       toChainId,
+			SrcParam:         rawData.(string)[2:],
+			SrcChainId:       l.config.ChainId,
+			CCMEventSequence: uint64(event.SequenceNumber),
+			SrcProxy:         l.ccm,
+			DstProxy:         event.Data["to_contract"].(string),
+			SrcAddress:       event.Data["sender"].(string),
+		}
+		return t, nil
+	}
+
+	return nil, fmt.Errorf("not Aptos cross chain transaction")
 }
 
-func (l *Listener) GetTxBlock(s string) (uint64, error) {
-	return 0, nil
+func (l *Listener) GetTxBlock(hash string) (uint64, error) {
+	return l.sdk.Node().GetVersionByTx(hash)
 }
 
 func (l *Listener) Compose(tx *msg.Tx) error {
@@ -133,7 +172,7 @@ func (l *Listener) Compose(tx *msg.Tx) error {
 }
 
 func (l *Listener) LatestHeight() (uint64, error) {
-	panic("implement me")
+	return l.sdk.Node().GetLatestHeight()
 }
 
 func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
