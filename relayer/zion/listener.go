@@ -473,6 +473,20 @@ func (l *Listener) SDK() *zion.SDK {
 }
 
 func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
-	// not used
-	return 0, false
+	if interval == 0 {
+		interval = time.Minute
+	}
+	for {
+		h, err := l.LatestHeight()
+		if err != nil {
+			log.Error("Failed to get chain latest height err ", "chain", l.ChainId(), "err", err)
+		} else if h >= height {
+			return h, true
+		}
+		select {
+		case <-ctx.Done():
+			return h, false
+		case <-time.After(interval):
+		}
+	}
 }

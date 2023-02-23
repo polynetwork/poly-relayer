@@ -310,7 +310,6 @@ func (s *Submitter) votePolyTx(db *store.Store, bridgeSdk *bridge.SDK) {
 			log.Json(log.INFO, checkFeeState)
 
 			for _, tx := range polyTx {
-
 				feeMin := float32(0)
 				feePaid := float32(0)
 				check := checkFeeState[tx.PolyHash.Hex()]
