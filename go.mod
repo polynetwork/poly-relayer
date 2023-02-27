@@ -22,5 +22,3 @@ require (
 )
 
 replace github.com/rubblelabs/ripple => github.com/siovanus/ripple v0.0.0-20230113075118-4a31480c1af2
-
-

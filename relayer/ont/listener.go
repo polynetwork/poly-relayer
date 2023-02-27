@@ -209,7 +209,47 @@ func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 }
 
 func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
-	// todo
+	height, err := l.sdk.Node().GetBlockHeightByTxHash(hash)
+	if err != nil {
+		return nil, fmt.Errorf("ONT failed to get block height by hash %s, err %v", hash, err)
+	}
+
+	event, err := l.sdk.Node().GetSmartContractEvent(hash)
+	if err != nil {
+		return nil, fmt.Errorf("ONT failed to fetch smart contract events for hash %s, err %v", hash, err)
+
+	}
+	for _, notify := range event.Notify {
+		if !strings.EqualFold(notify.ContractAddress, strings.TrimPrefix(l.ccm, "0x")) {
+			continue
+		}
+		log.Info("ont scan", "hash", hash, "notify", fmt.Sprintf("%+v", *notify))
+		states, ok := notify.States.([]interface{})
+		if !ok || states[0].(string) != "cross_chain" {
+			continue
+		}
+		srcProxy, err := utils.AddressFromBase58(states[3].(string))
+		if err != nil {
+			return nil, fmt.Errorf("decode src lock proxy of ONT ccm event failed. srcHash %s, err %v", event.TxHash, err)
+		}
+
+		dstChainId, err := strconv.ParseUint(states[4].(string), 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("decode dst chain id of ONT ccm event failed. srcHash %s, err %v", event.TxHash, err)
+		}
+
+		return &msg.Tx{
+			TxType:     msg.SRC,
+			TxId:       states[2].(string),
+			SrcHash:    event.TxHash,
+			DstChainId: dstChainId,
+			SrcHeight:  uint64(height),
+			SrcChainId: l.ChainId(),
+			SrcProxy:   srcProxy.ToHexString(),
+			DstProxy:   states[5].(string),
+			SrcParam:   states[6].(string),
+		}, nil
+	}
 	return
 }
 
