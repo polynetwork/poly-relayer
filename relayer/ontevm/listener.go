@@ -47,15 +47,6 @@ type Listener struct {
 	abiParsed abi.ABI
 }
 
-//type Listener struct {
-//	*eth.Listener
-//	sdk *harmony.SDK
-//	poly *zion.SDK
-//	epoch uint64
-//	header []byte // Pending header
-//	nextEpochBlock uint64
-//}
-
 func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err error) {
 	if config.ChainId != base.ONTEVM {
 		return fmt.Errorf("ONTEVM chain id is incorrect in config %v", config.ChainId)
@@ -84,15 +75,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	return
 }
 
-//func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
-//	h, err := l.poly.Node().GetInfoHeight(nil, l.config.ChainId)
-//	if err != nil {
-//		return 0, fmt.Errorf("getProofHeight unsupported chain %s err %v", l.name, err)
-//	}
-//	height = uint64(h)
-//	return height, err
-//}
-
 type MakeTxParamWithSender struct {
 	Sender ontocommon.Address
 	ccom.MakeTxParam
@@ -115,102 +97,6 @@ func (this *MakeTxParamWithSender) Deserialization(data []byte) (err error) {
 	this.Sender = ontocommon.Address(addr)
 	return this.MakeTxParam.Deserialization(source)
 }
-
-//func (l *Listener) Compose(tx *msg.Tx) (err error) {
-//	if tx.SrcHeight == 0 {
-//		return fmt.Errorf("Invalid tx src height(0)")
-//	}
-//	v, err := l.poly.Node().GetSideChainMsg(base.ONTEVM, tx.SrcHeight)
-//	if err != nil {
-//		return fmt.Errorf("GetSideChainMsg:%s", err)
-//	}
-//	if len(v) == 0 {
-//		msg, err := l.sdk.Node().GetCrossChainMsg(uint32(tx.SrcHeight))
-//		if err != nil {
-//			return fmt.Errorf("err ontNode.GetCrossChainMsg:%s", err)
-//		}
-//		tx.SrcStateRoot, err = hex.DecodeString(msg)
-//		if err != nil {
-//			return fmt.Errorf("err tx.SrcStateRoot hex.DecodeString(msg):%s", err)
-//		}
-//	}
-//	hashes, err := l.sdk.Node().GetCrossStatesLeafHashes(float64(tx.SrcHeight))
-//	if err != nil {
-//		return fmt.Errorf("GetCrossStatesLeafHashes:%s", err)
-//	}
-//	param := ccom.MakeTxParam{}
-//	par, err := hex.DecodeString(tx.SrcParam)
-//	if err != nil {
-//		return fmt.Errorf("err hexDecodeString SrcParam:%s", err)
-//	}
-//	err = param.Deserialization(ontocommon.NewZeroCopySource(par))
-//	if err != nil {
-//		return fmt.Errorf("err param.Deserialization par:%s", err)
-//	}
-//	eccmAddr := HexStringReverse((l.ccm.String())[2:])
-//	ontEccmAddr, err := ontocommon.AddressFromHexString(eccmAddr)
-//	if err != nil {
-//		return fmt.Errorf("err addressFromHexString eccmAddr:%s", err)
-//	}
-//	makeTxParamWithSender := &MakeTxParamWithSender{
-//		ontEccmAddr,
-//		param,
-//	}
-//	itemValue, err := makeTxParamWithSender.Serialization()
-//	if err != nil {
-//		return fmt.Errorf("err makeTxParamWithSender.Serialization:%s", err)
-//	}
-//	hashesx := make([]ontocommon.Uint256, 0)
-//	for _, v := range hashes.Hashes {
-//		uint256v, err := ontocommon.Uint256FromHexString(v)
-//		if err != nil {
-//			return fmt.Errorf("err Uint256FromHexString hashes.Hashes:%s", err)
-//		}
-//		hashesx = append(hashesx, uint256v)
-//	}
-//	path, err := merkle.MerkleLeafPath(itemValue, hashesx)
-//	if err != nil {
-//		return fmt.Errorf("err  merkle.MerkleLeafPath:%s", err)
-//	}
-//	tx.SrcProof = path
-//	tx.SrcProofHeight = tx.SrcHeight
-//	{
-//		value, _, _, _ := msg.ParseAuditPath(tx.SrcProof)
-//		if len(value) == 0 {
-//			return fmt.Errorf("ParseAuditPath got null param")
-//		}
-//		param := &MakeTxParamWithSender{}
-//		err = param.Deserialization(value)
-//		if err != nil {
-//			return fmt.Errorf("err param.Deserialization value:%s", err)
-//		}
-//		tx.Param = &pcom.MakeTxParam{
-//			TxHash:              param.TxHash,
-//			CrossChainID:        param.CrossChainID,
-//			FromContractAddress: param.FromContractAddress,
-//			ToChainID:           param.ToChainID,
-//			ToContractAddress:   param.ToContractAddress,
-//			Method:              param.Method,
-//			Args:                param.Args,
-//		}
-//	}
-//	return
-//}
-
-//func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {
-//	block, err := l.sdk.Node().GetBlockByHeight(uint32(height))
-//	if err != nil {
-//		return
-//	}
-//	info := &vconfig.VbftBlockInfo{}
-//	if err := json.Unmarshal(block.Header.ConsensusPayload, info); err != nil {
-//		return nil, nil, fmt.Errorf("ONTEVM unmarshal blockInfo error: %s", err)
-//	}
-//	if info.NewChainConfig != nil {
-//		return block.Header.ToArray(), nil, nil
-//	}
-//	return
-//}
 
 type StorageLog struct {
 	Address common.Address
@@ -275,17 +161,17 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 					err = fmt.Errorf("decoding states err:%v", err)
 					return nil, err
 				}
-				source := ontocommon.NewZeroCopySource(data) // todo modify
+				source := ontocommon.NewZeroCopySource(data)
 				var storageLog StorageLog
 				err = storageLog.Deserialization(source)
 				if err != nil {
 					return nil, err
 				}
-				// todo
-				CrossChainEvent := "0x6ad3bf15c1988bc04bc153490cab16db8efb9a3990215bf1c64ea6e28be88483"
-				if len(storageLog.Topics) == 0 || common.HexToHash(CrossChainEvent) != storageLog.Topics[0] {
+
+				if len(storageLog.Topics) == 0 || l.abiParsed.Events["CrossChainEvent"].ID != storageLog.Topics[0] {
 					continue
 				}
+
 				var event eccm_abi.EthCrossChainManagerImplementationCrossChainEvent
 				err = l.abiParsed.UnpackIntoInterface(&event, "CrossChainEvent", storageLog.Data)
 				if err != nil {
@@ -332,20 +218,6 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
 }
-
-//func (l *Listener) LastHeaderSync(force, last uint64) (height uint64, err error) {
-//	if l.poly == nil {
-//		err = fmt.Errorf("No poly sdk provided for listener chain %s", l.name)
-//		return
-//	}
-//
-//	if force != 0 {
-//		return force, nil
-//	}
-//	h, err := l.poly.Node().GetInfoHeight(nil, l.ChainId())
-//	height = uint64(h)
-//	return
-//}
 
 func (l *Listener) LatestHeight() (uint64, error) {
 	return l.sdk.Node().GetLatestHeight()

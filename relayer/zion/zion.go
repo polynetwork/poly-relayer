@@ -270,13 +270,11 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 				needRetry = false
 			} else if !pending {
 				hash, err := s.wallet.SendWithAccount(account, tx.To, big.NewInt(0), 0, nil, nil, tx.Data)
-				// TODO: detect already done tx here
 				if err != nil || hash == "" {
-					if strings.Contains(err.Error(), "CheckConsensusSigns, signer already exist") {
+					if strings.Contains(err.Error(), "signer already exist") {
 						alreadyDone = true
 						needRetry = false
 					}
-					// else if other case (header sync) todo
 					if alreadyDone {
 						log.Warn("tx already sent to zion", "src hash", tx.Hash.Hex(), "To", tx.To.Hex(), "err", err)
 					} else {
