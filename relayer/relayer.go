@@ -113,7 +113,7 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(ripple.Submitter)
 	case base.FLOW:
 		submitter = new(flow.Submitter)
-	case base.APTOS:
+	case base.APTOS, base.APTOS2:
 		submitter = new(aptos.Submitter)
 
 	default:
@@ -142,7 +142,7 @@ func DstSubmitter(chain uint64) (sub IChainSubmitter, err error) {
 		sub = new(ont.Submitter)
 	case base.NEO:
 		sub = new(neo.Submitter)
-	case base.APTOS:
+	case base.APTOS, base.APTOS2:
 		sub = new(aptos.Submitter)
 	default:
 		for _, v := range base.ETH_CHAINS {

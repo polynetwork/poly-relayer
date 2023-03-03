@@ -121,7 +121,7 @@ func (c *Controller) composeDstTx(hash string) (data interface{}, err error) {
 	switch tx.DstChainId {
 	case base.ONT:
 		payload["data"] = tx.Extra
-	case base.APTOS:
+	case base.APTOS, base.APTOS2:
 		aptosPayload, e := getAptosUnlockPayload(tx)
 		if e != nil {
 			err = fmt.Errorf("get aptos paylod err %v", e)
