@@ -295,7 +295,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 					log.Info("Found poly tx", "hash", tx.PolyHash, "sequence", tx.PolyKey)
 					h.sequence.AddTx(h.Context, base.RIPPLE, tx.PolyKey, tx)
 				default:
-					log.Info("Found poly tx", "hash", tx.PolyHash)
+					log.Info("Found poly tx", "hash", tx.PolyHash, "from", tx.SrcChainId, "to", tx.DstChainId)
 					bus.SafeCall(h.Context, tx, "push to target chain tx bus", func() error {
 						return h.bus.PushToChain(context.Background(), tx)
 					})
