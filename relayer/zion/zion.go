@@ -236,9 +236,9 @@ func (s *Submitter) ReadyBlock() (height uint64) {
 	var err error
 	switch s.config.ChainId {
 	// header sync height
-	case base.ETH, base.GOERLI, base.BSC, base.HECO:
+	case base.ETH, base.GOERLI, base.SEPOLIA, base.BSC, base.HECO:
 		var h uint32
-		h, err = s.sdk.Node().GetInfoHeight(nil, s.config.ChainId)
+		h, err = s.sdk.Node().GetInfoHeight(nil, s.config.ChainId) // todo eth finalized block
 		height = uint64(h)
 	default:
 		// return latest height of tx vote chain
@@ -673,7 +673,7 @@ func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error 
 			switch s.config.ChainId {
 			case base.BSC, base.HECO:
 				block = height + 50
-			case base.ETH, base.GOERLI:
+			case base.ETH, base.GOERLI, base.SEPOLIA:
 				block = height + 10
 			default:
 				block = height + 10

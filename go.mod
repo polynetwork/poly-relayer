@@ -13,7 +13,7 @@ require (
 	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.2.1
 	github.com/ontio/ontology-go-sdk v1.11.4
-	github.com/polynetwork/bridge-common v0.0.34-2
+	github.com/polynetwork/bridge-common v0.0.36-2
 	github.com/polynetwork/ripple-sdk v0.0.0-20220616022641-d64d4aa053fe
 	github.com/portto/aptos-go-sdk v0.0.0-20230118094238-99813673238c
 	github.com/tendermint/tendermint v0.35.9

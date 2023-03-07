@@ -85,8 +85,8 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 
 func (l *Listener) getProofHeight(txHeight uint64) (height uint64, err error) {
 	switch l.config.ChainId {
-	//header sync chian //todo
-	case base.ETH, base.BSC, base.HECO, base.O3, base.BYTOM, base.HSC, base.GOERLI, base.MATIC:
+	// only header sync chian //todo
+	case base.ETH, base.BSC, base.HECO, base.O3, base.BYTOM, base.HSC, base.GOERLI, base.SEPOLIA, base.MATIC:
 		h, err := l.poly.Node().GetInfoHeight(nil, l.config.ChainId)
 		height = uint64(h)
 		return height, err

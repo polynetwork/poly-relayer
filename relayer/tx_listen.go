@@ -162,7 +162,7 @@ func (h *SrcTxSyncHandler) start() (err error) {
 		}
 
 		h.height++
-		if latest < h.height+confirms {
+		if latest < h.height+confirms { // todo eth get finalized height
 			latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
 			if !ok {
 				continue
