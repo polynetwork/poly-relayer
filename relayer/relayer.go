@@ -97,6 +97,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(neo3.Listener)
 	case base.APTOS:
 		listener = new(aptos.Listener)
+	case base.RIPPLE:
+		listener = new(ripple.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)

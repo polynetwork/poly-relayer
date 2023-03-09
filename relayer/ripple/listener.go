@@ -202,3 +202,7 @@ func (l *Listener) LatestHeight() (uint64, error) {
 func (l *Listener) WaitTillHeight(ctx context.Context, height uint64, interval time.Duration) (uint64, bool) {
 	return 0, false
 }
+
+func (l *Listener) GetFee() (float64, error) {
+	return l.sdk.Node().GetFee()
+}

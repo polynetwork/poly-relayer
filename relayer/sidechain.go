@@ -140,7 +140,7 @@ func AddSideChain(ctx *cli.Context) (err error) {
 	}
 
 	hash, err := ps.RegisterSideChain(chain.ChainID, chain.Router, chain.Name, chain.CCMCAddress, chain.ExtraInfo, update)
-	log.Info("Sent tx", "hash", hash, "err", err)
+	log.Info("Sent tx", "hash", hash.Hex(), "err", err)
 	return
 }
 
