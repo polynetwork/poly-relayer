@@ -321,7 +321,7 @@ func (h *TxVoteHandler) Start() (err error) {
 		} else {
 			h.height, err = h.store.GetTxHeight()
 			if err != nil {
-				log.Error("get voter start height from store failed", "err", err)
+				log.Error("get voter start height from store failed", "chain", h.Chain(), "err", err)
 				return
 			}
 		}

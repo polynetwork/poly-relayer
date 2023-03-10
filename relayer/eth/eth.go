@@ -315,7 +315,7 @@ func (s *Submitter) run(account accounts.Account, mq bus.TxBus, delay bus.Delaye
 			if err == nil {
 				err = s.SubmitTx(tx)
 				if err != nil {
-					log.Error("SubmitTx failed", "polyHash", tx.PolyHash.Hex(), "err", err)
+					log.Error("SubmitTx failed", "chain", s.name, "polyHash", tx.PolyHash.Hex(), "err", err)
 				}
 			} else {
 				log.Error("ProcessTx failed", "polyHash", tx.PolyHash.Hex(), "err", err)
