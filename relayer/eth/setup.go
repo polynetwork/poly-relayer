@@ -31,4 +31,8 @@ func init() {
 
 	//balanceLimit
 	wallet.SetBalanceLimit(base.BSC, util.SetDecimals(big.NewInt(1), 16))
+	wallet.SetBalanceLimit(base.OPTIMISM, util.SetDecimals(big.NewInt(1), 15))
+	wallet.SetBalanceLimit(base.ETH, util.SetDecimals(big.NewInt(1), 16))
+	wallet.SetBalanceLimit(base.ARBITRUM, util.SetDecimals(big.NewInt(1), 15))
+	wallet.SetBalanceLimit(base.METIS, util.SetDecimals(big.NewInt(1), 16))
 }
