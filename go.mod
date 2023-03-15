@@ -6,7 +6,7 @@ require (
 	github.com/Zilliqa/gozilliqa-sdk v1.2.1-0.20210927032600-4c733f2cb879
 	github.com/boltdb/bolt v1.3.1
 	github.com/btcsuite/btcd v0.22.1
-	github.com/devfans/zion-sdk v0.0.26
+	github.com/devfans/zion-sdk v0.0.27
 	github.com/ethereum/go-ethereum v1.10.11
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/joeqian10/neo3-gogogo v1.2.1
