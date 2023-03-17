@@ -122,6 +122,7 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
+	log.Info("src tx scan", "chain", l.name, "height", height)
 	transactions, err := l.zilSdk.GetTxnBodiesForTxBlock(strconv.FormatUint(height, 10))
 	if err != nil {
 		if strings.Contains(err.Error(), "TxBlock has no transactions") {

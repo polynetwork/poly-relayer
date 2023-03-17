@@ -384,6 +384,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 		case <-ticker.C:
 			s.RetryWithData(account, store, s.sync.Batch)
 		default:
+			time.Sleep(time.Second * 10)
 		}
 
 		headers, err := store.LoadHeaders(s.sync.Batch)
@@ -523,6 +524,7 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 		case <-ticker.C:
 			s.RetryWithData(account, store, s.vote.Batch)
 		default:
+			time.Sleep(time.Second * 10)
 		}
 
 		txs, err := store.LoadTxs(s.vote.Batch)

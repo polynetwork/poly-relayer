@@ -281,7 +281,7 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 
 	isExecuted, err := s.SimulateTransaction(&tran, priv, tx.DstHash)
 	if err != nil {
-		return err
+		return fmt.Errorf("poly_hash:%s, %v", tx.PolyHash.Hex(), err)
 	}
 	if isExecuted {
 		log.Info("ProcessPolyTx dst tx already relayed", "chain", s.name, "poly_hash", tx.PolyHash, "dst_hash", tx.DstHash)

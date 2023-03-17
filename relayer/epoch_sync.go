@@ -99,7 +99,7 @@ LOOP:
 		}
 		epochs, err := h.listener.EpochUpdate(h.Context, h.epochStartHeight)
 		if err != nil {
-			log.Error("Failed to fetch epoch update", "chain", h.name)
+			log.Error("Failed to fetch epoch update", "chain", h.name, "err", err)
 			continue
 		}
 		marshal, _ := json.Marshal(epochs)

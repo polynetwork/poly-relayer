@@ -118,6 +118,7 @@ LOOP:
 
 		log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
 		h.height--
+		time.Sleep(time.Minute)
 	}
 	log.Info("Header sync handler is exiting...", "chain", h.config.ChainId, "height", h.height)
 }

@@ -268,6 +268,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
+	log.Info("src tx scan", "chain", l.name, "height", height)
 	ccm, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
 	if err != nil {
 		return nil, err
@@ -279,6 +280,7 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	}
 	events, err := ccm.FilterCrossChainEvent(opt, nil)
 	if err != nil {
+		err = fmt.Errorf("FilterCrossChainEvent failed. chain:%s, start:%d, end:%d", l.name, opt.Start, *opt.End)
 		return nil, err
 	}
 

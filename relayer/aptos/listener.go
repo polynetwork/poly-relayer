@@ -34,6 +34,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 }
 
 func (l *Listener) Scan(sequence uint64) (txs []*msg.Tx, err error) {
+	log.Info("src tx scan", "chain", l.name, "sequence", sequence)
 	eventFilter := &aptos.EventFilter{Address: l.ccm, CreationNumber: l.CrossChainEventCreationNum, Query: make(map[string]interface{})}
 	eventFilter.Query["limit"] = 10
 	eventFilter.Query["start"] = sequence

@@ -159,6 +159,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
+	log.Info("src tx scan", "chain", l.name, "height", height)
 	events, err := l.sdk.Node().GetSmartContractEventByBlock(uint32(height))
 	if err != nil {
 		return nil, fmt.Errorf("ONT failed to fetch smart contract events for height %d, err %v", height, err)

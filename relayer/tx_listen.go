@@ -307,7 +307,7 @@ func (h *PolyTxSyncHandler) start() (err error) {
 			h.state.HeightMark(h.height)
 			continue
 		} else {
-			log.Error("Fetch block header error", "chain", h.config.ChainId, "height", h.height, "err", err)
+			log.Error("Scan poly txs error", "chain", h.config.ChainId, "height", h.height, "err", err)
 		}
 		h.height--
 	}

@@ -116,7 +116,7 @@ func (h *TxVoteHandler) start() (err error) {
 				if !ok {
 					continue
 				}
-				log.Info("Scanning txs in block", "height", h.height, "chain", h.config.ChainId)
+				log.Info("Scanning txs in block", "height", scanStart, "chain", h.config.ChainId)
 			}
 		}
 

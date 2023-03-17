@@ -69,6 +69,7 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
+	log.Info("src tx scan", "chain", l.name, "height", height)
 	query := getTxQuery(height)
 	page, perPage := 1, 100
 	res, err := l.rpcClient.TxSearch(context.TODO(), query, true, &page, &perPage, "asc")
