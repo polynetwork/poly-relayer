@@ -16,6 +16,7 @@ require (
 	github.com/polynetwork/bridge-common v0.0.39-2
 	github.com/polynetwork/ripple-sdk v0.0.0-20220616022641-d64d4aa053fe
 	github.com/portto/aptos-go-sdk v0.0.0-20230118094238-99813673238c
+	github.com/starcoinorg/starcoin-go v0.0.0-20220821052347-0e482a42c59e
 	github.com/rubblelabs/ripple v0.0.0-20220222071018-38c1a8b14c18
 	github.com/tendermint/tendermint v0.35.9
 	github.com/urfave/cli/v2 v2.3.0
