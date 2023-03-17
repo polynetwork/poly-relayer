@@ -1,6 +1,6 @@
 module github.com/polynetwork/poly-relayer
 
-go 1.15
+go 1.18
 
 require (
 	github.com/Zilliqa/gozilliqa-sdk v1.2.1-0.20210927032600-4c733f2cb879
@@ -16,6 +16,7 @@ require (
 	github.com/polynetwork/bridge-common v0.0.36-2
 	github.com/polynetwork/ripple-sdk v0.0.0-20220616022641-d64d4aa053fe
 	github.com/portto/aptos-go-sdk v0.0.0-20230118094238-99813673238c
+	github.com/starcoinorg/starcoin-go v0.0.0-20220821052347-0e482a42c59e
 	github.com/tendermint/tendermint v0.35.9
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
