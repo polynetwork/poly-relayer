@@ -12,7 +12,7 @@ func TestGetLastEpochBlock(t *testing.T) {
 	if prev != 23592959 {
 		t.Errorf("Prev for mainnet gives the wrong result")
 	}
-	if next != 23592959 + EPOCH_BLOCKS_MAINNET {
+	if next != 23592959+EPOCH_BLOCKS_MAINNET {
 		t.Errorf("Next for mainnet gives the wrong result")
 	}
 }

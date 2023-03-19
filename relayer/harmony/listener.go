@@ -30,10 +30,10 @@ import (
 
 type Listener struct {
 	*eth.Listener
-	sdk *harmony.SDK
-	poly *zion.SDK
-	epoch uint64
-	header []byte // Pending header
+	sdk            *harmony.SDK
+	poly           *zion.SDK
+	epoch          uint64
+	header         []byte // Pending header
 	nextEpochBlock uint64
 }
 
@@ -60,7 +60,9 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	l.Listener = new(eth.Listener)
 	l.poly = poly
 	err = l.Listener.Init(config, poly)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	l.sdk, err = harmony.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	return
 }
@@ -70,7 +72,7 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 	if prev == height || next == height {
 		header, err = l.genesisHeader(height)
 		if err == nil {
-			log.Info("Fetched block header", "chain", l.Name(), "height", height, )
+			log.Info("Fetched block header", "chain", l.Name(), "height", height)
 		}
 	} else {
 		log.Warn("Skipping harmony header fetch, for not last epoch",
@@ -82,17 +84,25 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 
 func (l *Listener) Compose(tx *msg.Tx) (err error) {
 	err = l.Listener.Compose(tx)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	header, err := l.sdk.Node().HeaderByNumberRLP(tx.SrcProofHeight)
 	if err != nil {
 		return
 	}
 	nextHeader, err := l.sdk.Node().HeaderByNumber(tx.SrcProofHeight + 1)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	sig, err := nextHeader.GetLastCommitSignature()
-	if err != nil { return  }
+	if err != nil {
+		return
+	}
 	bitmap, err := nextHeader.GetLastCommitBitmap()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	hs := harmony.HeaderWithSig{header, sig, bitmap}
 	tx.SrcStateRoot, err = hs.Encode()
 	return
@@ -101,7 +111,9 @@ func (l *Listener) Compose(tx *msg.Tx) (err error) {
 func (l *Listener) GenesisHeader(height uint64) (data []byte, err error) {
 	if height == 0 {
 		height, err = l.sdk.Node().GetLatestHeight()
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 		height, _ = GetLastEpochBlock(height)
 	}
 	return l.genesisHeader(height)
@@ -113,11 +125,17 @@ func (l *Listener) genesisHeader(height uint64) (data []byte, err error) {
 		return
 	}
 	nextHeader, err := l.sdk.Node().HeaderByNumber(height + 1)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	sig, err := nextHeader.GetLastCommitSignature()
-	if err != nil { return  }
+	if err != nil {
+		return
+	}
 	bitmap, err := nextHeader.GetLastCommitBitmap()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	hs := harmony.HeaderWithSig{header, sig, bitmap}
 	data, err = hs.Encode()
 	return

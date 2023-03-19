@@ -77,7 +77,12 @@ func (this *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.Tx
 	this.Context = ctx
 	this.wg = wg
 	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", this.wallet.Address, "chain", this.name)
-	go this.run(this.wallet, bus, delay, composer)
+	go func() {
+		err := this.run(this.wallet, bus, delay, composer)
+		if err != nil {
+			log.Error("Starting submitter worker failed, error: ", err)
+		}
+	}()
 	return nil
 }
 
