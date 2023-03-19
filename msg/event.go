@@ -118,7 +118,6 @@ func (o *BindAssetEvent) Format() (title string, keys []string, values []interfa
 	return
 }
 
-
 func ParseInt(value, ty string) (v *big.Int) {
 	switch ty {
 	case "Integer":

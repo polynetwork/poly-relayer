@@ -15,7 +15,6 @@
  * along with The poly network .  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 package store
 
 import (
@@ -27,7 +26,9 @@ var (
 )
 
 func Init(file string) (err error) {
-	if db != nil { return }
+	if db != nil {
+		return
+	}
 	db, err = bolt.Open(file, 0600, nil)
 	return
 }
@@ -59,14 +60,14 @@ func Write(bucket, key, value []byte) (err error) {
 	return
 }
 
-func Transact(bucket []byte, f func(bucket *bolt.Bucket)error) (err error) {
+func Transact(bucket []byte, f func(bucket *bolt.Bucket) error) (err error) {
 	err = db.Update(func(tx *bolt.Tx) error {
 		return f(tx.Bucket(bucket))
 	})
 	return
 }
 
-func Scan(bucket []byte, f func(bucket *bolt.Bucket)error) (err error) {
+func Scan(bucket []byte, f func(bucket *bolt.Bucket) error) (err error) {
 	err = db.View(func(tx *bolt.Tx) error {
 		return f(tx.Bucket(bucket))
 	})

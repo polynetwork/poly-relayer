@@ -26,21 +26,29 @@ import (
 func EncryptFile(ctx *cli.Context) (err error) {
 	file := ctx.String("file")
 	data, err := ioutil.ReadFile(file)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	pass, err := util.ReadPassword("passphrase")
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	cipherData := util.Encrypt(data, []byte(pass))
-	err = ioutil.WriteFile(file + ".encrypted", cipherData, 0644)
+	err = ioutil.WriteFile(file+".encrypted", cipherData, 0644)
 	return
 }
 
 func DecryptFile(ctx *cli.Context) (err error) {
 	file := ctx.String("file")
 	cipherData, err := ioutil.ReadFile(file)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	pass, err := util.ReadPassword("passphrase")
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	data := util.Decrypt(cipherData, []byte(pass))
-	err = ioutil.WriteFile(file + ".decrypted", data, 0644)
+	err = ioutil.WriteFile(file+".decrypted", data, 0644)
 	return
 }
