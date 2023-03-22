@@ -14,7 +14,7 @@ require (
 	github.com/ontio/ontology v1.11.1-0.20200812075204-26cf1fa5dd47
 	github.com/ontio/ontology-crypto v1.2.1
 	github.com/ontio/ontology-go-sdk v1.11.4
-	github.com/polynetwork/bridge-common v0.0.44-test
+	github.com/polynetwork/bridge-common v0.0.44-test.0.20230322080431-ddc911cad46f
 	github.com/polynetwork/poly v1.9.1-0.20220424092935-f54fa45801fe
 	github.com/polynetwork/poly-go-sdk v0.0.0-20220425024155-af1927301211
 	github.com/polynetwork/ripple-sdk v0.0.0-20220616022641-d64d4aa053fe
