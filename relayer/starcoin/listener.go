@@ -2,6 +2,7 @@ package starcoin
 
 import (
 	"context"
+	"fmt"
 	"github.com/ontio/ontology/common/log"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
@@ -32,12 +33,9 @@ func (this *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err e
 }
 
 func (this *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	// TODO(Bob Ong) to replace address with crosschain event
-	address := "0x416b32009fe49fcab1d5f2ba0153838f"
-	typeTag := "0x416b32009fe49fcab1d5f2ba0153838f::CrossChainManager::crossChainEventData"
 	eventFilter := starcoin_client.EventFilter{
-		Address:   []string{address},
-		TypeTags:  []string{typeTag},
+		Address:   []string{this.ccm},
+		TypeTags:  []string{fmt.Sprintf("%s::zion_cross_chain_manager::CrossChainEvent", this.ccm)},
 		FromBlock: height,
 		ToBlock:   &height,
 	}

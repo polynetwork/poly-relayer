@@ -77,12 +77,7 @@ func (this *Submitter) Start(ctx context.Context, wg *sync.WaitGroup, bus bus.Tx
 	this.Context = ctx
 	this.wg = wg
 	log.Info("Starting submitter worker", "index", 0, "total", 1, "account", this.wallet.Address, "chain", this.name)
-	go func() {
-		err := this.run(this.wallet, bus, delay, composer)
-		if err != nil {
-			log.Error("Starting submitter worker failed, error: ", err)
-		}
-	}()
+	go this.run(this.wallet, bus, delay, composer)
 	return nil
 }
 
@@ -443,7 +438,7 @@ func (this *Submitter) ProcessEpochs(epochs []*msg.Tx) error {
 		//	log.Info("Aptos epoch sync", "epoch", epoch.EpochId, "hash", rawTx.Hash)
 		//}
 		rawTx, err := this.ExecuteScriptFunction(
-			starcoin_types.ModuleId{Address: [16]uint8{164, 216, 175, 70, 82, 187, 53, 191, 210, 134, 211, 71, 12, 28, 90, 61}, Name: "zion_cross_chain_manager"},
+			starcoin_types.ModuleId{Address: this.wallet.Address, Name: "zion_cross_chain_manager_script"},
 			"change_epoch",
 			[]starcoin_types.TypeTag{},
 			[][]byte{

@@ -100,6 +100,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(aptos.Listener)
 	case base.RIPPLE:
 		listener = new(ripple.Listener)
+	case base.STARCOIN:
+		listener = new(starcoin.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)
