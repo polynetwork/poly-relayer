@@ -98,6 +98,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(neo3.Listener)
 	case base.APTOS:
 		listener = new(aptos.Listener)
+	case base.STARCOIN:
+		listener = new(starcoin.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)
