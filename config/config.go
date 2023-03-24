@@ -130,6 +130,7 @@ type ChainConfig struct {
 	CCMContract                string
 	CCDContract                string
 	CrossChainEventCreationNum string // Aptos
+	MultiSignAccount           string // Ripple
 	ListenCheck                int
 	CheckFee                   bool
 	Defer                      int
@@ -155,6 +156,7 @@ type ListenerConfig struct {
 	CCMContract                string
 	CCDContract                string
 	CrossChainEventCreationNum string // Aptos
+	MultiSignAccount           string // Ripple
 	ListenCheck                int
 	Bus                        *BusConfig
 	Defer                      int
@@ -580,6 +582,9 @@ func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerC
 	}
 	if o.CrossChainEventCreationNum == "" {
 		o.CrossChainEventCreationNum = c.CrossChainEventCreationNum
+	}
+	if o.MultiSignAccount == "" {
+		o.MultiSignAccount = c.MultiSignAccount
 	}
 	if len(o.LockProxyContract) == 0 {
 		o.LockProxyContract = c.LockProxyContract

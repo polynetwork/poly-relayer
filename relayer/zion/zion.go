@@ -22,6 +22,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/devfans/zion-sdk/contracts/native/go_abi/side_chain_manager_abi"
+	"github.com/devfans/zion-sdk/contracts/native/governance/side_chain_manager"
 	"math/big"
 	"strings"
 	"sync"
@@ -71,6 +73,7 @@ type Submitter struct {
 	blocksToWait uint64
 	txabi        abi.ABI
 	hsabi        abi.ABI
+	scabi        abi.ABI
 }
 
 type Composer struct {
@@ -112,6 +115,11 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		}
 	}
 	s.hsabi, err = abi.JSON(strings.NewReader(hs.IInfoSyncABI))
+	if err != nil {
+		return
+	}
+
+	s.scabi, err = abi.JSON(strings.NewReader(side_chain_manager_abi.ISideChainManagerABI))
 	if err != nil {
 		return
 	}
@@ -270,13 +278,11 @@ func (s *Submitter) RetryWithData(account accounts.Account, store *store.Store, 
 				needRetry = false
 			} else if !pending {
 				hash, err := s.wallet.SendWithAccount(account, tx.To, big.NewInt(0), 0, nil, nil, tx.Data)
-				// TODO: detect already done tx here
 				if err != nil || hash == "" {
-					if strings.Contains(err.Error(), "CheckConsensusSigns, signer already exist") {
+					if strings.Contains(err.Error(), "signer already exist") {
 						alreadyDone = true
 						needRetry = false
 					}
-					// else if other case (header sync) todo
 					if alreadyDone {
 						log.Warn("tx already sent to zion", "src hash", tx.Hash.Hex(), "To", tx.To.Hex(), "err", err)
 					} else {
@@ -337,7 +343,7 @@ func (s *Submitter) VoteHeaderOfHeight(height uint32, header []byte, store *stor
 	}
 	hash, err := s.wallet.Send(zion.INFO_SYNC_ADDRESS, big.NewInt(0), 0, nil, nil, data)
 	if err != nil || hash == "" {
-		log.Error("Failed to send header", "err", err, "hash", hash)
+		log.Error("Failed to send header", "chain", s.config.ChainId, "err", err)
 		return
 	}
 	log.Info("Send header vote", "src height", height, "zion hash", hash, "chain", s.name)
@@ -431,7 +437,7 @@ func (s *Submitter) voteHeader(account accounts.Account, store *store.Store) {
 					return store.DeleteHeader(headers...)
 				})
 			} else {
-				log.Error("Failed to send header", "err", err, "hash", hash)
+				log.Error("Failed to send header", "chain", s.config.ChainId, "err", err)
 			}
 			continue
 		}
@@ -613,6 +619,33 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			})
 		}
 	}
+}
+
+func (s *Submitter) UpdateFee(param *side_chain_manager.UpdateFeeParam) (hash string, err error) {
+	digest, err := param.Digest()
+	if err != nil {
+		err = fmt.Errorf("UpdateFee param.Digest err: %v", err)
+		return
+	}
+
+	param.Signature, err = s.voter.SignHash(digest)
+	if err != nil {
+		err = fmt.Errorf("UpdateFee sign param err: %v", err)
+		return
+	}
+
+	data, err := s.scabi.Pack("updateFee", param.ChainID, param.ViewNum, param.Fee, param.Signature)
+	if err != nil {
+		err = fmt.Errorf("UpdateFee pack data err: %v", err)
+		return
+	}
+
+	hash, err = s.wallet.Send(utils.SideChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
+	if err != nil {
+		err = fmt.Errorf("UpdateFee send tx err: %v", err)
+		return
+	}
+	return
 }
 
 func (s *Submitter) consume(account accounts.Account, mq bus.SortedTxBus) error {

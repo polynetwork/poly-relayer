@@ -20,10 +20,16 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"github.com/devfans/zion-sdk/contracts/native/governance/side_chain_manager"
+	"github.com/devfans/zion-sdk/contracts/native/utils"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/ripple"
+	"math/big"
 	"sync"
 	"time"
 
+	"github.com/devfans/zion-sdk/contracts/native/go_abi/side_chain_manager_abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/log"
@@ -205,11 +211,12 @@ func (h *TxVoteHandler) startReplenish() {
 					}
 
 					tx, e := h.listener.ScanTx(hash)
-					if e != nil {
+					if e != nil || tx == nil {
 						log.Error("Tx vote replenish scan tx failure", "chain", h.config.ChainId, "hash", hash, "err", e)
 						continue
 					}
 
+					log.Info("Tx vote replenish found src tx", "chain", h.Chain(), "hash", hash)
 					e = h.submitter.VoteTxOfHash(tx, h.store)
 					if e != nil {
 						log.Error("Replenish tx vote failure", "chain", h.config.ChainId, "height", height, "hash", hash, "err", e)
@@ -237,6 +244,65 @@ func (h *TxVoteHandler) replenish() {
 	return
 }
 
+func (h *TxVoteHandler) updateRippleFee() error {
+	h.wg.Add(1)
+	defer h.wg.Done()
+
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	log.Info("updateRippleFee will start...", "chain", h.Chain())
+	for {
+		select {
+		case <-h.Done():
+			log.Info("updateRippleFee is exiting...", "chain", h.config.ChainId, "height", h.height)
+			return nil
+		default:
+		}
+
+		select {
+		case <-ticker.C:
+			rippleFee, err := h.listener.(*ripple.Listener).GetFee()
+			if err != nil {
+				log.Error("Ripple GetFee failed", "err", err)
+				continue
+			}
+
+			zionFee := &side_chain_manager.Fee{
+				Fee: new(big.Int),
+			}
+			sideChainManager, err := side_chain_manager_abi.NewISideChainManager(utils.SideChainManagerContractAddress, h.submitter.SDK().Node())
+			result, err := sideChainManager.GetFee(&bind.CallOpts{}, h.Chain())
+			if err != nil {
+				log.Error("Zion GetFee failed", "chain", h.Chain(), "err", err)
+				continue
+			}
+			err = rlp.DecodeBytes(result, zionFee)
+			if err != nil {
+				log.Error("zion GetFee rlp.DecodeBytes failed", "err", err)
+				continue
+			}
+			log.Info("Ripple fee", "rippleFee", rippleFee, "zionFee", zionFee.Fee.String())
+
+			if uint64(rippleFee) > zionFee.Fee.Uint64()*4/5 || uint64(rippleFee) < zionFee.Fee.Uint64()/20 {
+				param := &side_chain_manager.UpdateFeeParam{
+					ChainID: h.Chain(),
+					ViewNum: zionFee.View,
+					Fee:     new(big.Int).SetUint64(uint64(rippleFee)),
+				}
+
+				hash, err := h.submitter.UpdateFee(param)
+				if err != nil {
+					log.Error("updateRippleFee failed", "err", err)
+					continue
+				}
+				log.Info("updateRippleFee success", "fee", param.Fee.Uint64(), "hash", hash)
+			}
+		default:
+		}
+	}
+}
+
 func (h *TxVoteHandler) Start() (err error) {
 	if h.config.ChainId == base.APTOS {
 		if h.config.CCMEventSequence == 0 {
@@ -255,7 +321,7 @@ func (h *TxVoteHandler) Start() (err error) {
 		} else {
 			h.height, err = h.store.GetTxHeight()
 			if err != nil {
-				log.Error("get voter start height from store failed", "err", err)
+				log.Error("get voter start height from store failed", "chain", h.Chain(), "err", err)
 				return
 			}
 		}
@@ -265,6 +331,11 @@ func (h *TxVoteHandler) Start() (err error) {
 	h.submitter.StartTxVote(h.Context, h.wg, h.config, h.store)
 	go h.start()
 	go h.replenish()
+
+	if h.Chain() == base.RIPPLE {
+		go h.updateRippleFee()
+	}
+
 	return
 }
 
