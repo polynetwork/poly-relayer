@@ -106,6 +106,7 @@ func (h *TxVoteHandler) start() (err error) {
 			log.Info("Scanning Aptos txs", "CCM sequence", scanStart, "chain", h.config.ChainId)
 		} else {
 			h.height++
+			scanStart = h.height
 			if latest < h.height+confirms {
 				if h.listener.Nodes() != nil {
 					latest, ok = h.listener.Nodes().WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
@@ -116,7 +117,6 @@ func (h *TxVoteHandler) start() (err error) {
 					continue
 				}
 				log.Info("Scanning txs in block", "height", h.height, "chain", h.config.ChainId)
-				scanStart = h.height
 			}
 		}
 
