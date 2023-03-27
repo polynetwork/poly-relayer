@@ -255,7 +255,7 @@ func (this *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		return fmt.Errorf("getAssetCoinTypeTag error: %s", err)
 	}
 	rawTx, err := this.ExecuteScriptFunction(
-		starcoin_types.ModuleId{Address: [16]uint8{164, 216, 175, 70, 82, 187, 53, 191, 210, 134, 211, 71, 12, 28, 90, 61}, Name: "zion_crosschain_script"},
+		starcoin_types.ModuleId{Address: this.wallet.Address, Name: "zion_crosschain_script"},
 		"relay_unlock_tx",
 		[]starcoin_types.TypeTag{coinTypeTag},
 		[][]byte{
