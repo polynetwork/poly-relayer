@@ -324,7 +324,7 @@ func (s *Submitter) WaitForBalance(address common.Address) {
 	for {
 		balance, err := s.wallet.GetBalance(address)
 		hasBalance := wallet.HasBalance(s.config.ChainId, balance)
-		log.Info("Wallet balance check", "chain", s.name, "account", address, "has_balance", hasBalance, "err", err)
+		log.Info("Wallet balance check", "chain", s.name, "account", address, "balance", balance, "has_balance", hasBalance, "url", s.sdk.Node().Address(), "err", err)
 		if hasBalance {
 			return
 		}
