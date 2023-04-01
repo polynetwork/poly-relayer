@@ -140,7 +140,7 @@ func (this *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			TxId:             string(crossChainEventData.TxId)[2:],
 			SrcHash:          event.TransactionHash,
 			DstChainId:       crossChainEventData.ToChainId,
-			SrcParam:         event.Data[2:],
+			SrcParam:         starcoin_client.BytesToHexString(crossChainEventData.RawData)[2:],
 			SrcChainId:       this.config.ChainId,
 			CCMEventSequence: ccmSequenceNum,
 			SrcProxy:         this.ccm,
