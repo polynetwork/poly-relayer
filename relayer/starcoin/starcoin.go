@@ -24,9 +24,6 @@ import (
 	"time"
 )
 
-const StarcoinTestnetChainID = 2
-const StarcoinMainnetChainID = 1
-
 type Submitter struct {
 	context.Context
 	wg     *sync.WaitGroup
@@ -207,12 +204,25 @@ func (this *Submitter) ExecuteScriptFunction(
 	rawTransaction, err := this.sdk.Node().BuildRawUserTransaction(
 		context.Background(),
 		this.wallet.Address,
-		&payload, gasPrice,
+		&payload,
+		gasPrice,
 		uint64(gasLimit),
 		accountNonce)
-
 	if err != nil {
 		return "", fmt.Errorf("starcoin Submittx | BuildRawUserTransaction error: %s", err.Error())
+	}
+
+	pubKey := this.wallet.asPublicKey()
+	pubKeyStr := hex.EncodeToString(pubKey)
+	log.Info("starcoin Submittx | Publickey: ", pubKeyStr, ". ")
+
+	dryResult, err := this.sdk.Node().DryRunRaw(context.Background(), *rawTransaction, pubKey)
+	if err != nil {
+		return "", fmt.Errorf("starcoin Submittx | DryRunRaw error: %s", err.Error())
+	}
+
+	if dryResult.Status != "Executed" {
+		return "", fmt.Errorf("starcoin Submittx | DryRunRaw error: %s", dryResult)
 	}
 
 	return this.sdk.Node().SubmitTransaction(context.Background(), this.wallet.asPrivateKey(), rawTransaction)
@@ -250,32 +260,40 @@ func (this *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	//authKey := sha3.Sum256(append(pub[:], 0x00))
 	//address := hex.EncodeToString(authKey[:])
 
+	log.Info("Before commit relayer transaction from zion ",
+		" \nhsHeader: ", hex.EncodeToString(hsHeader),
+		"\nrawSeals: ", hex.EncodeToString(rawSeals),
+		"\n tx.PolyAccountProof: ", hex.EncodeToString(tx.PolyAccountProof),
+		"\n tx.PolyStorageProof: ", hex.EncodeToString(tx.PolyStorageProof),
+		"\n cctx: ", hex.EncodeToString(cctx))
+
 	coinTypeTag, err := getAssetCoinTypeTag(tx.ToAssetAddress)
 	if err != nil {
 		return fmt.Errorf("getAssetCoinTypeTag error: %s", err)
 	}
+
 	rawTx, err := this.ExecuteScriptFunction(
-		starcoin_types.ModuleId{Address: [16]uint8{164, 216, 175, 70, 82, 187, 53, 191, 210, 134, 211, 71, 12, 28, 90, 61}, Name: "zion_crosschain_script"},
+		starcoin_types.ModuleId{Address: this.wallet.Address, Name: "zion_lock_proxy_script"},
 		"relay_unlock_tx",
 		[]starcoin_types.TypeTag{coinTypeTag},
 		[][]byte{
-			hsHeader,
-			rawSeals,
-			tx.PolyAccountProof,
-			tx.PolyStorageProof,
-			cctx,
+			encode_u8vector_argument(hsHeader),
+			encode_u8vector_argument(rawSeals),
+			encode_u8vector_argument(tx.PolyAccountProof),
+			encode_u8vector_argument(tx.PolyStorageProof),
+			encode_u8vector_argument(cctx),
 		})
 
 	if err != nil {
 		info := err.Error()
 		if strings.Contains(info, "SEQUENCE_NUMBER_TOO_OLD") || strings.Contains(info, "SEQUENCE_NUMBER_TOO_NEW") {
-			err = msg.ERR_APTOS_SEQUENCE_NUMBER_INVALID
+			err = msg.ERR_STARCOIN_SEQUENCE_NUMBER_INVALID
 		} else if strings.Contains(info, "INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE") {
 			err = msg.ERR_LOW_BALANCE
 		} else if strings.Contains(info, "ECOIN_STORE_NOT_PUBLISHED") {
-			err = msg.ERR_APTOS_COIN_STORE_NOT_PUBLISHED
+			err = msg.ERR_STARCOIN_COIN_STORE_NOT_PUBLISHED
 		} else if strings.Contains(info, "ETREASURY_NOT_EXIST") {
-			err = msg.ERR_APTOS_TREASURY_NOT_EXIST
+			err = msg.ERR_STARCOIN_TREASURY_NOT_EXIST
 		}
 	} else {
 		log.Info("starcoin", "script payload tx hash", rawTx)
@@ -336,12 +354,12 @@ func (this *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 //}
 
 func getAssetCoinTypeTag(toAssetAddress string) (starcoin_types.TypeTag, error) {
-	parts := strings.Split(toAssetAddress, "<")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)
-	}
+	//parts := strings.Split(toAssetAddress, "<")
+	//if len(parts) != 2 {
+	//	return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)
+	//}
 
-	parts = strings.Split(strings.TrimSuffix(parts[1], ">"), "::")
+	parts := strings.Split(toAssetAddress, "::")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)
 	}
@@ -369,81 +387,19 @@ func (this *Submitter) ProcessEpochs(epochs []*msg.Tx) error {
 			return fmt.Errorf("Invalid Poly epoch message %s", m.Encode())
 		}
 		epoch := m.PolyEpoch
-		log.Info("Submitting poly epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", this.name)
+		log.Info("Submitting poly epoch", "epoch", epoch.EpochId, "height", epoch.Height, "chain", this.name, "current poly height ")
 
-		//seed, err := hex.DecodeString(s.wallet.PrivateKey)
-		//if err != nil {
-		//	return fmt.Errorf("decode private key error: %v", err)
-		//}
-		//priv := ed25519.NewKeyFromSeed(seed)
-		//pub := priv.Public().(ed25519.PublicKey)
-		//authKey := sha3.Sum256(append(pub[:], 0x00))
-		//address := hex.EncodeToString(authKey[:])
-		//
-		//accountInfo, err := s.sdk.Node().GetAccount(s.Context, address)
-		//if err != nil {
-		//	return fmt.Errorf("%w aptos GetAccount error: %s", msg.ERR_TX_EXEC_FAILURE, err)
-		//}
-		//
-		//tran := models.Transaction{}
-		//if base.ENV == "testnet" {
-		//	tran.SetChainID(AptosTestnetChainID)
-		//} else {
-		//	tran.SetChainID(AptosMainnetChainID)
-		//}
-		//tran.SetSender(address)
-		//
-		//contractAddr, _ := models.HexToAccountAddress(s.ccm)
-		//tran.SetPayload(models.EntryFunctionPayload{
-		//	Module: models.Module{
-		//		Address: contractAddr,
-		//		Name:    moduleName,
-		//	},
-		//	Function: functionName,
-		//	Arguments: []interface{}{
-		//		epoch.Header,
-		//		epoch.Seal,
-		//	},
-		//})
-		//tran.SetExpirationTimestampSecs(uint64(time.Now().Add(2 * time.Minute).Unix()))
-		//tran.SetSequenceNumber(accountInfo.SequenceNumber)
-		//
-		//isExecuted, err := s.SimulateTransaction(&tran, priv, m.DstHash)
-		//if err != nil {
-		//	return err
-		//}
-		//if isExecuted {
-		//	log.Info("zion epoch already synced to Aptos", "chain", s.name, "epoch", epoch.EpochId, "height", epoch.Height)
-		//	continue
-		//}
-		//
-		//msgBytes, err := tran.GetSigningMessage()
-		//if err != nil {
-		//	return fmt.Errorf("aptos GetSigningMessage error: %s", err)
-		//}
-		//signature := ed25519.Sign(priv, msgBytes)
-		//tran.SetAuthenticator(models.TransactionAuthenticatorEd25519{
-		//	PublicKey: priv.Public().(ed25519.PublicKey),
-		//	Signature: signature,
-		//})
-		//
-		//if tran.Error() != nil {
-		//	return fmt.Errorf("compose aptos transaction failed. err: %v", tran.Error())
-		//}
-		//
-		//rawTx, err := s.sdk.Node().SubmitTransaction(s.Context, tran.UserTransaction)
-		//if err != nil {
-		//	return fmt.Errorf("Aptos epoch sync SubmitTransaction failed. epoch: %d, err: %v", epoch.EpochId, err)
-		//} else {
-		//	log.Info("Aptos epoch sync", "epoch", epoch.EpochId, "hash", rawTx.Hash)
-		//}
+		log.Info("Print change epoch data: ",
+			" \nepoch.Header: ", hex.EncodeToString(epoch.Header),
+			"\nepoch.Seal: ", hex.EncodeToString(epoch.Seal))
+
 		rawTx, err := this.ExecuteScriptFunction(
 			starcoin_types.ModuleId{Address: this.wallet.Address, Name: "zion_cross_chain_manager_script"},
 			"change_epoch",
 			[]starcoin_types.TypeTag{},
 			[][]byte{
-				epoch.Header,
-				epoch.Seal,
+				encode_u8vector_argument(epoch.Header),
+				encode_u8vector_argument(epoch.Seal),
 			})
 		if err != nil {
 			return fmt.Errorf("aptos epoch sync SubmitTransaction failed. epoch: %d, err: %v", epoch.EpochId, err)
@@ -463,7 +419,7 @@ func (this *Submitter) ProcessEpochs(epochs []*msg.Tx) error {
 					log.Info("Aptos epoch sync tx confirmed", "epoch", epoch.EpochId, "hash", rawTx)
 					break CONFIRM
 				} else {
-					return fmt.Errorf("Aptos epoch sync tx failed, hash: %s, VmStatus: %s", rawTx, txInfo.Status)
+					e = fmt.Errorf("Aptos epoch sync tx pedding, hash: %s, VmStatus: %s", rawTx, txInfo.Status)
 				}
 			}
 			time.Sleep(time.Second * 3)

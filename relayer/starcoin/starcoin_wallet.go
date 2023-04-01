@@ -2,6 +2,7 @@ package starcoin
 
 import (
 	"encoding/hex"
+	"github.com/blocktree/go-owcrypt"
 	"github.com/polynetwork/bridge-common/chains/starcoin"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/wallet"
@@ -21,6 +22,15 @@ func NewStarcoinWallet(config *wallet.Config, sdk *starcoin.SDK) *StarcoinWallet
 		log.Error("Parse account failed, {}", config.Address)
 	}
 	return &StarcoinWallet{sdk: sdk, Address: *account, PrivateKey: config.PrivateKey, config: config}
+}
+
+func (this *StarcoinWallet) asPublicKey() starcoin_types.Ed25519PublicKey {
+	bytes, err := hex.DecodeString(this.PrivateKey)
+	if err != nil {
+		log.Error("Parse account failed, {}", this.Address)
+	}
+	publicKeyBytes, _ := owcrypt.GenPubkey(bytes, owcrypt.ECC_CURVE_ED25519_NORMAL)
+	return publicKeyBytes
 }
 
 func (this *StarcoinWallet) asPrivateKey() starcoin_types.Ed25519PrivateKey {
