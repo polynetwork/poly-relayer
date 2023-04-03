@@ -6,8 +6,11 @@ import (
 )
 
 func TestGetAssetCoinTypeTag(t *testing.T) {
+	//hexBytes, _ := hex.DecodeString("0x000000000000000000000000000000010353544303535443")
+	//tokenCode, _ := BcsDeserializeTokenCode(hexBytes)
+	//tokenTag := fmt.Sprintf("%s::%s::%s", tokenCode.Address, tokenCode.Module, tokenCode.Name)
 	coinTypeTag, _ := getAssetCoinTypeTag("0x00000000000000000000000000000001::STC::STC")
-	log.Info("Coin type tag: ", coinTypeTag)
+	log.Info("Coin type tag: ", coinTypeTag, "")
 }
 
 //func TestG(t *testing.T) {

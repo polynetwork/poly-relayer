@@ -110,16 +110,16 @@ func (this *Submitter) run(wallet *StarcoinWallet, mq bus.TxBus, delay bus.Delay
 				continue
 			}
 			tx.Attempts++
-			if errors.Is(err, msg.ERR_APTOS_SEQUENCE_NUMBER_INVALID) {
+			if errors.Is(err, msg.ERR_STARCOIN_SEQUENCE_NUMBER_INVALID) {
 				tsp := time.Now().Unix() + 60
 				bus.SafeCall(this.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else if errors.Is(err, msg.ERR_LOW_BALANCE) {
 				tsp := time.Now().Unix() + 60*10
 				bus.SafeCall(this.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
-			} else if errors.Is(err, msg.ERR_APTOS_COIN_STORE_NOT_PUBLISHED) {
+			} else if errors.Is(err, msg.ERR_STARCOIN_COIN_STORE_NOT_PUBLISHED) {
 				tsp := time.Now().Unix() + 60*10
 				bus.SafeCall(this.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
-			} else if errors.Is(err, msg.ERR_APTOS_TREASURY_NOT_EXIST) {
+			} else if errors.Is(err, msg.ERR_STARCOIN_TREASURY_NOT_EXIST) {
 				tsp := time.Now().Unix() + 60*10
 				bus.SafeCall(this.Context, tx, "push to delay queue", func() error { return delay.Delay(context.Background(), tx, tsp) })
 			} else {
@@ -222,7 +222,7 @@ func (this *Submitter) ExecuteScriptFunction(
 	}
 
 	if dryResult.Status != "Executed" {
-		return "", fmt.Errorf("starcoin Submittx | DryRunRaw error: %s", dryResult)
+		return "", fmt.Errorf("starcoin Submittx | DryRunRaw error: %s", dryResult.Status)
 	}
 
 	return this.sdk.Node().SubmitTransaction(context.Background(), this.wallet.asPrivateKey(), rawTransaction)
@@ -250,15 +250,6 @@ func (this *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		log.Error("rlp.EncodeToBytes failed", "polyHash", tx.PolyHash.Hex(), "err", err)
 		return
 	}
-
-	//seed, err := hex.DecodeString(this.wallet.PrivateKey)
-	//if err != nil {
-	//	return fmt.Errorf("decode private key error: %v", err)
-	//}
-	//priv := ed25519.NewKeyFromSeed(seed)
-	//pub := priv.Public().(ed25519.PublicKey)
-	//authKey := sha3.Sum256(append(pub[:], 0x00))
-	//address := hex.EncodeToString(authKey[:])
 
 	log.Info("Before commit relayer transaction from zion ",
 		" \nhsHeader: ", hex.EncodeToString(hsHeader),
@@ -302,68 +293,16 @@ func (this *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	return
 }
 
-// / Dry run for transaction
-//func (this *Submitter) SimulateTransaction(tran *starcoin_types.Transaction, priv ed25519.PrivateKey, hash string) (isExecuted bool, err error) {
-//if hash != "" {
-//	txInfo, e := this.sdk.Node().GetTransactionInfoByHash(this.Context, hash)
-//	if e != nil {
-//		return false, fmt.Errorf("starcoin GetTransactionByHash failed. err: %v", e)
-//	}
-//	if strings.EqualFold("\"Executed\"", string(txInfo.Status)) {
-//		return true, nil
-//	} else {
-//		log.Error("starcoin tx failed", "hash", hash, "vm_status", tx.VmStatus)
-//	}
-//}
-//
-//msgBytes, err := tran.GetSigningMessage()
-//if err != nil {
-//	return false, fmt.Errorf("starcoin GetSigningMessage error: %s", err)
-//}
-//signature := ed25519.Sign(priv, msgBytes)
-//
-//tran.SetAuthenticator(models.TransactionAuthenticatorEd25519{
-//	PublicKey: priv.Public().(ed25519.PublicKey),
-//	Signature: signature,
-//})
-//
-//dryrunResult, err := this.sdk.Node().DryRunRaw(this.Context, tran.RawTransaction, signature)
-////fmt.Printf("simulateTxResp: %+v\n", simulateTxResp)
-//if err != nil || len(dryrunResult) == 0 {
-//	return false, fmt.Errorf("starcoin SimulateTransaction error: %s", err)
-//}
-//
-//simulate := simulateTxResp[0]
-//if !simulate.Success {
-//	if strings.Contains(simulate.VmStatus, "EALREADY_EXECUTED") {
-//		return true, nil
-//	} else {
-//		return false, fmt.Errorf("starcoin SimulateTransaction failed. VmStatus: %s", simulate.VmStatus)
-//	}
-//}
-//
-//tran.SetGasUnitPrice(uint64(101))
-//
-//gasUsed, err := strconv.ParseUint(simulate.GasUsed, 10, 32)
-//if err != nil {
-//	log.Warn("starcoin", "estimate gas limit failed, will use default gas limit. error", err)
-//	tran.SetMaxGasAmount(uint64(100000))
-//}
-//tran.SetMaxGasAmount(uint64(float32(gasUsed) * 1.5))
-//return false, nil
-//}
-
 func getAssetCoinTypeTag(toAssetAddress string) (starcoin_types.TypeTag, error) {
-	//parts := strings.Split(toAssetAddress, "<")
-	//if len(parts) != 2 {
-	//	return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)
-	//}
+	parts := strings.Split(toAssetAddress, "<")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)
+	}
 
-	parts := strings.Split(toAssetAddress, "::")
+	parts = strings.Split(strings.TrimSuffix(parts[1], ">"), "::")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("invalid toAssetAddress: %s", toAssetAddress)
 	}
-	fmt.Printf("getAssetCoinTypeTag parts: %+v\n", parts)
 
 	if len(parts[0])%2 == 1 {
 		parts[0] = strings.Replace(parts[0], "0x", "0x0", 1)
@@ -402,9 +341,9 @@ func (this *Submitter) ProcessEpochs(epochs []*msg.Tx) error {
 				encode_u8vector_argument(epoch.Seal),
 			})
 		if err != nil {
-			return fmt.Errorf("aptos epoch sync SubmitTransaction failed. epoch: %d, err: %v", epoch.EpochId, err)
+			return fmt.Errorf("Starcoin epoch sync SubmitTransaction failed. epoch: %d, err: %v", epoch.EpochId, err)
 		} else {
-			log.Info("Aptos epoch sync", "epoch", epoch.EpochId, "hash", rawTx)
+			log.Info("Starcoin epoch sync", "epoch", epoch.EpochId, "hash", rawTx)
 		}
 		count := 20
 	CONFIRM:
@@ -412,14 +351,13 @@ func (this *Submitter) ProcessEpochs(epochs []*msg.Tx) error {
 			txInfo, e := this.sdk.Node().GetTransactionInfoByHash(this.Context, rawTx)
 			if e != nil {
 				count--
-				e = fmt.Errorf("Aptos epoch sync GetTransactionByHash failed, hash: %s, err: %v", rawTx, e)
-				//return fmt.Errorf("Aptos epoch sync GetTransactionByHash failed, hash: %s, err: %v", rawTx.Hash, e)
+				e = fmt.Errorf("Starcoin epoch sync GetTransactionByHash failed, hash: %s, err: %v", rawTx, e)
 			} else {
 				if strings.EqualFold("\"Executed\"", string(txInfo.Status)) {
-					log.Info("Aptos epoch sync tx confirmed", "epoch", epoch.EpochId, "hash", rawTx)
+					log.Info("Starcoin epoch sync tx confirmed", "epoch", epoch.EpochId, "hash", rawTx)
 					break CONFIRM
 				} else {
-					e = fmt.Errorf("Aptos epoch sync tx pedding, hash: %s, VmStatus: %s", rawTx, txInfo.Status)
+					e = fmt.Errorf("Starcoin epoch sync tx pedding, hash: %s, VmStatus: %s", rawTx, txInfo.Status)
 				}
 			}
 			time.Sleep(time.Second * 3)
