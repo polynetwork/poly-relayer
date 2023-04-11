@@ -31,14 +31,12 @@ import (
 	"github.com/devfans/zion-sdk/contracts/native/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 
 	zcom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	ccm "github.com/devfans/zion-sdk/contracts/native/go_abi/cross_chain_manager_abi"
 	"github.com/devfans/zion-sdk/contracts/native/governance/node_manager"
-	"github.com/devfans/zion-sdk/core/state"
 	"github.com/devfans/zion-sdk/core/types"
 
 	"github.com/polynetwork/bridge-common/base"
@@ -217,7 +215,7 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 	}
 	for _, entry := range res.Logs {
 		ev := new(ccm.ICrossChainManagerMakeProof)
-		if msg.FilterLog(l.abi, utils.CrossChainManagerContractAddress, "CrossChainEvent", entry, ev) {
+		if msg.FilterLog(l.abi, utils.CrossChainManagerContractAddress, "makeProof", entry, ev) {
 			param := new(zcom.ToMerkleValue)
 			value, err := hex.DecodeString(ev.MerkleValueHex)
 			if err != nil {
@@ -239,10 +237,10 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 			tx.SrcProxy = hex.EncodeToString(param.MakeTxParam.FromContractAddress)
 			tx.DstProxy = hex.EncodeToString(param.MakeTxParam.ToContractAddress)
 			tx.PolyKey = ev.Key
-			key, _ := hex.DecodeString(ev.Key)
-			tx.PolyKey = state.Key2Slot(key[common.AddressLength:]).String()
+			//key, _ := hex.DecodeString(ev.Key)
+			//tx.PolyKey = state.Key2Slot(key[common.AddressLength:]).String()
 			tx.PolyHeight = res.BlockNumber.Uint64()
-			tx.PolyHash = ev.Raw.TxHash
+			tx.PolyHash = entry.TxHash
 			tx.TxType = msg.POLY
 			tx.TxId = hex.EncodeToString(param.MakeTxParam.CrossChainID)
 			tx.SrcChainId = param.FromChainID
