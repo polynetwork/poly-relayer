@@ -253,6 +253,7 @@ func (h *TxVoteHandler) updateRippleFee() error {
 
 	log.Info("updateRippleFee will start...", "chain", h.Chain())
 	for {
+		log.Info("updateRippleFee")
 		select {
 		case <-h.Done():
 			log.Info("updateRippleFee is exiting...", "chain", h.config.ChainId, "height", h.height)
@@ -299,6 +300,7 @@ func (h *TxVoteHandler) updateRippleFee() error {
 				log.Info("updateRippleFee success", "fee", param.Fee.Uint64(), "hash", hash)
 			}
 		default:
+			time.Sleep(time.Second * 10)
 		}
 	}
 }
