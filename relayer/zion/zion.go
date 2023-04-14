@@ -556,10 +556,20 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 				log.Fatal("Unexpected empty SrcParam", "chain", s.name, "hash", tx.SrcHash, "err", err)
 			}
 
-			txParam, err := msg.DecodeTxParam(raw)
-			if err != nil {
-				log.Error("Tx vote DecodeTxParam failed", "chain", s.name, "src hash", tx.SrcHash, "err", err)
-				continue
+			var txParam *ccom.MakeTxParam
+			if tx.SrcChainId == base.RIPPLE {
+				txParam = new(ccom.MakeTxParam)
+				err = rlp.DecodeBytes(raw, txParam)
+				if err != nil {
+					log.Error("Ripple Tx vote DecodeTxParam failed", "chain", s.name, "src hash", tx.SrcHash, "err", err)
+					continue
+				}
+			} else {
+				txParam, err = msg.DecodeTxParam(raw)
+				if err != nil {
+					log.Error("Tx vote DecodeTxParam failed", "chain", s.name, "src hash", tx.SrcHash, "err", err)
+					continue
+				}
 			}
 
 			// Check done tx existence

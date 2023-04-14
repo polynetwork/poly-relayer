@@ -294,7 +294,7 @@ func (l *Listener) EpochUpdate(ctx context.Context, startHeight uint64) (epochs 
 	}
 
 	if epoch.StartHeight.Uint64()+1 <= startHeight {
-		log.Error("latest epoch.StartHeight is less than dst_epoch_height", "epoch.StartHeight", epoch.StartHeight.Uint64(), "dst_epoch_height", startHeight)
+		log.Error("zion epoch not changed. latest epoch.StartHeight is less than dst_epoch_height", "chain", l.name, "epoch.StartHeight", epoch.StartHeight.Uint64(), "dst_epoch_height", startHeight)
 		return
 	}
 
