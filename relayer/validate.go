@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/polynetwork/bridge-common/log"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/bridge-common/tools"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
@@ -38,9 +38,9 @@ type IValidator interface {
 }
 
 type Validator struct {
-	vs func(uint64) IValidator
+	vs       func(uint64) IValidator
 	listener IChainListener
-	outputs chan tools.CardEvent
+	outputs  chan tools.CardEvent
 }
 
 func StartValidator(vs func(uint64) IValidator, listener IChainListener, outputs chan tools.CardEvent) (err error) {
@@ -62,9 +62,9 @@ func (v *Validator) start() (err error) {
 	}
 
 	var (
-		latest uint64
+		latest   uint64
 		listener *eth.Listener
-		scan func(uint64) ([]*msg.Tx, error)
+		scan     func(uint64) ([]*msg.Tx, error)
 	)
 
 	if chainID > 0 {
@@ -74,10 +74,9 @@ func (v *Validator) start() (err error) {
 		scan = v.listener.(*zion.Listener).ScanDst
 	}
 
-
 	for {
 		height++
-		if latest < height  {
+		if latest < height {
 			latest, _ = v.listener.Nodes().WaitTillHeight(context.Background(), height, v.listener.ListenCheck())
 		}
 		log.Info("Validating txs in block", "height", height, "chain", chainID)
@@ -100,7 +99,9 @@ func (v *Validator) start() (err error) {
 						print = log.Error
 					}
 					print("Validating tx", "chain", chainID, "origin", tx.SrcChainId, "hash", hash, "err", err)
-					if err == nil || errors.Is(err, msg.ERR_TX_VOILATION) { break }
+					if err == nil || errors.Is(err, msg.ERR_TX_VOILATION) {
+						break
+					}
 					time.Sleep(time.Second)
 				}
 				if err != nil {
@@ -111,7 +112,7 @@ func (v *Validator) start() (err error) {
 					}
 				}
 			}
-			if height % 100 == 0 {
+			if height%100 == 0 {
 				status.SetHeight(chainID, bus.KEY_HEIGHT_VALIDATOR, height)
 			}
 			if listener != nil {
@@ -126,4 +127,3 @@ func (v *Validator) start() (err error) {
 	}
 
 }
-

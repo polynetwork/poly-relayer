@@ -24,6 +24,7 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/neo3"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
 	"github.com/polynetwork/poly-relayer/relayer/ripple"
+	"github.com/polynetwork/poly-relayer/relayer/starcoin"
 	"sync"
 	"time"
 
@@ -99,6 +100,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(aptos.Listener)
 	case base.RIPPLE:
 		listener = new(ripple.Listener)
+	case base.STARCOIN:
+		listener = new(starcoin.Listener)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Listener)
@@ -115,6 +118,8 @@ func GetSubmitter(chain uint64) (submitter IChainSubmitter) {
 		submitter = new(ripple.Submitter)
 	case base.APTOS:
 		submitter = new(aptos.Submitter)
+	case base.STARCOIN:
+		submitter = new(starcoin.Submitter)
 	default:
 		if base.SameAsETH(chain) {
 			return new(eth.Submitter)

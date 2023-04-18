@@ -1,0 +1,75 @@
+{
+  "Env": "testnet",
+  "Bus": {
+    "HeightUpdateInterval": 1,
+    "Config": {
+      "Addr": "127.0.0.1:6379",
+      "DB": 2
+    }
+  },
+  "log": {
+    "Path": "./logs"
+  },
+  "BoltPath": "boltdb.bin",
+  "Poly": {
+    "Nodes": [
+      "http://43.163.197.59:22002"
+    ],
+    "Wallet": {
+      "KeyStoreProviders": [
+        {
+          "Passwords": {
+            "0xd2eb785623a96592b223df9a37a2397c9dfcedb4": "pass1"
+          },
+          "Path": "./keystore/poly"
+        }
+      ]
+    },
+    "Signer": {
+      "KeyStoreProviders": [
+        {
+          "Passwords": {
+            "0xd2eb785623a96592b223df9a37a2397c9dfcedb4": "pass1"
+          },
+          "Path": "./keystore/signer"
+        }
+      ]
+    },
+    "PolyTxSync": {
+      "Enabled": false
+    }
+  },
+  "Chains": {
+    "318": {
+      "Nodes": [
+        "https://proxima-seed.starcoin.org"
+      ],
+      "CheckFee": false,
+      "CCMContract": "0xf8ea2d94b8a7d83ace33bb56731268e0",
+      "CCDContract": "",
+      "Wallet": {
+        "Address": "0xf8ea2d94b8a7d83ace33bb56731268e0",
+        "PrivateKey": "4070faabb6492000697c7d6192ab2a3f198c551f764c56c2eb88761ecabbffe0"
+      }
+    }
+  },
+  "Host": "",
+  "Port": 6601,
+  "ValidMethods": [
+    "mint",
+    "burn",
+    "unwrap",
+    "add",
+    "remove",
+    "swap",
+    "unlock",
+    "addExtension",
+    "removeExtension",
+    "registerAsset",
+    "onCrossTransfer"
+  ],
+  "Bridge": [
+    "https://bridge.poly.network/testnet/v1"
+  ]
+}
+
