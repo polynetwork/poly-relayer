@@ -240,6 +240,7 @@ type TxVoteConfig struct {
 	Buffer           int
 	Enabled          bool
 	StartHeight      uint64
+	BatchSize        uint64
 	CCMEventSequence uint64
 
 	Poly *SubmitterConfig

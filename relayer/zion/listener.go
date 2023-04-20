@@ -77,7 +77,7 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
-func scanMakeProofTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []*msg.Tx, err error) {
+func (l *Listener) scanMakeProofTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []*msg.Tx, err error) {
 	makeProofEvents, err := ccm.FilterMakeProof(opt)
 	if err != nil {
 		return nil, fmt.Errorf("FilterMakeProof error %v", err)
@@ -112,7 +112,7 @@ func scanMakeProofTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []
 		tx.SrcProxy = hex.EncodeToString(param.MakeTxParam.FromContractAddress)
 		tx.DstProxy = hex.EncodeToString(param.MakeTxParam.ToContractAddress)
 		tx.PolyKey = ev.Key
-		tx.PolyHeight = opt.Start
+		tx.PolyHeight = ev.BlockHeight
 		tx.PolyHash = ev.Raw.TxHash
 		tx.TxType = msg.POLY
 		tx.TxId = hex.EncodeToString(param.MakeTxParam.CrossChainID)
@@ -126,7 +126,7 @@ func scanMakeProofTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []
 	return
 }
 
-func scanMultiSignTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []*msg.Tx, err error) {
+func (l *Listener) scanMultiSignTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []*msg.Tx, err error) {
 	multiSignEvents, err := ccm.FilterMultiSign(opt)
 	if err != nil {
 		return nil, fmt.Errorf("FilterMultiSign error %v", err)
@@ -139,9 +139,14 @@ func scanMultiSignTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []
 	txs = []*msg.Tx{}
 	for multiSignEvents.Next() {
 		ev := multiSignEvents.Event
+		height, err := l.sdk.Node().GetBlockHeightByTxHash(ev.Raw.TxHash)
+		if err != nil {
+			err = fmt.Errorf("GetBlockHeightByTxHash failed. hash：%s, err:%s", ev.Raw.TxHash.Hex(), err)
+			return nil, err
+		}
 		tx := new(msg.Tx)
 		tx.TxType = msg.POLY
-		tx.PolyHeight = opt.Start
+		tx.PolyHeight = height
 		tx.PolyHash = ev.Raw.TxHash
 		tx.SrcChainId = ev.FromChainId
 		tx.DstChainId = ev.ToChainId
@@ -150,6 +155,22 @@ func scanMultiSignTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []
 
 		txs = append(txs, tx)
 	}
+	return
+}
+
+func (l *Listener) scanCrossChainTxs(ccm *ccm.ICrossChainManager, opt *bind.FilterOpts) (txs []*msg.Tx, err error) {
+	makeProofTxs, err := l.scanMakeProofTxs(ccm, opt)
+	if err != nil {
+		return nil, err
+	}
+	txs = append(txs, makeProofTxs...)
+
+	multiSignTxs, err := l.scanMultiSignTxs(ccm, opt)
+	if err != nil {
+		return nil, err
+	}
+	txs = append(txs, multiSignTxs...)
+
 	return
 }
 
@@ -163,20 +184,20 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		End:     &height,
 		Context: context.Background(),
 	}
+	return l.scanCrossChainTxs(ccm, opt)
+}
 
-	makeProofTxs, err := scanMakeProofTxs(ccm, opt)
+func (l *Listener) BatchScan(start, end uint64) (txs []*msg.Tx, err error) {
+	ccm, err := ccm.NewICrossChainManager(zion.CCM_ADDRESS, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}
-	txs = append(txs, makeProofTxs...)
-
-	multiSignTxs, err := scanMultiSignTxs(ccm, opt)
-	if err != nil {
-		return nil, err
+	opt := &bind.FilterOpts{
+		Start:   start,
+		End:     &end,
+		Context: context.Background(),
 	}
-	txs = append(txs, multiSignTxs...)
-
-	return
+	return l.scanCrossChainTxs(ccm, opt)
 }
 
 func (l *Listener) ScanNeo3Tx(height uint64) (txs []*msg.Tx, err error) {
@@ -190,7 +211,7 @@ func (l *Listener) ScanNeo3Tx(height uint64) (txs []*msg.Tx, err error) {
 		Context: context.Background(),
 	}
 
-	makeProofTxs, err := scanMakeProofTxs(ccm, opt)
+	makeProofTxs, err := l.scanMakeProofTxs(ccm, opt)
 	if err != nil {
 		return nil, err
 	}

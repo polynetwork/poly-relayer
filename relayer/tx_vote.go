@@ -44,6 +44,7 @@ type TxVoteHandler struct {
 	listener            IChainListener
 	submitter           *zion.Submitter
 	height              uint64
+	BatchSize           uint64
 	CCMEventSequence    uint64
 	zionReplenishHeight uint64
 	config              *config.TxVoteConfig
@@ -98,7 +99,7 @@ func (h *TxVoteHandler) start() (err error) {
 		var txs []*msg.Tx
 		aptosNextSequence := h.CCMEventSequence
 
-		var scanStart uint64
+		var scanStart, scanEnd uint64
 
 		if h.config.ChainId == base.APTOS {
 			time.Sleep(time.Second * 10)
@@ -116,11 +117,24 @@ func (h *TxVoteHandler) start() (err error) {
 				if !ok {
 					continue
 				}
-				log.Info("Scanning txs in block", "height", scanStart, "chain", h.config.ChainId)
 			}
 		}
 
-		txs, err = h.listener.Scan(scanStart)
+		if base.SameAsETH(h.config.ChainId) {
+			scanStart = h.height
+			scanEnd = scanStart + h.BatchSize - 1
+			if scanEnd > latest-confirms {
+				scanEnd = latest - confirms
+			}
+			log.Info("Scanning src txs", "chain", h.config.ChainId, "start", scanStart, "end", scanEnd)
+			txs, err = h.listener.BatchScan(scanStart, scanEnd)
+		} else {
+			scanEnd = scanStart
+			log.Info("Scanning src txs", "chain", h.config.ChainId, "scanStart", scanStart)
+			txs, err = h.listener.Scan(scanStart)
+		}
+
+		//txs, err = h.listener.Scan(scanStart)
 		if err == nil {
 			var list []*store.Tx
 			for _, tx := range txs {
@@ -138,6 +152,7 @@ func (h *TxVoteHandler) start() (err error) {
 					}
 					err = h.store.SetTxHeight(h.CCMEventSequence)
 				} else {
+					h.height = scanEnd
 					err = h.store.SetTxHeight(h.height)
 				}
 
@@ -327,6 +342,12 @@ func (h *TxVoteHandler) Start() (err error) {
 				return
 			}
 		}
+	}
+
+	if h.config.BatchSize == 0 {
+		h.BatchSize = 1
+	} else {
+		h.BatchSize = h.config.BatchSize
 	}
 
 	log.Info("Tx vote will start...", "height", h.height+1, "chain", h.config.ChainId)

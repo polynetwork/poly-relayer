@@ -200,7 +200,6 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	log.Info("src tx scan", "chain", l.name, "height", height)
 	res := l.sdk.Node().GetBlock(strconv.FormatUint(height, 10))
 	if res.HasError() {
 		err = fmt.Errorf("neo3.GetBlock error: %s", res.GetErrorInfo())
@@ -222,6 +221,10 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		}
 	}
 	return
+}
+
+func (l *Listener) BatchScan(start, end uint64) ([]*msg.Tx, error) {
+	return nil, nil
 }
 
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {

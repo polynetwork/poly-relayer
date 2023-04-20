@@ -40,7 +40,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	log.Info("src tx scan", "chain", l.name, "ledger", height)
 	ledger, err := l.sdk.Node().GetRpcClient().GetLedger(uint32(height))
 	if err != nil {
 		return nil, err
@@ -117,13 +116,6 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 			log.Error("Ripple rlp encode param failed", "hash", txData.GetHash().String(), "err", err)
 			continue
 		}
-
-		//rawParam, err := msg.EncodeTxParam(param)
-		//if err != nil {
-		//	log.Error("Ripple EncodeTxParam failed", "hash", txData.GetHash().String(), "err", err)
-		//	continue
-		//}
-
 		log.Info("Found Ripple src cross chain tx", "hash", txData.GetHash().String())
 
 		tx := &msg.Tx{
@@ -138,6 +130,10 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		txs = append(txs, tx)
 	}
 	return
+}
+
+func (l *Listener) BatchScan(start, end uint64) ([]*msg.Tx, error) {
+	return nil, nil
 }
 
 func (l *Listener) Defer() int {

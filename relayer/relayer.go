@@ -52,6 +52,7 @@ type IChainListener interface {
 	Header(height uint64) (header []byte, hash []byte, err error)
 	LastHeaderSync(uint64, uint64) (uint64, error)
 	Scan(uint64) ([]*msg.Tx, error)
+	BatchScan(start, end uint64) ([]*msg.Tx, error)
 	ScanTx(string) (*msg.Tx, error)
 	GetTxBlock(string) (uint64, error)
 	Compose(*msg.Tx) error
