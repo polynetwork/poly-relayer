@@ -403,7 +403,7 @@ func (h *PolyTxSyncHandler) patchTxs() {
 		for _, t := range txs {
 			if msg.Empty(tx.PolyHash) || util.LowerHex(tx.PolyHash.Hex()) == util.LowerHex(t.PolyHash.Hex()) {
 				count++
-				if tx.DstChainId == base.RIPPLE {
+				if t.DstChainId == base.RIPPLE {
 					log.Info("Found patch target poly tx", "hash", t.PolyHash, "ripple sequence", t.PolyKey, "chain", h.config.ChainId, "height", height)
 					h.sequence.AddTx(h.Context, base.RIPPLE, t.PolyKey, t)
 				} else {

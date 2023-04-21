@@ -138,6 +138,7 @@ type ChainConfig struct {
 	Signer                     *wallet.Config
 	SrcFilter                  *FilterConfig
 	DstFilter                  *FilterConfig
+	Poly                       *SubmitterConfig
 
 	HeaderSync     *HeaderSyncConfig // chain -> ch -> poly
 	TxVote         *TxVoteConfig
@@ -205,6 +206,7 @@ type SubmitterConfig struct {
 	CCDContract string
 	Wallet      *wallet.Config
 	Signer      *wallet.Config
+	Poly        *SubmitterConfig
 }
 
 type WalletConfig struct {
@@ -420,6 +422,10 @@ func (c *ChainConfig) Init(chain uint64, bus *BusConfig, poly *PolyChainConfig) 
 		c.DstFilter.Init()
 	}
 
+	if c.Poly != nil {
+		c.Poly = poly.SubmitterConfig.Fill(c.Poly)
+	}
+
 	if c.HeaderSync != nil {
 		if c.HeaderSync.SyncInterval == 0 {
 			c.HeaderSync.SyncInterval = 50
@@ -553,6 +559,10 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 	}
 	if o.CCDContract == "" {
 		o.CCDContract = c.CCDContract
+	}
+
+	if c.Poly != nil {
+		o.Poly = c.Poly
 	}
 
 	return o

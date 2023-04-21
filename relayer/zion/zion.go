@@ -92,11 +92,15 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	if err != nil {
 		return
 	}
+	sdk, err := eth.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+	if err != nil {
+		return err
+	}
 	if config.Wallet != nil {
-		sdk, err := eth.WithOptions(base.POLY, config.Wallet.Nodes, time.Minute, 1)
-		if err != nil {
-			return err
-		}
+		//sdk, err := eth.WithOptions(base.POLY, config.Wallet.Nodes, time.Minute, 1)
+		//if err != nil {
+		//	return err
+		//}
 		s.wallet = wallet.New(config.Wallet, sdk)
 		err = s.wallet.Init()
 		if err != nil {
@@ -106,14 +110,22 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		if len(accounts) > 0 {
 			s.signer = &accounts[0]
 		}
-		if config.Signer != nil {
-			s.voter = wallet.New(config.Signer, sdk)
-			err = s.voter.Init()
-			if err != nil {
-				return err
-			}
+		//if config.Signer != nil {
+		//	s.voter = wallet.New(config.Signer, sdk)
+		//	err = s.voter.Init()
+		//	if err != nil {
+		//		return err
+		//	}
+		//}
+	}
+	if config.Signer != nil {
+		s.voter = wallet.New(config.Signer, sdk)
+		err = s.voter.Init()
+		if err != nil {
+			return err
 		}
 	}
+
 	s.hsabi, err = abi.JSON(strings.NewReader(hs.IInfoSyncABI))
 	if err != nil {
 		return
@@ -655,6 +667,21 @@ func (s *Submitter) UpdateFee(param *side_chain_manager.UpdateFeeParam) (hash st
 	hash, err = s.wallet.Send(utils.SideChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
 	if err != nil {
 		err = fmt.Errorf("UpdateFee send tx err: %v", err)
+		return
+	}
+	return
+}
+
+func (s *Submitter) ReconstructRippleTx(param *ccom.ReconstructTxParam) (hash string, err error) {
+	data, err := s.txabi.Pack("reconstructRippleTx", param.FromChainId, param.TxHash, param.ToChainId)
+	if err != nil {
+		err = fmt.Errorf("ReconstructRippleTx pack data err: %v", err)
+		return
+	}
+
+	hash, err = s.wallet.Send(utils.CrossChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
+	if err != nil {
+		err = fmt.Errorf("ReconstructRippleTx send tx err: %v", err)
 		return
 	}
 	return

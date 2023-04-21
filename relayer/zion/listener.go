@@ -150,6 +150,7 @@ func (l *Listener) scanMultiSignTxs(ccm *ccm.ICrossChainManager, opt *bind.Filte
 		tx.PolyHash = ev.Raw.TxHash
 		tx.SrcChainId = ev.FromChainId
 		tx.DstChainId = ev.ToChainId
+		tx.TxHash = ev.TxHash
 		tx.PolyKey = strconv.FormatUint(uint64(ev.Sequence), 10)
 		tx.ChainTxJson = ev.Payment
 
