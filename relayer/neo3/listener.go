@@ -25,6 +25,7 @@ import (
 	"github.com/joeqian10/neo3-gogogo/helper"
 	"github.com/joeqian10/neo3-gogogo/mpt"
 	"github.com/joeqian10/neo3-gogogo/rpc/models"
+	"github.com/polynetwork/bridge-common/chains/eth"
 	"math/big"
 	"strconv"
 	"time"
@@ -325,6 +326,11 @@ func (l *Listener) ListenCheck() time.Duration {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
+	return nil
 }
 
 func (l *Listener) ChainId() uint64 {

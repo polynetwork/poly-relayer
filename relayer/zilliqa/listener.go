@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/polynetwork/bridge-common/chains/eth"
 	"strconv"
 	"strings"
 	"time"
@@ -279,6 +280,11 @@ func (l *Listener) ListenCheck() time.Duration {
 
 // not used
 func (l *Listener) Nodes() chains.Nodes {
+	return nil
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
 	return nil
 }
 

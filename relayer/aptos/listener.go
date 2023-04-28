@@ -7,6 +7,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/aptos"
+	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
@@ -109,6 +110,11 @@ func (l *Listener) ChainId() uint64 {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
+	return nil
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {

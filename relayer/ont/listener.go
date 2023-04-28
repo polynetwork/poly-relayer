@@ -25,6 +25,7 @@ import (
 	"github.com/ontio/ontology-go-sdk/utils"
 	"github.com/ontio/ontology/common"
 	vconfig "github.com/ontio/ontology/consensus/vbft/config"
+	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
 	"strconv"
 	"strings"
@@ -271,6 +272,11 @@ func (l *Listener) ListenCheck() time.Duration {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
+	return nil
 }
 
 func (l *Listener) ChainId() uint64 {

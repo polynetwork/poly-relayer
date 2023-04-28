@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/ripple"
+	"github.com/polynetwork/poly-relayer/relayer/zksync"
 	"math/big"
 	"sync"
 	"time"
@@ -72,6 +73,8 @@ func (h *TxVoteHandler) Init(ctx context.Context, wg *sync.WaitGroup) (err error
 		return fmt.Errorf("Unabled to create listener for chain %s", base.GetChainName(h.config.ChainId))
 	}
 
+	log.Info("TxVoteHandler Init", "h.config", fmt.Sprintf("%+v", *h.config))
+	log.Info("TxVoteHandler Init", "h.config.ListenerConfig", fmt.Sprintf("%+v", *h.config.ListenerConfig))
 	err = h.listener.Init(h.config.ListenerConfig, h.submitter.SDK())
 	if err != nil {
 		return
@@ -105,6 +108,29 @@ func (h *TxVoteHandler) start() (err error) {
 			time.Sleep(time.Second * 10)
 			scanStart = aptosNextSequence
 			log.Info("Scanning Aptos txs", "CCM sequence", scanStart, "chain", h.config.ChainId)
+		} else if h.config.ChainId == base.ZKSYNC {
+			h.height++
+			scanStart = h.height
+
+			zkListener, ok2 := h.listener.(*zksync.Listener)
+			if !ok2 {
+				log.Error("zkSync listener invalid", "chain", h.config.ChainId)
+				return nil
+			}
+			block, wait, e := zkListener.GetZkSyncConfirmedBlock(h.height, h.BatchSize)
+			if e != nil {
+				log.Error("GetZkSyncScanRange failed", "err", e)
+				h.height--
+				time.Sleep(time.Minute)
+				continue
+			}
+			if wait {
+				log.Info("zkSync listen height is waiting for L1 confirmation", "height", h.height)
+				h.height--
+				time.Sleep(time.Minute)
+				continue
+			}
+			scanEnd = block
 		} else {
 			h.height++
 			scanStart = h.height
@@ -115,26 +141,35 @@ func (h *TxVoteHandler) start() (err error) {
 					latest, ok = h.listener.WaitTillHeight(h.Context, h.height+confirms, h.listener.ListenCheck())
 				}
 				if !ok {
+					h.height--
+					time.Sleep(time.Second * 30)
 					continue
 				}
 			}
 		}
 
-		if base.SameAsETH(h.config.ChainId) {
-			scanStart = h.height
-			scanEnd = scanStart + h.BatchSize - 1
-			if scanEnd > latest-confirms {
-				scanEnd = latest - confirms
-			}
-			log.Info("Scanning src txs", "chain", h.config.ChainId, "start", scanStart, "end", scanEnd)
-			txs, err = h.listener.BatchScan(scanStart, scanEnd)
-		} else {
+		switch h.config.ChainId {
+		case base.ONTEVM:
 			scanEnd = scanStart
 			log.Info("Scanning src txs", "chain", h.config.ChainId, "scanStart", scanStart)
 			txs, err = h.listener.Scan(scanStart)
+		default:
+			if base.SameAsETH(h.config.ChainId) {
+				if h.config.ChainId != base.ZKSYNC {
+					scanStart = h.height
+					scanEnd = scanStart + h.BatchSize - 1
+					if scanEnd > latest-confirms {
+						scanEnd = latest - confirms
+					}
+				}
+				log.Info("Scanning src txs", "chain", h.config.ChainId, "start", scanStart, "end", scanEnd)
+				txs, err = h.listener.BatchScan(scanStart, scanEnd)
+			} else {
+				scanEnd = scanStart
+				log.Info("Scanning src txs", "chain", h.config.ChainId, "scanStart", scanStart)
+				txs, err = h.listener.Scan(scanStart)
+			}
 		}
-
-		//txs, err = h.listener.Scan(scanStart)
 		if err == nil {
 			var list []*store.Tx
 			for _, tx := range txs {
@@ -164,8 +199,10 @@ func (h *TxVoteHandler) start() (err error) {
 		}
 
 		log.Error("Fetch block txs failure", "chain", h.config.ChainId, "height", h.height, "err", err)
-		h.height--
-		time.Sleep(time.Second * 5)
+		if h.config.ChainId != base.APTOS {
+			h.height--
+		}
+		time.Sleep(time.Second * 30)
 	}
 }
 

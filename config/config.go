@@ -125,10 +125,12 @@ type PolyChainConfig struct {
 type ChainConfig struct {
 	ChainId                    uint64
 	Nodes                      []string
+	L1Node                     string
 	ExtraNodes                 []string
 	LockProxyContract          []string
 	CCMContract                string
 	CCDContract                string
+	L1Contract                 string
 	CrossChainEventCreationNum string // Aptos
 	MultiSignAccount           string // Ripple
 	ListenCheck                int
@@ -152,10 +154,12 @@ type ChainConfig struct {
 type ListenerConfig struct {
 	ChainId                    uint64
 	Nodes                      []string
+	L1Node                     string
 	ExtraNodes                 []string
 	LockProxyContract          []string
 	CCMContract                string
 	CCDContract                string
+	L1Contract                 string
 	CrossChainEventCreationNum string // Aptos
 	MultiSignAccount           string // Ripple
 	ListenCheck                int
@@ -244,6 +248,7 @@ type TxVoteConfig struct {
 	StartHeight      uint64
 	BatchSize        uint64
 	CCMEventSequence uint64
+	L1URL            string
 
 	Poly *SubmitterConfig
 	*ListenerConfig
@@ -579,6 +584,9 @@ func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerC
 	if len(o.Nodes) == 0 {
 		o.Nodes = c.Nodes
 	}
+	if o.L1Node == "" {
+		o.L1Node = c.L1Node
+	}
 	if len(o.ExtraNodes) == 0 {
 		o.ExtraNodes = c.ExtraNodes
 	}
@@ -590,6 +598,9 @@ func (c *ChainConfig) FillListener(o *ListenerConfig, bus *BusConfig) *ListenerC
 	}
 	if o.CCDContract == "" {
 		o.CCDContract = c.CCDContract
+	}
+	if o.L1Contract == "" {
+		o.L1Contract = c.L1Contract
 	}
 	if o.CrossChainEventCreationNum == "" {
 		o.CrossChainEventCreationNum = c.CrossChainEventCreationNum

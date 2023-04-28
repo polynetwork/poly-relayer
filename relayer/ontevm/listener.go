@@ -28,6 +28,7 @@ import (
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
+	ethcom "github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/ontevm"
 	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/poly-relayer/config"
@@ -40,7 +41,6 @@ import (
 type Listener struct {
 	*eth.Listener
 	sdk       *ontevm.SDK
-	poly      *zion.SDK
 	name      string
 	ccm       common.Address
 	ccd       common.Address
@@ -53,7 +53,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	}
 
 	l.Listener = new(eth.Listener)
-	l.poly = poly
 	err = l.Listener.Init(config, poly)
 	if err != nil {
 		return
@@ -221,6 +220,11 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *ethcom.Client {
+	return nil
 }
 
 func (l *Listener) LatestHeight() (uint64, error) {

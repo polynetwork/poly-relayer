@@ -122,9 +122,10 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 		// We dont return here, still fetch the proof with tx height
 		height = txHeight
 	}
-	ethProof, e := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
+	node := l.sdk.Node()
+	ethProof, e := node.GetProof(l.ccd.String(), proofKey, height)
 	if e != nil {
-		return height, nil, e
+		return height, nil, fmt.Errorf("node:%s, GetProof err:%s", node.Address(), e)
 	}
 	proof, e = json.Marshal(ethProof)
 	if e != nil {
@@ -381,6 +382,11 @@ func (l *Listener) ListenCheck() time.Duration {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
+	return nil
 }
 
 func (l *Listener) ChainId() uint64 {
