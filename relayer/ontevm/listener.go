@@ -28,9 +28,9 @@ import (
 	"github.com/polynetwork/bridge-common/abi/eccm_abi"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
+	ethcom "github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/ontevm"
 	"github.com/polynetwork/bridge-common/chains/zion"
-	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
 	"github.com/polynetwork/poly-relayer/relayer/eth"
@@ -41,7 +41,6 @@ import (
 type Listener struct {
 	*eth.Listener
 	sdk       *ontevm.SDK
-	poly      *zion.SDK
 	name      string
 	ccm       common.Address
 	ccd       common.Address
@@ -54,7 +53,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 	}
 
 	l.Listener = new(eth.Listener)
-	l.poly = poly
 	err = l.Listener.Init(config, poly)
 	if err != nil {
 		return
@@ -143,7 +141,6 @@ func (self *StorageLog) Deserialization(source *ontocommon.ZeroCopySource) error
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	log.Info("src tx scan", "chain", l.name, "height", height)
 	events, err := l.sdk.Node().GetSmartContractEventByBlock(uint32(height))
 	if err != nil {
 		return nil, fmt.Errorf("ONTEVM failed to fetch smart contract events for height %d, err %v", height, err)
@@ -197,6 +194,10 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
+func (l *Listener) BatchScan(start, end uint64) ([]*msg.Tx, error) {
+	return nil, nil
+}
+
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
 	h, err := l.sdk.Node().GetBlockHeightByTxHash(hash)
 	height = uint64(h)
@@ -219,6 +220,11 @@ func (l *Listener) ScanTx(hash string) (tx *msg.Tx, err error) {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *ethcom.Client {
+	return nil
 }
 
 func (l *Listener) LatestHeight() (uint64, error) {

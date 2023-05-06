@@ -92,11 +92,15 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	if err != nil {
 		return
 	}
+	sdk, err := eth.WithOptions(base.POLY, config.Nodes, time.Minute, 1)
+	if err != nil {
+		return err
+	}
 	if config.Wallet != nil {
-		sdk, err := eth.WithOptions(base.POLY, config.Wallet.Nodes, time.Minute, 1)
-		if err != nil {
-			return err
-		}
+		//sdk, err := eth.WithOptions(base.POLY, config.Wallet.Nodes, time.Minute, 1)
+		//if err != nil {
+		//	return err
+		//}
 		s.wallet = wallet.New(config.Wallet, sdk)
 		err = s.wallet.Init()
 		if err != nil {
@@ -106,14 +110,22 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		if len(accounts) > 0 {
 			s.signer = &accounts[0]
 		}
-		if config.Signer != nil {
-			s.voter = wallet.New(config.Signer, sdk)
-			err = s.voter.Init()
-			if err != nil {
-				return err
-			}
+		//if config.Signer != nil {
+		//	s.voter = wallet.New(config.Signer, sdk)
+		//	err = s.voter.Init()
+		//	if err != nil {
+		//		return err
+		//	}
+		//}
+	}
+	if config.Signer != nil {
+		s.voter = wallet.New(config.Signer, sdk)
+		err = s.voter.Init()
+		if err != nil {
+			return err
 		}
 	}
+
 	s.hsabi, err = abi.JSON(strings.NewReader(hs.IInfoSyncABI))
 	if err != nil {
 		return
@@ -542,30 +554,40 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			tx := new(msg.Tx)
 			err := tx.Decode(string(t.Value))
 			if err != nil {
-				log.Error("Tx vote decode tx failed", "src hash", t.Hash.Hex(), "err", err)
+				log.Error("Tx vote decode tx failed", "chain", s.name, "src hash", t.Hash.Hex(), "err", err)
 				continue
 			}
 
 			if tx.TxType != msg.SRC {
-				log.Error("Tx vote invalid msg type", "msgType", tx.TxType, "src hash", tx.SrcHash, "poly hash", tx.PolyHash.Hex())
+				log.Error("Tx vote invalid msg type", "msgType", tx.TxType, "chain", s.name, "src hash", tx.SrcHash, "poly hash", tx.PolyHash.Hex())
 				continue
 			}
 
 			raw, err := hex.DecodeString(tx.SrcParam)
 			if err != nil || len(raw) == 0 {
-				log.Fatal("Unexpected empty SrcParam", "err", err, "hash", tx.SrcHash)
+				log.Fatal("Unexpected empty SrcParam", "chain", s.name, "hash", tx.SrcHash, "err", err)
 			}
 
-			txParam, err := msg.DecodeTxParam(raw)
-			if err != nil {
-				log.Error("Tx vote DecodeTxParam failed", "src hash", tx.SrcHash, "err", err)
-				continue
+			var txParam *ccom.MakeTxParam
+			if tx.SrcChainId == base.RIPPLE {
+				txParam = new(ccom.MakeTxParam)
+				err = rlp.DecodeBytes(raw, txParam)
+				if err != nil {
+					log.Error("Ripple Tx vote DecodeTxParam failed", "chain", s.name, "src hash", tx.SrcHash, "err", err)
+					continue
+				}
+			} else {
+				txParam, err = msg.DecodeTxParam(raw)
+				if err != nil {
+					log.Error("Tx vote DecodeTxParam failed", "chain", s.name, "src hash", tx.SrcHash, "err", err)
+					continue
+				}
 			}
 
 			// Check done tx existence
 			done, err := s.sdk.Node().CheckDone(nil, tx.SrcChainId, txParam.CrossChainID)
 			if err != nil {
-				log.Error("Tx vote check done failed", "src hash", tx.SrcHash, "err", err)
+				log.Error("Tx vote check done failed", "chain", s.name, "src hash", tx.SrcHash, "err", err)
 				continue
 			}
 			if done {
@@ -583,17 +605,17 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 			}
 			digest, err := param.Digest()
 			if err != nil {
-				log.Error("tx vote failed to get param digest", "src hash", tx.SrcHash, "chain", s.name, "err", err)
+				log.Error("tx vote failed to get param digest", "chain", s.name, "src hash", tx.SrcHash, "err", err)
 				continue
 			}
 			param.Signature, err = s.voter.SignHash(digest)
 			if err != nil {
-				log.Error("tx vote failed to sign param", "src hash", tx.SrcHash, "chain", s.name, "err", err)
+				log.Error("tx vote failed to sign param", "chain", s.name, "src hash", tx.SrcHash, "err", err)
 				continue
 			}
 			data, err := s.txabi.Pack("importOuterTransfer", tx.SrcChainId, uint32(tx.SrcHeight), []byte{}, raw, param.Signature)
 			if err != nil {
-				log.Error("tx vote failed to pack data", "src hash", tx.SrcHash, "chain", s.name, "err", err)
+				log.Error("tx vote failed to pack data", "chain", s.name, "src hash", tx.SrcHash, "err", err)
 				continue
 			}
 
@@ -602,7 +624,7 @@ func (s *Submitter) voteTx(account accounts.Account, store *store.Store) {
 				if strings.Contains(err.Error(), "CheckConsensusSigns, signer already exist") {
 					log.Warn("tx already sent to zion", "src hash", tx.SrcHash, "err", err)
 				} else {
-					log.Error("Failed to send tx", "err", err, "hash", hash, "src hash", tx.SrcHash, "chain", s.name)
+					log.Error("Failed to send tx", "chain", s.name, "hash", hash, "src hash", tx.SrcHash, "err", err)
 					time.Sleep(time.Second * 5)
 					continue
 				}
@@ -645,6 +667,21 @@ func (s *Submitter) UpdateFee(param *side_chain_manager.UpdateFeeParam) (hash st
 	hash, err = s.wallet.Send(utils.SideChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
 	if err != nil {
 		err = fmt.Errorf("UpdateFee send tx err: %v", err)
+		return
+	}
+	return
+}
+
+func (s *Submitter) ReconstructRippleTx(param *ccom.ReconstructTxParam) (hash string, err error) {
+	data, err := s.txabi.Pack("reconstructRippleTx", param.FromChainId, param.TxHash, param.ToChainId)
+	if err != nil {
+		err = fmt.Errorf("ReconstructRippleTx pack data err: %v", err)
+		return
+	}
+
+	hash, err = s.wallet.Send(utils.CrossChainManagerContractAddress, big.NewInt(0), 0, nil, nil, data)
+	if err != nil {
+		err = fmt.Errorf("ReconstructRippleTx send tx err: %v", err)
 		return
 	}
 	return

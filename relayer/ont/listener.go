@@ -25,6 +25,7 @@ import (
 	"github.com/ontio/ontology-go-sdk/utils"
 	"github.com/ontio/ontology/common"
 	vconfig "github.com/ontio/ontology/consensus/vbft/config"
+	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/log"
 	"strconv"
 	"strings"
@@ -159,7 +160,6 @@ func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error)
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	log.Info("src tx scan", "chain", l.name, "height", height)
 	events, err := l.sdk.Node().GetSmartContractEventByBlock(uint32(height))
 	if err != nil {
 		return nil, fmt.Errorf("ONT failed to fetch smart contract events for height %d, err %v", height, err)
@@ -201,6 +201,10 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		}
 	}
 	return
+}
+
+func (l *Listener) BatchScan(start, end uint64) ([]*msg.Tx, error) {
+	return nil, nil
 }
 
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
@@ -268,6 +272,11 @@ func (l *Listener) ListenCheck() time.Duration {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
+	return nil
 }
 
 func (l *Listener) ChainId() uint64 {

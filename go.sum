@@ -332,8 +332,8 @@ github.com/denis-tingaikin/go-header v0.4.3/go.mod h1:0wOCWuN71D5qIgE2nz9KrKmuYB
 github.com/denisenkom/go-mssqldb v0.12.0 h1:VtrkII767ttSPNRfFekePK3sctr+joXgO58stqQbtUA=
 github.com/denisenkom/go-mssqldb v0.12.0/go.mod h1:iiK0YP1ZeepvmBQk/QpLEhhTNJgfzrpArPY/aFvc9yU=
 github.com/devfans/zion-sdk v0.0.26/go.mod h1:FvNiMLw6IubOOYQ5waar5hwNV5nNrZ/45EyskL75NoI=
-github.com/devfans/zion-sdk v0.0.27 h1:u72PnebVKEmpI06Y9JSA/EPt8GKvfHuqh1ejcvuKAiY=
-github.com/devfans/zion-sdk v0.0.27/go.mod h1:FvNiMLw6IubOOYQ5waar5hwNV5nNrZ/45EyskL75NoI=
+github.com/devfans/zion-sdk v0.0.29 h1:VNQKv63qSgfH5I0IGMnBCa0OLgCrd5iPbC9ojKMPF6Y=
+github.com/devfans/zion-sdk v0.0.29/go.mod h1:FvNiMLw6IubOOYQ5waar5hwNV5nNrZ/45EyskL75NoI=
 github.com/dgraph-io/badger/v2 v2.2007.2 h1:EjjK0KqwaFMlPin1ajhP943VPENHJdEz1KLIegjaI3k=
 github.com/dgraph-io/badger/v2 v2.2007.2/go.mod h1:26P/7fbL4kUZVEVKLAKXkBXKOydDmM2p1e+NhhnBCAE=
 github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de h1:t0UHb5vdojIDUqktM6+xJAfScFBsVpXZmqC9dsgJmeA=
@@ -1158,8 +1158,8 @@ github.com/pmezard/go-difflib v0.0.0-20151028094244-d8ed2627bdf0/go.mod h1:iKH77
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/polyfloyd/go-errorlint v1.0.0/go.mod h1:KZy4xxPJyy88/gldCe5OdW6OQRtNO3EZE7hXzmnebgA=
-github.com/polynetwork/bridge-common v0.0.39-2 h1:ctptvaVBpZdpGc0Vm9AiXYBMAN/92Hbo45taVQ6NysU=
-github.com/polynetwork/bridge-common v0.0.39-2/go.mod h1:CPcpmKVKppVAs8uK5Rz83zDnTf6BOtIsN6Vs6Pu8jQE=
+github.com/polynetwork/bridge-common v0.0.42-2 h1:leRrNdtpAirjXBp9UytLxEVmgA/tC5ZEKkwh3cuvZN4=
+github.com/polynetwork/bridge-common v0.0.42-2/go.mod h1:CPcpmKVKppVAs8uK5Rz83zDnTf6BOtIsN6Vs6Pu8jQE=
 github.com/polynetwork/ripple-sdk v0.0.0-20220616022641-d64d4aa053fe h1:zRVqVMQjEYmIBmh86lJSplt8VSXlC/UJCE+z20WtA2A=
 github.com/polynetwork/ripple-sdk v0.0.0-20220616022641-d64d4aa053fe/go.mod h1:M5k8xCDpbtYH+Xlac61sMBYhyo770ZeUc0vrJnIQn/g=
 github.com/portto/aptos-go-sdk v0.0.0-20221025115549-5c74acafa193/go.mod h1:8+XTYv0iwHE5fjS8G6231LUhy2GYwl2BTlzxIqjIxyU=

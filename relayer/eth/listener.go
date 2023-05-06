@@ -122,9 +122,10 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 		// We dont return here, still fetch the proof with tx height
 		height = txHeight
 	}
-	ethProof, e := l.sdk.Node().GetProof(l.ccd.String(), proofKey, height)
+	node := l.sdk.Node()
+	ethProof, e := node.GetProof(l.ccd.String(), proofKey, height)
 	if e != nil {
-		return height, nil, e
+		return height, nil, fmt.Errorf("node:%s, GetProof err:%s", node.Address(), e)
 	}
 	proof, e = json.Marshal(ethProof)
 	if e != nil {
@@ -267,41 +268,34 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
-func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	log.Info("src tx scan", "chain", l.name, "height", height)
+func (l *Listener) scanCrossChainTxs(opt *bind.FilterOpts) (txs []*msg.Tx, err error) {
 	ccm, err := eccm_abi.NewEthCrossChainManagerImplementation(l.ccm, l.sdk.Node())
 	if err != nil {
 		return nil, err
 	}
-	opt := &bind.FilterOpts{
-		Start:   height,
-		End:     &height,
-		Context: context.Background(),
-	}
+
 	events, err := ccm.FilterCrossChainEvent(opt, nil)
 	if err != nil {
-		err = fmt.Errorf("FilterCrossChainEvent failed. chain:%s, start:%d, end:%d", l.name, opt.Start, *opt.End)
+		err = fmt.Errorf("FilterCrossChainEvent failed. chain:%s, start:%d, end:%d, err:%s", l.name, opt.Start, *opt.End, err)
 		return nil, err
 	}
 
 	if events == nil {
 		return
 	}
-
-	txs = []*msg.Tx{}
 	for events.Next() {
 		ev := events.Event
 		param, err := msg.DecodeTxParam(ev.Rawdata)
 		if err != nil {
 			return nil, err
 		}
-		log.Info("Found src cross chain tx", "method", param.Method, "hash", ev.Raw.TxHash.String())
+		log.Info("Found src cross chain tx", "chain", l.name, "height", ev.Raw.BlockNumber, "hash", ev.Raw.TxHash.String(), "method", param.Method)
 		tx := &msg.Tx{
 			TxType:     msg.SRC,
 			TxId:       msg.EncodeTxId(ev.TxId),
 			SrcHash:    ev.Raw.TxHash.String(),
 			DstChainId: ev.ToChainId,
-			SrcHeight:  height,
+			SrcHeight:  ev.Raw.BlockNumber,
 			SrcParam:   hex.EncodeToString(ev.Rawdata),
 			SrcChainId: l.config.ChainId,
 			SrcProxy:   ev.ProxyOrAssetContract.String(),
@@ -310,13 +304,30 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		}
 		err = l.Compose(tx)
 		if err != nil {
-			log.Error("Compose failed", "chain", l.name, "src hash", tx.SrcHash, "err", err)
+			log.Error("Compose failed", "chain", l.name, "height", ev.Raw.BlockNumber, "src hash", tx.SrcHash, "err", err)
 			//return nil, err
 		}
 		txs = append(txs, tx)
 	}
-
 	return
+}
+
+func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
+	opt := &bind.FilterOpts{
+		Start:   height,
+		End:     &height,
+		Context: context.Background(),
+	}
+	return l.scanCrossChainTxs(opt)
+}
+
+func (l *Listener) BatchScan(start, end uint64) ([]*msg.Tx, error) {
+	opt := &bind.FilterOpts{
+		Start:   start,
+		End:     &end,
+		Context: context.Background(),
+	}
+	return l.scanCrossChainTxs(opt)
 }
 
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
@@ -371,6 +382,11 @@ func (l *Listener) ListenCheck() time.Duration {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
+	return nil
 }
 
 func (l *Listener) ChainId() uint64 {

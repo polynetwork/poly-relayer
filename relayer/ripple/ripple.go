@@ -2,15 +2,18 @@ package ripple
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	ccom "github.com/devfans/zion-sdk/contracts/native/cross_chain_manager/common"
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains/ripple"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/bus"
 	"github.com/polynetwork/poly-relayer/config"
 	"github.com/polynetwork/poly-relayer/msg"
+	"github.com/polynetwork/poly-relayer/relayer/zion"
 	rippleTypes "github.com/polynetwork/ripple-sdk/types"
 	"strconv"
 	"strings"
@@ -25,7 +28,8 @@ type Submitter struct {
 	sdk    *ripple.SDK
 	//polySigner *poly_go_sdk.Account
 	//polySdk    *poly.SDK
-	name string
+	zionSubmitter *zion.Submitter
+	name          string
 }
 
 func (s *Submitter) ProcessEpochs(txes []*msg.Tx) error {
@@ -48,6 +52,13 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 	//	return
 	//}
 	//s.polySdk, err = poly.WithOptions(base.POLY, polyConfig.Nodes, time.Minute, 1)
+
+	s.zionSubmitter = new(zion.Submitter)
+	err = s.zionSubmitter.Init(s.config.Poly)
+	if err != nil {
+		return
+	}
+
 	s.name = base.GetChainName(config.ChainId)
 	return
 }
@@ -83,16 +94,31 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 		err = fmt.Errorf("SubmitTx ripple Submitter, Unmarshal paymentn err: %v", err)
 		return
 	}
+	log.Info("Ripple SubmitTx", "poly_hash", tx.PolyHash.Hex(), "MultisignPayment", tx.ChainTxJson)
 	submitMultisignRes, err := s.sdk.Select().GetRpcClient().SubmitMultisigned(payment)
 	if err != nil {
 		err = fmt.Errorf("SubmitTx ripple Submitter, SubmitMultisigned err: %v", err)
 		return
 	}
 
-	log.Info("SubmitTx ripple submitMultisignRes", "Status", submitMultisignRes.Result.Status, "rippleHash", submitMultisignRes.Result.TxJson.Hash, "ErrorMessage", submitMultisignRes.Result.ErrorMessage, "EngineResultMessage", submitMultisignRes.Result.EngineResultMessage)
+	resultJson, err := json.Marshal(submitMultisignRes)
+	if err != nil {
+		err = fmt.Errorf("SubmitTx json.Marshal(submitMultisignRes) err: %v", err)
+		return
+	}
+	log.Info("SubmitTx ripple ", "poly_hash", tx.PolyHash.Hex(), "submitMultisignRes", string(resultJson))
 	if submitMultisignRes != nil {
+		if submitMultisignRes.Result.Status == "error" {
+			if strings.Contains(submitMultisignRes.Result.ErrorMessage, "Fees must be greater than zero") {
+				err = msg.ERR_FEE_INSUFFICIENT
+			} else {
+				err = fmt.Errorf(submitMultisignRes.Result.ErrorMessage)
+			}
+			return
+		}
+
 		if strings.Contains(submitMultisignRes.Result.EngineResultMessage, "Fee insufficient") {
-			err = fmt.Errorf("Fee insufficient")
+			err = msg.ERR_FEE_INSUFFICIENT
 			return
 		}
 	}
@@ -171,13 +197,14 @@ func (s *Submitter) run(sequenceCache bus.Sequence) error {
 		}
 		err = s.SubmitTx(tx)
 		if err != nil {
+			log.Error("ripple SubmitTx", "err", err)
 			if errors.Is(err, msg.ERR_FEE_INSUFFICIENT) {
-				log.Info("run need ReconstructRippleTx", "chain", s.name, "nowSequence", nowSequence)
+				log.Info("run need ReconstructRippleTx", "chain", s.name, "poly_hash", tx.PolyHash.Hex(), "nowSequence", nowSequence)
 				err = s.ReconstructRippleTx(tx)
 				if err != nil {
-					log.Error("run ReconstructRippleTx error", "chain", s.name, "nowSequence", nowSequence, "err", err)
+					log.Error("ReconstructRippleTx error", "chain", s.name, "poly_hash", tx.PolyHash.Hex(), "nowSequence", nowSequence, "err", err)
 				} else {
-					log.Info("run ReconstructRippleTx end, ready DelTx", "chain", s.name, "nowSequence", nowSequence)
+					log.Info("ReconstructRippleTx success, ready DelTx", "chain", s.name, "poly_hash", tx.PolyHash.Hex(), "poly_hash", tx.PolyHash.Hex(), "nowSequence", nowSequence)
 					err = sequenceCache.DelTx(s.Context, s.config.ChainId, nowSequence)
 					if err != nil {
 						log.Error("run ReconstructRippleTx end, DelTx error", "chain", s.name, "nowSequence", nowSequence, "err", err)
@@ -190,26 +217,40 @@ func (s *Submitter) run(sequenceCache bus.Sequence) error {
 			nextSequence := strconv.Itoa(int(*(acc.AccountData.Sequence)))
 			err = sequenceCache.SetSequence(s.Context, s.config.ChainId, nextSequence)
 			if err != nil {
-				log.Error("run end SubmitTx SetSequence error", "chain", s.name, "nextSequence", nextSequence, "err", err)
+				log.Error("Ripple SetSequence error", "chain", s.name, "nextSequence", nextSequence, "err", err)
 			}
 			if nextSequence > nowSequence {
-				log.Info("run nextSequence grew, ready DelTx", "chain", s.name, "nowSequence", nowSequence, "nowSequence", nowSequence)
+				log.Info("Ripple sequence grew, ready DelTx", "chain", s.name, "nowSequence", nowSequence, "nextSequence", nextSequence)
 				err = sequenceCache.DelTx(s.Context, s.config.ChainId, nowSequence)
 				if err != nil {
-					log.Error("run end SubmitTx DelTx error", "chain", s.name, "del nowSequence", nowSequence, "err", err)
+					log.Error("remove ripple tx error", "chain", s.name, "del nowSequence", nowSequence, "err", err)
 				}
 			}
 		}
+		time.Sleep(time.Second * 10)
 	}
 }
 
-func (s *Submitter) ReconstructRippleTx(tx *msg.Tx) error {
-	//txHash, err := hex.DecodeString(tx.TxId)
-	//if err != nil {
-	//	return err
-	//}
-	//_, err = s.polySdk.Select().Native.Ccm.ReconstructRippleTx(tx.DstChainId, tx.SrcChainId, txHash, s.polySigner)
-	//return err
+func (s *Submitter) ReconstructRippleTx(tx *msg.Tx) (err error) {
+	txHash, err := hex.DecodeString(tx.TxHash)
+	if err != nil {
+		return
+	}
+	param := &ccom.ReconstructTxParam{
+		FromChainId: tx.SrcChainId,
+		TxHash:      txHash,
+		ToChainId:   tx.DstChainId,
+	}
 
-	return nil
+	log.Info("ReconstructRippleTx", "FromChainId", tx.SrcChainId, "ToChainId", tx.DstChainId, "TxHash", tx.TxHash, "txId", tx.TxId)
+
+	hash, err := s.zionSubmitter.ReconstructRippleTx(param)
+	if err != nil {
+		log.Error("ReconstructRippleTx failed", "err", err)
+		err = fmt.Errorf("ReconstructRippleTx err %v", err)
+		return
+	}
+	log.Info("ReconstructRippleTx success", "hash", hash)
+
+	return
 }

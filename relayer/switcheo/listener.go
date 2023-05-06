@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/polynetwork/bridge-common/chains/eth"
 	"strconv"
 	"time"
 
@@ -69,7 +70,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	log.Info("src tx scan", "chain", l.name, "height", height)
 	query := getTxQuery(height)
 	page, perPage := 1, 100
 	res, err := l.rpcClient.TxSearch(context.TODO(), query, true, &page, &perPage, "asc")
@@ -85,6 +85,10 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		txs = append(txs, tx)
 	}
 	return txs, nil
+}
+
+func (l *Listener) BatchScan(start, end uint64) ([]*msg.Tx, error) {
+	return nil, nil
 }
 
 func (l *Listener) createZionTx(cosmosTx *coretypes.ResultTx) (*msg.Tx, error) {
@@ -181,6 +185,11 @@ func (l *Listener) ListenCheck() time.Duration {
 
 // not used
 func (l *Listener) Nodes() chains.Nodes {
+	return nil
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
 	return nil
 }
 

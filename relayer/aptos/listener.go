@@ -7,6 +7,7 @@ import (
 	"github.com/polynetwork/bridge-common/base"
 	"github.com/polynetwork/bridge-common/chains"
 	"github.com/polynetwork/bridge-common/chains/aptos"
+	"github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/bridge-common/chains/zion"
 	"github.com/polynetwork/bridge-common/log"
 	"github.com/polynetwork/poly-relayer/config"
@@ -34,7 +35,6 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *zion.SDK) (err erro
 }
 
 func (l *Listener) Scan(sequence uint64) (txs []*msg.Tx, err error) {
-	log.Info("src tx scan", "chain", l.name, "sequence", sequence)
 	eventFilter := &aptos.EventFilter{Address: l.ccm, CreationNumber: l.CrossChainEventCreationNum, Query: make(map[string]interface{})}
 	eventFilter.Query["limit"] = 10
 	eventFilter.Query["start"] = sequence
@@ -92,6 +92,10 @@ func (l *Listener) Scan(sequence uint64) (txs []*msg.Tx, err error) {
 	return
 }
 
+func (l *Listener) BatchScan(start, end uint64) ([]*msg.Tx, error) {
+	return nil, nil
+}
+
 func (l *Listener) Defer() int {
 	return l.config.Defer
 }
@@ -106,6 +110,11 @@ func (l *Listener) ChainId() uint64 {
 
 func (l *Listener) Nodes() chains.Nodes {
 	return l.sdk.ChainSDK
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
+	return nil
 }
 
 func (l *Listener) Header(height uint64) (header []byte, hash []byte, err error) {

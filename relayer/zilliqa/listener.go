@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/polynetwork/bridge-common/chains/eth"
 	"strconv"
 	"strings"
 	"time"
@@ -122,7 +123,6 @@ func (l *Listener) getProof(txId []byte, txHeight uint64) (height uint64, proof 
 }
 
 func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
-	log.Info("src tx scan", "chain", l.name, "height", height)
 	transactions, err := l.zilSdk.GetTxnBodiesForTxBlock(strconv.FormatUint(height, 10))
 	if err != nil {
 		if strings.Contains(err.Error(), "TxBlock has no transactions") {
@@ -147,6 +147,10 @@ func (l *Listener) Scan(height uint64) (txs []*msg.Tx, err error) {
 		}
 	}
 	return
+}
+
+func (l *Listener) BatchScan(start, end uint64) ([]*msg.Tx, error) {
+	return nil, nil
 }
 
 func (l *Listener) GetTxBlock(hash string) (height uint64, err error) {
@@ -276,6 +280,11 @@ func (l *Listener) ListenCheck() time.Duration {
 
 // not used
 func (l *Listener) Nodes() chains.Nodes {
+	return nil
+}
+
+// not used
+func (l *Listener) L1Node() *eth.Client {
 	return nil
 }
 

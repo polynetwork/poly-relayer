@@ -164,6 +164,7 @@ type Tx struct {
 	CCMEventSequence uint64 `json:",omitempty"`
 
 	// Ripple
+	TxHash      string
 	ChainTxJson string `json:",omitempty"`
 
 	Extra interface{} `json:"-"`

@@ -20,10 +20,12 @@ package relayer
 import (
 	"context"
 	"fmt"
+	ethcom "github.com/polynetwork/bridge-common/chains/eth"
 	"github.com/polynetwork/poly-relayer/relayer/aptos"
 	"github.com/polynetwork/poly-relayer/relayer/neo3"
 	"github.com/polynetwork/poly-relayer/relayer/ont"
 	"github.com/polynetwork/poly-relayer/relayer/ripple"
+	"github.com/polynetwork/poly-relayer/relayer/zksync"
 	"sync"
 	"time"
 
@@ -49,9 +51,11 @@ type IChainListener interface {
 	ListenCheck() time.Duration
 	ChainId() uint64
 	Nodes() chains.Nodes
+	L1Node() *ethcom.Client
 	Header(height uint64) (header []byte, hash []byte, err error)
 	LastHeaderSync(uint64, uint64) (uint64, error)
 	Scan(uint64) ([]*msg.Tx, error)
+	BatchScan(start, end uint64) ([]*msg.Tx, error)
 	ScanTx(string) (*msg.Tx, error)
 	GetTxBlock(string) (uint64, error)
 	Compose(*msg.Tx) error
@@ -89,6 +93,8 @@ func GetListener(chain uint64) (listener IChainListener) {
 		listener = new(ont.Listener)
 	case base.ONTEVM:
 		listener = new(ontevm.Listener)
+	case base.ZKSYNC:
+		listener = new(zksync.Listener)
 	case base.ZILLIQA:
 		listener = new(zilliqa.Listener)
 	case base.SWITCHEO:
