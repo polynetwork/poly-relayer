@@ -174,9 +174,16 @@ func (s *Submitter) run(sequenceCache bus.Sequence) error {
 			acc, err := s.sdk.Select().GetRpcClient().GetAccountInfo(s.config.CCMContract)
 			if err != nil {
 				log.Error("run GetAccountInfo", "chain", s.name, "err", err)
-				time.Sleep(time.Second)
+				time.Sleep(time.Second * 10)
 				continue
 			}
+
+			if acc == nil {
+				log.Error("run GetAccountInfo", "chain", s.name, "err", "result is nil")
+				time.Sleep(time.Second * 10)
+				continue
+			}
+
 			sequence := *(acc.AccountData.Sequence)
 			nowSequence = strconv.Itoa(int(sequence))
 			if err = sequenceCache.SetSequence(s.Context, s.config.ChainId, nowSequence); err != nil {

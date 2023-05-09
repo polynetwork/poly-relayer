@@ -248,7 +248,6 @@ type TxVoteConfig struct {
 	StartHeight      uint64
 	BatchSize        uint64
 	CCMEventSequence uint64
-	L1URL            string
 
 	Poly *SubmitterConfig
 	*ListenerConfig
