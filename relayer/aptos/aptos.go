@@ -337,13 +337,15 @@ func (s *Submitter) SimulateTransaction(tran *models.Transaction, priv ed25519.P
 	if hash != "" {
 		tx, e := s.sdk.Node().GetTransactionByHash(s.Context, hash)
 		if e != nil {
-			return false, fmt.Errorf("aptos GetTransactionByHash failed. err: %v", e)
-		}
-		if tx.Success {
-			return true, nil
+			log.Warn("Aptos GetTransactionByHash failed", "hash", hash, "err", e)
 		} else {
-			log.Error("aptos tx failed", "hash", hash, "vm_status", tx.VmStatus)
+			if tx.Success {
+				return true, nil
+			} else {
+				log.Error("Aptos tx failed", "hash", hash, "vm_status", tx.VmStatus)
+			}
 		}
+
 	}
 
 	msgBytes, err := tran.GetSigningMessage()
