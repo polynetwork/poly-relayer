@@ -203,14 +203,15 @@ func (c *SubmitterConfig) Fill(o *SubmitterConfig) *SubmitterConfig {
 }
 
 type SubmitterConfig struct {
-	ChainId     uint64
-	Nodes       []string
-	ExtraNodes  []string
-	CCMContract string
-	CCDContract string
-	Wallet      *wallet.Config
-	Signer      *wallet.Config
-	Poly        *SubmitterConfig
+	ChainId           uint64
+	Nodes             []string
+	ExtraNodes        []string
+	CCMContract       string
+	CCDContract       string
+	LockProxyContract []string
+	Wallet            *wallet.Config
+	Signer            *wallet.Config
+	Poly              *SubmitterConfig
 }
 
 type WalletConfig struct {
@@ -563,6 +564,9 @@ func (c *ChainConfig) FillSubmitter(o *SubmitterConfig) *SubmitterConfig {
 	}
 	if o.CCDContract == "" {
 		o.CCDContract = c.CCDContract
+	}
+	if len(o.LockProxyContract) == 0 {
+		o.LockProxyContract = c.LockProxyContract
 	}
 
 	if c.Poly != nil {
