@@ -31,16 +31,20 @@ const AptosMainnetChainID = 1
 
 type Submitter struct {
 	context.Context
-	wg     *sync.WaitGroup
-	config *config.SubmitterConfig
-	sdk    *aptos.SDK
-	name   string
-	ccm    string
-	polyId uint64
-	wallet *wallet.AptosWallet
+	wg        *sync.WaitGroup
+	config    *config.SubmitterConfig
+	sdk       *aptos.SDK
+	name      string
+	ccm       string
+	lockProxy string
+	polyId    uint64
+	wallet    *wallet.AptosWallet
 }
 
 func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
+	if len(config.LockProxyContract) == 0 {
+		return fmt.Errorf("aptos lockproxy is not configured")
+	}
 	s.config = config
 	s.sdk, err = aptos.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err != nil {
@@ -58,8 +62,8 @@ func (s *Submitter) Init(config *config.SubmitterConfig) (err error) {
 		}
 		s.wallet = w
 	}
-
 	s.ccm = util.LowerHex(config.CCMContract)
+	s.lockProxy = util.LowerHex(config.LockProxyContract[0])
 	s.name = base.GetChainName(config.ChainId)
 	s.polyId = zion.ReadChainID()
 	return
@@ -251,7 +255,7 @@ func (s *Submitter) SubmitTx(tx *msg.Tx) (err error) {
 	}
 	tran.SetSender(address)
 
-	contractAddr, _ := models.HexToAccountAddress(s.ccm)
+	contractAddr, _ := models.HexToAccountAddress(s.lockProxy)
 	coinTypeTag, err := getAptosCoinTypeTag(tx.ToAssetAddress)
 	if err != nil {
 		return fmt.Errorf("getAptosCoinTypeTag error: %s", err)
@@ -333,13 +337,15 @@ func (s *Submitter) SimulateTransaction(tran *models.Transaction, priv ed25519.P
 	if hash != "" {
 		tx, e := s.sdk.Node().GetTransactionByHash(s.Context, hash)
 		if e != nil {
-			return false, fmt.Errorf("aptos GetTransactionByHash failed. err: %v", e)
-		}
-		if tx.Success {
-			return true, nil
+			log.Warn("Aptos GetTransactionByHash failed", "hash", hash, "err", e)
 		} else {
-			log.Error("aptos tx failed", "hash", hash, "vm_status", tx.VmStatus)
+			if tx.Success {
+				return true, nil
+			} else {
+				log.Error("Aptos tx failed", "hash", hash, "vm_status", tx.VmStatus)
+			}
 		}
+
 	}
 
 	msgBytes, err := tran.GetSigningMessage()
