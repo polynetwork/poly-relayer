@@ -18,6 +18,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -90,7 +91,9 @@ func New(path string) (config *Config, err error) {
 		} else {
 			passphrase, err = msg.ReadPassword("passphrase")
 		}
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		data = msg.Decrypt(data, passphrase)
 	}
 	config = &Config{chains: map[uint64]bool{}}
@@ -210,6 +213,9 @@ func (c *BusConfig) Init() {
 	if c.Config != nil {
 		v, _ := json.Marshal(c.Config)
 		json.Unmarshal(v, c.Redis)
+	}
+	c.Redis.TLSConfig = &tls.Config{
+		InsecureSkipVerify: true,
 	}
 }
 
