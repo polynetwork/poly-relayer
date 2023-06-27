@@ -1366,8 +1366,6 @@ github.com/pkg/term v1.1.0/go.mod h1:E25nymQcrSllhX42Ok8MRm1+hyBdHY0dCeiKZ9jpNGw
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/polydawn/refmt v0.0.0-20190807091052-3d65705ee9f1/go.mod h1:uIp+gprXxxrWSjjklXD+mN4wed/tMfjMMmN/9+JsA9o=
-github.com/polynetwork/bridge-common v0.0.45-test h1:SCZCldCjuxrvdjLVnCwQG4xZDBmYbem+Sl8SWv4prFk=
-github.com/polynetwork/bridge-common v0.0.45-test/go.mod h1:pwoSOdnEbyyQnRcwxqXjrt1PUPi8AXuvkysazSxf0DQ=
 github.com/polynetwork/bridge-common v0.0.45-test.0.20230522083712-78bf294cba62 h1:ViSvTV4JiCwnV8jxlBIJjT1PEOAZkkkU7Dgp1/K1cAM=
 github.com/polynetwork/bridge-common v0.0.45-test.0.20230522083712-78bf294cba62/go.mod h1:pwoSOdnEbyyQnRcwxqXjrt1PUPi8AXuvkysazSxf0DQ=
 github.com/polynetwork/btc-vendor-tools v0.0.0-20200813091748-3b19a5fd7666/go.mod h1:U8rR9X6vemlkBAJWfvzwSoalcJjX8B2aQjB0kPRhBUA=
