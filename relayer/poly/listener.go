@@ -49,11 +49,15 @@ func (l *Listener) Init(config *config.ListenerConfig, sdk *poly.SDK) (err error
 
 func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 	txs, err = l.Scan(height)
-	if err != nil { return }
-	sub := &Submitter{sdk:l.sdk}
+	if err != nil {
+		return
+	}
+	sub := &Submitter{sdk: l.sdk}
 	for _, tx := range txs {
 		tx.MerkleValue, _, _, err = sub.GetProof(tx.PolyHeight, tx.PolyKey)
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -117,6 +121,10 @@ func (l *Listener) scanTx(node *poly.Client, hash string) (tx *msg.Tx, err error
 	event, err := node.GetSmartContractEvent(hash)
 	if err != nil {
 		return nil, err
+	}
+	if event == nil {
+		err = fmt.Errorf("invalid poly hash %s", hash)
+		return
 	}
 	for _, notify := range event.Notify {
 		if notify.ContractAddress == poly.CCM_ADDRESS {
@@ -189,7 +197,6 @@ func (l *Listener) LatestHeight() (uint64, error) {
 	return l.sdk.Node().GetLatestHeight()
 }
 
-
 func (l *Listener) ValidateNodes() (err error) {
 	if l.sdk.Delta() <= 0 {
 		err = fmt.Errorf("No height increment since last update for chain %d", l.ChainId())
@@ -202,7 +209,7 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 	if err == nil {
 		return
 	}
-	
+
 	for _, node := range l.sdk.AllNodes() {
 		e := l.validate(node, tx)
 		if e == nil {
@@ -214,7 +221,9 @@ func (l *Listener) Validate(tx *msg.Tx) (err error) {
 
 func (l *Listener) validate(node *poly.Client, tx *msg.Tx) (err error) {
 	t, err := l.scanTx(node, tx.PolyHash)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if t == nil {
 		return msg.ERR_TX_PROOF_MISSING
 	}
@@ -224,9 +233,11 @@ func (l *Listener) validate(node *poly.Client, tx *msg.Tx) (err error) {
 	if tx.DstChainId != t.DstChainId {
 		return fmt.Errorf("%w DstChainID does not match: %v, was %v", msg.ERR_TX_VOILATION, tx.DstChainId, t.DstChainId)
 	}
-	sub := &Submitter{sdk:l.sdk}
+	sub := &Submitter{sdk: l.sdk}
 	value, _, _, err := sub.getProof(node, t.PolyHeight, t.PolyKey)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if value == nil {
 		return msg.ERR_TX_PROOF_MISSING
 	}
