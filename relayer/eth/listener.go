@@ -71,10 +71,12 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 	l.GetProofHeight = l.getProofHeight
 	l.GetProof = l.getProof
 
-	l.state = bus.NewRedisChainStore(
-		bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
-		config.Bus.HeightUpdateInterval,
-	)
+	if config.Bus != nil {
+		l.state = bus.NewRedisChainStore(
+			bus.ChainHeightKey{ChainId: config.ChainId, Type: bus.KEY_HEIGHT_HEADER}, bus.New(config.Bus.Redis),
+			config.Bus.HeightUpdateInterval,
+		)
+	}
 
 	l.sdk, err = eth.WithOptions(config.ChainId, config.Nodes, time.Minute, 1)
 	if err == nil {
@@ -222,11 +224,19 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 			PolyHash: msg.HexStringReverse(hex.EncodeToString(ev.CrossChainTxHash)),
 		}
 		transaction, _, err := l.sdk.Node().TransactionByHash(context.Background(), ev.Raw.TxHash)
-		if err != nil || transaction == nil { return nil, err }
-		res, err := l.abi.Unpack("verifyHeaderAndExecuteTx", transaction.Data())
+		if err != nil { return nil, err }
+		if transaction == nil {
+			return nil, fmt.Errorf("Failed to fetch transaction in block")
+		}
+		var data []byte
+		if len(transaction.Data()) > 4 {
+			data = transaction.Data()[4:]
+		}
+		res, err := l.abi.Methods["verifyHeaderAndExecuteTx"].Inputs.Unpack(data)
 		if err == nil {
-			proof := *abi.ConvertType(res[0], new([]byte)).(*[]byte)
-			tx.AuditPath = hex.EncodeToString(proof)
+			tx.AuditPath = hex.EncodeToString(res[0].([]byte))
+		} else {
+			log.Error("Failed to parse proof in dst data", "chain", l.name, "hash", tx.DstHash, "err", err)
 		}
 		txs = append(txs, tx)
 	}

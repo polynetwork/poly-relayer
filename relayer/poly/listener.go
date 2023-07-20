@@ -244,6 +244,8 @@ func (l *Listener) validate(node *poly.Client, tx *msg.Tx) (err error) {
 
 	if path != tx.AuditPath {
 		return fmt.Errorf("%w AuditPath does not match: dst %s poly %s", msg.ERR_TX_VOILATION, tx.AuditPath, path)
+	} else {
+		log.Info("Validated dst tx audit path", "chain", tx.DstChainId)
 	}
 
 	a := util.LowerHex(hex.EncodeToString(value.MakeTxParam.ToContractAddress))

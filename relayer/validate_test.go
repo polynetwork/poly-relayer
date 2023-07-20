@@ -31,7 +31,22 @@ func TestValidate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	txs, err := pl.ScanDst(20644363)
+
+	{
+		l := lis.(*eth.Listener)
+		txs, err := l.ScanDst(29597714)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, tx := range txs {
+			err := pl.Validate(tx)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	txs, err := pl.ScanDst(30318897)
 	if err != nil {
 		t.Fatal(err)
 	}
