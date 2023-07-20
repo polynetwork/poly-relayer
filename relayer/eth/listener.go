@@ -24,8 +24,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -56,6 +58,7 @@ type Listener struct {
 	GetProof       func([]byte, uint64) (uint64, []byte, error)
 	name           string
 	state          bus.ChainStore // Header sync state
+	abi            abi.ABI
 }
 
 func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err error) {
@@ -83,6 +86,8 @@ func (l *Listener) Init(config *config.ListenerConfig, poly *poly.SDK) (err erro
 			}
 		}
 	}
+
+	l.abi, err = abi.JSON(strings.NewReader(eccm_abi.EthCrossChainManagerABI))
 	return
 }
 
@@ -215,6 +220,13 @@ func (l *Listener) ScanDst(height uint64) (txs []*msg.Tx, err error) {
 			DstProxy: hex.EncodeToString(ev.ToContract),
 			DstHeight: ev.Raw.BlockNumber,
 			PolyHash: msg.HexStringReverse(hex.EncodeToString(ev.CrossChainTxHash)),
+		}
+		transaction, _, err := l.sdk.Node().TransactionByHash(context.Background(), ev.Raw.TxHash)
+		if err != nil || transaction == nil { return nil, err }
+		res, err := l.abi.Unpack("verifyHeaderAndExecuteTx", transaction.Data())
+		if err == nil {
+			proof := *abi.ConvertType(res[0], new([]byte)).(*[]byte)
+			tx.AuditPath = hex.EncodeToString(proof)
 		}
 		txs = append(txs, tx)
 	}

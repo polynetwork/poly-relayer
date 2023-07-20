@@ -234,13 +234,18 @@ func (l *Listener) validate(node *poly.Client, tx *msg.Tx) (err error) {
 		return fmt.Errorf("%w DstChainID does not match: %v, was %v", msg.ERR_TX_VOILATION, tx.DstChainId, t.DstChainId)
 	}
 	sub := &Submitter{sdk: l.sdk}
-	value, _, _, err := sub.getProof(node, t.PolyHeight, t.PolyKey)
+	value, path, _, err := sub.getProof(node, t.PolyHeight, t.PolyKey)
 	if err != nil {
 		return
 	}
 	if value == nil {
 		return msg.ERR_TX_PROOF_MISSING
 	}
+
+	if path != tx.AuditPath {
+		return fmt.Errorf("%w AuditPath does not match: dst %s poly %s", msg.ERR_TX_VOILATION, tx.AuditPath, path)
+	}
+
 	a := util.LowerHex(hex.EncodeToString(value.MakeTxParam.ToContractAddress))
 	b := util.LowerHex(tx.DstProxy)
 	if a != b {
