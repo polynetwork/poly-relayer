@@ -453,6 +453,22 @@ func main() {
 				},
 			},
 			&cli.Command{
+				Name:   relayer.PUSH_TG,
+				Usage:  "Push telegram message",
+				Action: command(relayer.PUSH_TG),
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "url",
+						Usage: "tg bot url",
+					},
+					&cli.StringFlag{
+						Name:  "msg",
+						Usage: "message body in markdown",
+						Required: true,
+					},
+				},
+			},
+			&cli.Command{
 				Name:   relayer.ADD_SIDECHAIN,
 				Usage:  "Register side chain to poly",
 				Action: command(relayer.ADD_SIDECHAIN),

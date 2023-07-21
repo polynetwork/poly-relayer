@@ -181,11 +181,11 @@ func (s *Submitter) processPolyTx(tx *msg.Tx) (err error) {
 
 func (s *Submitter) ProcessTx(m *msg.Tx, compose msg.PolyComposer) (err error) {
 	if m.Type() != msg.POLY {
-		return fmt.Errorf("%s desired message is not poly tx %v", m.Type())
+		return fmt.Errorf("%s desired message is not poly tx %v", s.name, m.Type())
 	}
 
 	if m.DstChainId != s.config.ChainId {
-		return fmt.Errorf("%s message dst chain does not match %v", m.DstChainId)
+		return fmt.Errorf("%s message dst chain does not match %v", s.name, m.DstChainId)
 	}
 	m.DstPolyEpochStartHeight, err = s.GetPolyEpochStartHeight()
 	if err != nil {

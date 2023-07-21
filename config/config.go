@@ -64,6 +64,7 @@ type Config struct {
 		DialTargets  []string
 		DialTemplate string
 		DingUrl         string
+		TgUrl           string
 		HuyiUrl         string
 		HuyiAccount     string
 		HuyiPassword    string
