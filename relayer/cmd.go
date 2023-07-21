@@ -76,6 +76,7 @@ const (
 	VALIDATE          = "validate"
 	VALIDATE_BLOCK    = "validateblock"
 	SET_VALIDATOR_HEIGHT = "setvalidatorblock"
+	PUSH_TG           = "tg"
 )
 
 var _Handlers = map[string]func(*cli.Context) error{}
@@ -107,6 +108,7 @@ func init() {
 	_Handlers[VALIDATE] = Validate
 	_Handlers[VALIDATE_BLOCK] = ValidateBlock
 	_Handlers[SET_VALIDATOR_HEIGHT] = SetTxValidatorHeight
+	_Handlers[PUSH_TG] = PushTelegram
 }
 
 func CheckWallet(ctx *cli.Context) (err error) {
@@ -585,6 +587,43 @@ func ValidateBlock(ctx *cli.Context) (err error) {
 	return nil
 }
 
+func PushTelegram(ctx *cli.Context) (err error) {
+	msg := "🚨🚨🚨 Alarm 🚨🚨🚨\n *Message*:  " + ctx.String("msg")
+	url := ctx.String("url")
+	if url == "" {
+		url = config.CONFIG.Validators.TgUrl
+	}
+	return pushTelegram(url, msg)
+}
+
+func pushTgEvent(url string, event tools.CardEvent) {
+	title, keys, values, _ := event.Format()
+	msg := "🚨🚨🚨 Alarm 🚨🚨🚨\n\n*  " + title + "  *\n"
+	for i, k := range keys {
+		msg = fmt.Sprintf("%s\n*%s*:  %v", msg, k, values[i])
+	}
+	fmt.Println(msg)
+	pushTelegram(config.CONFIG.Validators.TgUrl, msg)
+}
+
+func pushTelegram(url, body string) (err error) {
+	body = strings.ReplaceAll(body, "<", "")
+	body = strings.ReplaceAll(body, ">", "")
+	payload := map[string]interface{}{
+		"parse_mode": "MarkdownV2",
+		"text": body,
+		"chat_id": "-1001957330362",
+	}
+	res := make(map[string]interface{})
+	err = tools.PostJsonFor(fmt.Sprintf("%s/sendMessage", url), payload, &res)
+	if err != nil {
+		log.Error("Failed to send tg message", "err", err)
+	} else {
+		log.Info("Sent tg message", "response", util.Json(res))
+	}
+	return
+}
+
 func Validate(ctx *cli.Context) (err error) {
 	pl, err := PolyListener()
 	if err != nil { return }
@@ -657,6 +696,7 @@ func watchAlarms(outputs chan tools.CardEvent) {
 		if len(tools.DingUrl) == 0 {
 			continue
 		}
+		go pushTgEvent(config.CONFIG.Validators.TgUrl, o)
 		err := tools.PostCardEvent(o)
 		if err != nil {
 			log.Error("Post dingtalk failure", "err", err)

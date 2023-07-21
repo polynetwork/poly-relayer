@@ -14,6 +14,26 @@ import (
 	"github.com/polynetwork/poly-relayer/relayer/eth"
 )
 
+func TestBot(t *testing.T) {
+	conf, err := config.New("../config.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = conf.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tx := &msg.Tx{
+		SrcChainId: base.BSC,
+		DstChainId: base.ETH,
+		DstHash: "xxxxx",
+	}
+
+	event := &msg.InvalidPolyCommitEvent{Tx: tx, Error: fmt.Errorf("invalid poly commit tx from chain %d, %v", tx.SrcChainId, err)}
+	pushTgEvent(config.CONFIG.Validators.TgUrl, event)
+}
+
 func TestValidate(t *testing.T) {
 	conf, err := config.New("../config.json")
 	if err != nil {
@@ -58,6 +78,21 @@ func TestValidate(t *testing.T) {
 			t.Fatal(err)
 		}
 		fmt.Println("done")
+	}
+
+	{
+		l := lis.(*eth.Listener)
+		txs, err := l.ScanDst(29589899)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, tx := range txs {
+			err := pl.Validate(tx)
+			if err != nil {
+				event := &msg.InvalidPolyCommitEvent{Tx: tx, Error: fmt.Errorf("invalid poly commit tx from chain %d, %v", tx.SrcChainId, err)}
+				pushTgEvent(config.CONFIG.Validators.TgUrl, event)
+			}
+		}
 	}
 }
 
