@@ -318,8 +318,8 @@ func main() {
 						Required: true,
 					},
 					&cli.BoolFlag{
-						Name:  "public",
-						Usage: "include the public key in the output",
+						Name:     "raw",
+						Usage:    "generate raw key file instead",
 					},
 				},
 			},

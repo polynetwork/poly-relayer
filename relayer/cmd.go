@@ -19,7 +19,9 @@ package relayer
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -447,11 +449,26 @@ func UpdateAccount(ctx *cli.Context) (err error) {
 
 func CreateAccount(ctx *cli.Context) (err error) {
 	path := ctx.String("path")
-	showPublic := ctx.Bool("public")
 	if path == "" {
 		log.Error("Wallet patch can not be empty")
 		return
 	}
+
+	if ctx.Bool("raw") {
+		privateKeyECDSA, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+		if err != nil {
+			return err
+		}
+		err = crypto.SaveECDSA(path, privateKeyECDSA)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Private key saved in %s\n", path)
+		fmt.Printf("Public key:   %x\n", crypto.FromECDSAPub(&privateKeyECDSA.PublicKey))
+		fmt.Printf("Address:   %s\n", crypto.PubkeyToAddress(privateKeyECDSA.PublicKey).String())
+		return nil
+	}
+
 	pass, err := msg.ReadPassword("passphrase")
 	if err != nil {
 		return
@@ -465,7 +482,7 @@ func CreateAccount(ctx *cli.Context) (err error) {
 	fmt.Printf("\nYour new key was generated\n\n")
 	fmt.Printf("Address:   %s\n", account.Address.Hex())
 
-	if showPublic {
+	{
 		keyJson, err := os.ReadFile(account.URL.Path)
 		if err != nil {
 			log.Error("Failed to read the keystore", "keystore path", account.URL.Path, "error", err)
