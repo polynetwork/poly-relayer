@@ -9,4 +9,4 @@ COPY go.mod go.sum ./
 COPY . ./
 
 RUN go mod download
-RUN go build -tags ${network}} -o server .
+RUN go build -tags ${network} -o server .
